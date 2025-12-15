@@ -1,0 +1,475 @@
+/* TradesPage.css */
+
+.trades-page-container {
+    min-height: 100vh;
+    padding: 32px;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    color: #f8fafc;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.trades-header {
+    margin-bottom: 40px;
+}
+
+.trades-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 0 0 12px 0;
+    background: linear-gradient(135deg, #60a5fa 0%, #a855f7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.02em;
+}
+
+.trades-subtitle {
+    color: #94a3b8;
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+/* Controls Section */
+.trades-controls {
+    background: rgba(30, 41, 59, 0.4);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 32px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.control-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 24px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.input-group-trades {
+    flex: 1;
+    min-width: 300px;
+}
+
+.input-label-trades {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #94a3b8;
+    margin-bottom: 8px;
+}
+
+.wallet-input-trades {
+    width: 100%;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 14px 16px;
+    color: #f8fafc;
+    font-size: 1rem;
+    font-family: monospace;
+    transition: all 0.2s;
+}
+
+.wallet-input-trades:focus {
+    outline: none;
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+}
+
+.fetch-button-trades {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 32px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.fetch-button-trades:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.fetch-button-trades:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Toggle Switch */
+.toggle-group-trades {
+    display: flex;
+    align-items: center;
+    padding-bottom: 14px;
+}
+
+.toggle-label-trades {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    gap: 12px;
+}
+
+.toggle-checkbox-trades {
+    display: none;
+}
+
+.toggle-slider-trades {
+    width: 48px;
+    height: 26px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 13px;
+    position: relative;
+    transition: background-color 0.3s;
+}
+
+.toggle-slider-trades::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    background-color: #fff;
+    border-radius: 50%;
+    transition: transform 0.3s;
+}
+
+.toggle-checkbox-trades:checked+.toggle-slider-trades {
+    background-color: #10b981;
+}
+
+.toggle-checkbox-trades:checked+.toggle-slider-trades::after {
+    transform: translateX(22px);
+}
+
+.toggle-text-trades {
+    color: #e2e8f0;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+/* Filters and Search */
+.filter-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    flex-wrap: wrap;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+    max-width: 400px;
+}
+
+.search-box svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #64748b;
+}
+
+.search-input {
+    width: 100%;
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 10px 16px 10px 42px;
+    color: #f8fafc;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #60a5fa;
+    background: rgba(15, 23, 42, 0.6);
+}
+
+.filter-buttons {
+    display: flex;
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 10px;
+    padding: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.filter-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filter-btn.active {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.filter-btn-buy.active {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+}
+
+.filter-btn-sell.active {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+
+/* Results Section */
+.trades-results {
+    background: rgba(30, 41, 59, 0.4);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 32px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.results-info {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.results-count {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.results-label {
+    color: #94a3b8;
+}
+
+.wallet-display {
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+.wallet-label {
+    color: #94a3b8;
+    margin-right: 8px;
+}
+
+.wallet-value {
+    color: #60a5fa;
+    font-family: monospace;
+}
+
+/* Table */
+.trades-table-container {
+    overflow-x: auto;
+}
+
+.trades-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.trades-table th {
+    text-align: left;
+    padding: 16px;
+    color: #94a3b8;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+}
+
+.trades-table td {
+    padding: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    color: #f8fafc;
+    font-size: 0.95rem;
+    vertical-align: middle;
+}
+
+.trade-row:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.trade-row:last-child td {
+    border-bottom: none;
+}
+
+/* Market Info */
+.market-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.market-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #334155;
+    flex-shrink: 0;
+}
+
+.market-text {
+    max-width: 250px;
+}
+
+.market-title {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+}
+
+.market-slug {
+    font-size: 0.8rem;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Badges */
+.outcome-badge,
+.side-badge {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.outcome-yes {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+}
+
+.outcome-no {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+
+.side-buy {
+    background: rgba(16, 185, 129, 0.1);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.side-sell {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Numeric Cells */
+.size-cell,
+.price-cell,
+.value-cell {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    color: #e2e8f0;
+}
+
+.value-cell {
+    color: #f8fafc;
+    font-weight: 600;
+}
+
+/* Trader Info */
+.trader-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.trader-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #475569;
+}
+
+.trader-name {
+    color: #e2e8f0;
+    font-size: 0.9rem;
+}
+
+.time-cell {
+    color: #94a3b8;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+/* Loading & Empty States */
+.trades-loading {
+    display: flex;
+    justify-content: center;
+    padding: 60px;
+    background: rgba(30, 41, 59, 0.4);
+    border-radius: 20px;
+}
+
+.no-results {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    color: #64748b;
+    text-align: center;
+}
+
+.no-results svg {
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.no-results p {
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .control-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .wallet-input-trades,
+    .fetch-button-trades {
+        width: 100%;
+    }
+
+    .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .search-box {
+        max-width: none;
+    }
+}

@@ -1,32 +1,36 @@
 "use client";
 
-import { useState } from "react";
+
 import {
     LayoutDashboard,
     Trophy,
     LineChart,
     Layers,
+    Wallet,
+    Activity,
     FileText,
     Settings,
     ChevronLeft,
+    User,
+    History as HistoryIcon,
+    ScatterChart,
+    Search,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
-interface WatchlistProps {
-    selectedSymbol: string;
-    onSelectSymbol: (symbol: string) => void;
-}
-
 const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Leaderboard", href: "/leaderboard", icon: Trophy },
+    { name: "Global Leaderboard", href: "/leaderboard", icon: Trophy },
+    { name: "Live Leaderboard", href: "/leaderboard/live", icon: ScatterChart },
     { name: "Markets", href: "/markets", icon: LineChart },
-    // { name: "Whale Tracker", href: "/whale-tracker", icon: Layers },
-    // { name: "Reports", href: "/reports", icon: FileText },
-    // { name: "Settings", href: "/settings", icon: Settings },
-    { name: "Whale Tracker", href: "#", icon: Layers },
-    { name: "Reports", href: "#", icon: FileText },
-    { name: "Settings", href: "#", icon: Settings },
+    { name: "Wallet Dashboard", href: "/wallet-dashboard", icon: Search },
+    { name: "Whale Tracker", href: "/whale-tracker", icon: Layers },
+    { name: "Positions", href: "/positions", icon: Wallet },
+    { name: "Activity", href: "/activity", icon: Activity },
+    { name: "Trades", href: "/trades", icon: HistoryIcon },
+    { name: "Profile Stats", href: "/profile-stats", icon: User },
+    { name: "Reports", href: "/reports", icon: FileText },
+    { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 interface SidebarProps {
