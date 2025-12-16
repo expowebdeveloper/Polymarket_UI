@@ -12,6 +12,7 @@ import type {
     MarketsResponse,
     UserLeaderboardData,
     MarketOrdersResponse,
+    AllLeaderboardsResponse,
     ApiError,
 } from '../types/api';
 
@@ -264,6 +265,47 @@ export async function fetchUserLeaderboardData(
     category: string = 'overall'
 ): Promise<UserLeaderboardData> {
     return fetchApi<UserLeaderboardData>(`/user/leaderboard?user=${walletAddress}&category=${category}`, 30000);
+}
+
+/**
+ * Fetch market orders from DomeAPI
+ * @param marketSlug - Market slug identifier
+ * @param limit - Maximum number of orders to return
+ * @param offset - Offset for pagination
+ */
+/**
+ * Fetch all leaderboards with percentile information
+ */
+export async function fetchAllLeaderboards(): Promise<AllLeaderboardsResponse> {
+    return fetchApi<AllLeaderboardsResponse>(API_ENDPOINTS.leaderboard.all, 60000, 'POST');
+}
+
+/**
+ * Fetch leaderboard sorted by W_shrunk (ascending)
+ */
+export async function fetchWShrunkLeaderboard(): Promise<LeaderboardResponse> {
+    return fetchApi<LeaderboardResponse>(API_ENDPOINTS.leaderboard.wShrunk, 60000, 'POST');
+}
+
+/**
+ * Fetch leaderboard sorted by raw ROI (descending)
+ */
+export async function fetchRoiRawLeaderboard(): Promise<LeaderboardResponse> {
+    return fetchApi<LeaderboardResponse>(API_ENDPOINTS.leaderboard.roiRaw, 60000, 'POST');
+}
+
+/**
+ * Fetch leaderboard sorted by ROI_shrunk (ascending)
+ */
+export async function fetchRoiShrunkLeaderboard(): Promise<LeaderboardResponse> {
+    return fetchApi<LeaderboardResponse>(API_ENDPOINTS.leaderboard.roiShrunk, 60000, 'POST');
+}
+
+/**
+ * Fetch leaderboard sorted by PNL_shrunk (ascending)
+ */
+export async function fetchPnlShrunkLeaderboard(): Promise<LeaderboardResponse> {
+    return fetchApi<LeaderboardResponse>(API_ENDPOINTS.leaderboard.pnlShrunk, 60000, 'POST');
 }
 
 /**

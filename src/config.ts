@@ -11,16 +11,11 @@ const getApiBaseUrl = (): string => {
   // In production (Vercel), you MUST set VITE_BACKEND_API environment variable
   // CRITICAL: Without this, API calls will go to the frontend domain and fail with 405
   if (import.meta.env.PROD) {
-    console.error('❌ CRITICAL: VITE_BACKEND_API is not set in production!');
-    console.error('API calls are going to the frontend domain instead of backend!');
-    console.error('Fix: Set VITE_BACKEND_API=http://polyrating.com in Vercel environment variables');
-    // Don't return empty string - this causes requests to go to frontend domain
-    // Return the backend URL as fallback (user should still set env var)
-    return 'https://polyrating.com';
+    return 'http://127.0.0.1:8000';
   }
   
   // Development fallback
-  return 'https://polyrating.com';
+  return 'http://127.0.0.1:8000';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
@@ -64,6 +59,11 @@ export const API_ENDPOINTS = {
         liveRoi: '/leaderboard/live-roi',
         livePnl: '/leaderboard/live-pnl',
         liveRisk: '/leaderboard/live-risk',
+        all: '/leaderboard/all',
+        wShrunk: '/leaderboard/w-shrunk',
+        roiRaw: '/leaderboard/roi-raw',
+        roiShrunk: '/leaderboard/roi-shrunk',
+        pnlShrunk: '/leaderboard/pnl-shrunk',
     },
     markets: {
         list: '/markets',

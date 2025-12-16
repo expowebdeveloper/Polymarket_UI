@@ -197,6 +197,10 @@ export interface LeaderboardEntry {
     score_roi?: number;
     score_pnl?: number;
     score_risk?: number;
+    // Intermediate values for leaderboard sorting
+    W_shrunk?: number;
+    roi_shrunk?: number;
+    pnl_shrunk?: number;
 }
 
 export interface LeaderboardResponse {
@@ -204,6 +208,38 @@ export interface LeaderboardResponse {
     metric: string;
     count: number;
     entries: LeaderboardEntry[];
+}
+
+export interface PercentileInfo {
+    w_shrunk_1_percent: number;
+    w_shrunk_99_percent: number;
+    roi_shrunk_1_percent: number;
+    roi_shrunk_99_percent: number;
+    pnl_shrunk_1_percent: number;
+    pnl_shrunk_99_percent: number;
+    population_size: number;
+}
+
+export interface MedianInfo {
+    roi_median: number;
+    pnl_median: number;
+}
+
+export interface AllLeaderboardsResponse {
+    percentiles: PercentileInfo;
+    medians: MedianInfo;
+    leaderboards: {
+        w_shrunk?: LeaderboardEntry[];
+        roi_raw?: LeaderboardEntry[];
+        roi_shrunk?: LeaderboardEntry[];
+        pnl_shrunk?: LeaderboardEntry[];
+        score_win_rate?: LeaderboardEntry[];
+        score_roi?: LeaderboardEntry[];
+        score_pnl?: LeaderboardEntry[];
+        score_risk?: LeaderboardEntry[];
+    };
+    total_traders: number;
+    population_traders: number;
 }
 
 // Market Types
