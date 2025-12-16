@@ -28,6 +28,9 @@ async function fetchApi<T>(endpoint: string, timeoutMs: number = 30000, method: 
             ? `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
             : endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
         
+        // Log the URL being called (helpful for debugging)
+        console.log(`API Call: ${method} ${url}`);
+        
         const response = await fetch(url, {
             method,
             headers: {

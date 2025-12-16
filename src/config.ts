@@ -2,14 +2,17 @@
 const getApiBaseUrl = (): string => {
   // If explicitly set via environment variable, use it (remove trailing slash)
   const envUrl = import.meta.env.VITE_BACKEND_API;
+  
   if (envUrl && envUrl.trim()) {
-    return envUrl.trim().replace(/\/$/, ''); // Remove trailing slash if present
+    const url = envUrl.trim().replace(/\/$/, ''); // Remove trailing slash if present
+    return url;
   }
   
   // In production (Vercel), you MUST set VITE_BACKEND_API environment variable
-  // pointing to your deployed backend API (e.g., https://your-backend.vercel.app)
+  // pointing to your deployed backend API
   if (import.meta.env.PROD) {
-    console.warn('VITE_BACKEND_API not set in production. API calls may fail.');
+    console.error('⚠️ VITE_BACKEND_API is not set in production!');
+    console.error('API calls will fail. Please set VITE_BACKEND_API in Vercel environment variables.');
     // Return empty string to use relative URLs (only works if backend is on same domain)
     return '';
   }
@@ -20,10 +23,19 @@ const getApiBaseUrl = (): string => {
 
 export const API_BASE_URL = getApiBaseUrl();
 
-// Debug logging (only in development)
-if (import.meta.env.DEV) {
-  console.log('API_BASE_URL:', API_BASE_URL);
-  console.log('VITE_BACKEND_API env:', import.meta.env.VITE_BACKEND_API);
+// Debug logging (always log to help debug)
+if (typeof window !== 'undefined') {
+  console.log('🔧 API Configuration:', {
+    API_BASE_URL,
+    VITE_BACKEND_API: import.meta.env.VITE_BACKEND_API || '(not set)',
+    MODE: import.meta.env.MODE,
+    PROD: import.meta.env.PROD,
+  });
+  
+  if (import.meta.env.PROD && !API_BASE_URL && !import.meta.env.VITE_BACKEND_API) {
+    console.error('❌ ERROR: VITE_BACKEND_API is not set in production!');
+    console.error('Please set it in Vercel: Settings → Environment Variables');
+  }
 }
 
 export const API_ENDPOINTS = {
