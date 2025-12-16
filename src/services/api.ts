@@ -23,7 +23,12 @@ async function fetchApi<T>(endpoint: string, timeoutMs: number = 30000, method: 
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        // Construct full URL - handle both absolute and relative URLs
+        const url = API_BASE_URL 
+            ? `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
+            : endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        
+        const response = await fetch(url, {
             method,
             headers: {
                 'accept': 'application/json',
