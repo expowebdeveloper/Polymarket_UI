@@ -9,16 +9,18 @@ const getApiBaseUrl = (): string => {
   }
   
   // In production (Vercel), you MUST set VITE_BACKEND_API environment variable
-  // pointing to your deployed backend API
+  // CRITICAL: Without this, API calls will go to the frontend domain and fail with 405
   if (import.meta.env.PROD) {
-    console.error('⚠️ VITE_BACKEND_API is not set in production!');
-    console.error('API calls will fail. Please set VITE_BACKEND_API in Vercel environment variables.');
-    // Return empty string to use relative URLs (only works if backend is on same domain)
-    return '';
+    console.error('❌ CRITICAL: VITE_BACKEND_API is not set in production!');
+    console.error('API calls are going to the frontend domain instead of backend!');
+    console.error('Fix: Set VITE_BACKEND_API=http://polyrating.com in Vercel environment variables');
+    // Don't return empty string - this causes requests to go to frontend domain
+    // Return the backend URL as fallback (user should still set env var)
+    return 'https://polyrating.com';
   }
   
   // Development fallback
-  return 'http://127.0.0.1:8000';
+  return 'https://polyrating.com';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
