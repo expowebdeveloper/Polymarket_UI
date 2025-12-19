@@ -23,6 +23,7 @@ const navItems = [
     { name: "Global Leaderboard", href: "/leaderboard", icon: Trophy },
     { name: "Live Leaderboard", href: "/leaderboard/live", icon: ScatterChart },
     { name: "All Leaderboards", href: "/leaderboard/all", icon: Trophy },
+    { name: "View All Leaderboards", href: "/leaderboard/view-all", icon: Trophy },
     { name: "Markets", href: "/markets", icon: LineChart },
     { name: "Wallet Dashboard", href: "/wallet-dashboard", icon: Search },
     { name: "Whale Tracker", href: "/whale-tracker", icon: Layers },

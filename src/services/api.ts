@@ -268,7 +268,7 @@ export async function fetchUserLeaderboardData(
 }
 
 /**
- * Fetch market orders from DomeAPI
+ * Fetch market orders from Polymarket API
  * @param marketSlug - Market slug identifier
  * @param limit - Maximum number of orders to return
  * @param offset - Offset for pagination
@@ -278,6 +278,13 @@ export async function fetchUserLeaderboardData(
  */
 export async function fetchAllLeaderboards(): Promise<AllLeaderboardsResponse> {
     return fetchApi<AllLeaderboardsResponse>(API_ENDPOINTS.leaderboard.all, 60000, 'POST');
+}
+
+/**
+ * Fetch all leaderboards with percentile information (GET endpoint)
+ */
+export async function fetchViewAllLeaderboards(): Promise<AllLeaderboardsResponse> {
+    return fetchApi<AllLeaderboardsResponse>(API_ENDPOINTS.leaderboard.viewAll, 60000, 'GET');
 }
 
 /**
@@ -309,7 +316,7 @@ export async function fetchPnlShrunkLeaderboard(): Promise<LeaderboardResponse> 
 }
 
 /**
- * Fetch market orders from DomeAPI
+ * Fetch market orders from Polymarket API
  * @param marketSlug - Market slug identifier
  * @param limit - Maximum number of orders to return
  * @param offset - Offset for pagination

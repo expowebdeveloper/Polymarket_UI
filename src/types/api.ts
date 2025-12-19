@@ -197,6 +197,7 @@ export interface LeaderboardEntry {
     score_roi?: number;
     score_pnl?: number;
     score_risk?: number;
+    final_score?: number;
     // Intermediate values for leaderboard sorting
     W_shrunk?: number;
     roi_shrunk?: number;
@@ -237,6 +238,7 @@ export interface AllLeaderboardsResponse {
         score_roi?: LeaderboardEntry[];
         score_pnl?: LeaderboardEntry[];
         score_risk?: LeaderboardEntry[];
+        final_score?: LeaderboardEntry[];
     };
     total_traders: number;
     population_traders: number;

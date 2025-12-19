@@ -3,6 +3,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     ScatterChart, Scatter
 } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 import { fetchLiveLeaderboard } from '../services/api';
 import type { LeaderboardResponse, LeaderboardEntry } from '../types/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -10,6 +11,7 @@ import { ErrorMessage } from '../components/ErrorMessage';
 import '../styles/LiveLeaderboard.css';
 
 const LiveLeaderboard: React.FC = () => {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'all' | 'roi' | 'pnl' | 'risk'>('all');
     const [data, setData] = useState<LeaderboardResponse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -109,10 +111,43 @@ const LiveLeaderboard: React.FC = () => {
     return (
         <div className="live-leaderboard-container">
             <div className="leaderboard-header">
-                <h1 className="leaderboard-title">Live Leaderboard</h1>
-                <p className="leaderboard-subtitle">
-                    Real-time ranking of top traders based on proprietary scoring algorithms
-                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div>
+                        <h1 className="leaderboard-title">Live Leaderboard</h1>
+                        <p className="leaderboard-subtitle">
+                            Real-time ranking of top traders based on proprietary scoring algorithms
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => navigate('/leaderboard/all')}
+                        style={{
+                            padding: '0.75rem 1.5rem',
+                            backgroundColor: '#8b5cf6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '0.5rem',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            fontSize: '0.875rem',
+                            transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#7c3aed'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#8b5cf6'}
+                    >
+                        📊 View All Leaderboards & Percentiles
+                    </button>
+                </div>
+                <div style={{
+                    padding: '1rem',
+                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    borderRadius: '0.5rem',
+                    border: '1px solid rgba(139, 92, 246, 0.3)',
+                    marginTop: '1rem'
+                }}>
+                    <p style={{ margin: 0, color: '#c4b5fd', fontSize: '0.875rem' }}>
+                        💡 <strong>Looking for W_shrunk leaderboard and percentile information?</strong> Click the button above to view all leaderboards including W_shrunk, ROI_shrunk, PNL_shrunk, and percentile anchors (1st and 99th percentiles) used in score calculations.
+                    </p>
+                </div>
             </div>
 
             <div className="leaderboard-tabs">

@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { fetchAllLeaderboards } from '../services/api';
+import { fetchViewAllLeaderboards } from '../services/api';
 import type { AllLeaderboardsResponse, LeaderboardEntry } from '../types/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 
 type LeaderboardType = 'w_shrunk' | 'roi_raw' | 'roi_shrunk' | 'pnl_shrunk' | 'score_win_rate' | 'score_roi' | 'score_pnl' | 'score_risk' | 'final_score';
 
-const AllLeaderboards: React.FC = () => {
+const ViewAllLeaderboards: React.FC = () => {
     const [data, setData] = useState<AllLeaderboardsResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<LeaderboardType>('score_pnl');
+    const [activeTab, setActiveTab] = useState<LeaderboardType>('final_score');
     const [showPercentiles, setShowPercentiles] = useState(true);
 
     useEffect(() => {
@@ -21,7 +21,7 @@ const AllLeaderboards: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            const result = await fetchAllLeaderboards();
+            const result = await fetchViewAllLeaderboards();
             setData(result);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load leaderboards');
@@ -48,15 +48,15 @@ const AllLeaderboards: React.FC = () => {
 
     const getLeaderboardTitle = (type: LeaderboardType): string => {
         const titles: Record<LeaderboardType, string> = {
-            'w_shrunk': 'W_shrunk (Ascending)',
-            'roi_raw': 'ROI Raw (Descending)',
-            'roi_shrunk': 'ROI_shrunk (Ascending)',
-            'pnl_shrunk': 'PNL_shrunk (Ascending)',
-            'score_win_rate': 'Win Rate Score',
-            'score_roi': 'ROI Score',
-            'score_pnl': 'PnL Score',
-            'score_risk': 'Risk Score',
-            'final_score': 'Final Score (0-100)'
+            'w_shrunk': 'W_shrunk (Ascending - Best = Rank 1)',
+            'roi_raw': 'ROI Raw (Descending - Best = Rank 1)',
+            'roi_shrunk': 'ROI_shrunk (Ascending - Best = Rank 1)',
+            'pnl_shrunk': 'PNL_shrunk (Ascending - Best = Rank 1)',
+            'score_win_rate': 'Win Rate Score (Descending - Best = Rank 1)',
+            'score_roi': 'ROI Score (Descending - Best = Rank 1)',
+            'score_pnl': 'PnL Score (Descending - Best = Rank 1)',
+            'score_risk': 'Risk Score (Descending - Best = Rank 1)',
+            'final_score': 'Final Score (0-100) - Best = Rank 1'
         };
         return titles[type];
     };
@@ -80,7 +80,7 @@ const AllLeaderboards: React.FC = () => {
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="mb-8">
-                    <h1 className="text-4xl font-bold text-yellow-400 mb-2">All Leaderboards</h1>
+                    <h1 className="text-4xl font-bold text-yellow-400 mb-2">View All Leaderboards</h1>
                     <p className="text-slate-400">Complete leaderboard system with percentile information</p>
                 </div>
 
@@ -262,7 +262,7 @@ const AllLeaderboards: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {currentLeaderboard.slice(0, 50).map((entry, index) => (
+                                {currentLeaderboard.slice(0, 100).map((entry, index) => (
                                     <tr key={entry.wallet_address || index} className="hover:bg-slate-700">
                                         <td className="border border-slate-700 px-4 py-2 text-green-400 font-bold">#{entry.rank || index + 1}</td>
                                         <td className="border border-slate-700 px-4 py-2 font-mono text-sm">
@@ -314,6 +314,5 @@ const AllLeaderboards: React.FC = () => {
     );
 };
 
-export default AllLeaderboards;
-
+export default ViewAllLeaderboards;
 

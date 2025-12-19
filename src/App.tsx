@@ -14,6 +14,7 @@ import ProfileStatsDemo from './pages/ProfileStatsDemo';
 import TradesPage from './pages/TradesPage';
 import LiveLeaderboard from './pages/LiveLeaderboard';
 import AllLeaderboards from './pages/AllLeaderboards';
+import ViewAllLeaderboards from './pages/ViewAllLeaderboards';
 import { WalletDashboard } from './pages/WalletDashboard';
 import { MarketDetailPage } from './pages/MarketDetail';
 
@@ -59,6 +60,15 @@ function App() {
                 <>
                   <TradingHeader title="All Leaderboards" />
                   <AllLeaderboards />
+                </>
+              }
+            />
+            <Route
+              path="/leaderboard/view-all"
+              element={
+                <>
+                  <TradingHeader title="View All Leaderboards" />
+                  <ViewAllLeaderboards />
                 </>
               }
             />

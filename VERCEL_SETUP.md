@@ -37,3 +37,7 @@ If you see errors like "Failed to load leaderboard" or requests going to the wro
 3. Check browser console for CORS errors
 4. Redeploy your frontend after setting environment variables
 
+
+
+
+
