@@ -12,9 +12,7 @@ import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import ProfileStatsDemo from './pages/ProfileStatsDemo';
 import TradesPage from './pages/TradesPage';
-import LiveLeaderboard from './pages/LiveLeaderboard';
-import AllLeaderboards from './pages/AllLeaderboards';
-import ViewAllLeaderboards from './pages/ViewAllLeaderboards';
+import LeaderboardViewAll from './pages/LeaderboardViewAll';
 import { WalletDashboard } from './pages/WalletDashboard';
 import { MarketDetailPage } from './pages/MarketDetail';
 
@@ -46,29 +44,11 @@ function App() {
               }
             />
             <Route
-              path="/leaderboard/live"
-              element={
-                <>
-                  <TradingHeader title="Live Leaderboard" />
-                  <LiveLeaderboard />
-                </>
-              }
-            />
-            <Route
-              path="/leaderboard/all"
-              element={
-                <>
-                  <TradingHeader title="All Leaderboards" />
-                  <AllLeaderboards />
-                </>
-              }
-            />
-            <Route
               path="/leaderboard/view-all"
               element={
                 <>
                   <TradingHeader title="View All Leaderboards" />
-                  <ViewAllLeaderboards />
+                  <LeaderboardViewAll />
                 </>
               }
             />
