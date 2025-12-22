@@ -173,6 +173,35 @@ export interface ProfileStatsResponse {
     joinDate?: string;
 }
 
+export interface EnhancedProfileStatsResponse {
+    proxyAddress: string;
+    username?: string;
+    name?: string;
+    pseudonym?: string;
+    profileImage?: string;
+    
+    // Highlighted Metrics
+    finalScore: number;
+    topPercent: number;
+    rankingTag: string;
+    longestWinningStreak: number;
+    currentWinningStreak: number;
+    
+    // View Details Metrics
+    biggestWin: number;
+    worstLoss: number;
+    maximumStake: number;
+    portfolioValue: number;
+    averageStakeValue: number;
+    
+    // Additional Info
+    rank?: number;
+    totalTrades: number;
+    totalPnl: number;
+    roi: number;
+    winRate: number;
+}
+
 // API Error Type
 export interface ApiError {
     message: string;
@@ -318,4 +347,100 @@ export interface MarketsResponse {
     count: number;
     markets: Market[];
     pagination?: PaginationInfo;
+}
+
+// Trade History Types
+export interface TradeHistoryTrade {
+    id: number;
+    proxy_wallet: string;
+    side: string;
+    asset: string;
+    condition_id: string;
+    size: number;
+    price: number;
+    entry_price?: number | null;
+    exit_price?: number | null;
+    pnl?: number | null;
+    roi?: number | null;
+    timestamp: number;
+    title?: string | null;
+    slug?: string | null;
+    icon?: string | null;
+    event_slug?: string | null;
+    outcome?: string | null;
+    outcome_index?: number | null;
+    transaction_hash: string;
+    category: string;
+}
+
+export interface TradeHistoryOpenPosition {
+    id: number;
+    proxy_wallet: string;
+    asset: string;
+    condition_id: string;
+    size: number;
+    avg_price: number;
+    initial_value: number;
+    current_value: number;
+    cash_pnl: number;
+    percent_pnl: number;
+    cur_price: number;
+    roi?: number | null;
+    title?: string | null;
+    slug?: string | null;
+    icon?: string | null;
+    outcome?: string | null;
+    category: string;
+}
+
+export interface TradeHistoryClosedPosition {
+    id: number;
+    proxy_wallet: string;
+    asset: string;
+    condition_id: string;
+    avg_price: number;
+    cur_price: number;
+    realized_pnl: number;
+    roi?: number | null;
+    title?: string | null;
+    slug?: string | null;
+    icon?: string | null;
+    outcome?: string | null;
+    timestamp: number;
+    category: string;
+}
+
+export interface OverallMetrics {
+    total_pnl: number;
+    realized_pnl: number;
+    unrealized_pnl: number;
+    roi: number;
+    win_rate: number;
+    winning_trades: number;
+    losing_trades: number;
+    total_trades: number;
+    score: number;
+    total_volume: number;
+}
+
+export interface CategoryMetrics {
+    roi: number;
+    pnl: number;
+    realized_pnl: number;
+    unrealized_pnl: number;
+    win_rate: number;
+    winning_trades: number;
+    losing_trades: number;
+    total_trades: number;
+    score: number;
+    total_volume: number;
+}
+
+export interface TradeHistoryResponse {
+    wallet_address: string;
+    open_positions: TradeHistoryOpenPosition[];
+    closed_positions: TradeHistoryClosedPosition[];
+    trades: TradeHistoryTrade[];
+    overall_metrics: OverallMetrics;
+    category_breakdown: Record<string, CategoryMetrics>;
 }

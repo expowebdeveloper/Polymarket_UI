@@ -8,11 +8,13 @@ import type {
     ClosedPosition,
     ActivitiesResponse,
     ProfileStatsResponse,
+    EnhancedProfileStatsResponse,
     LeaderboardResponse,
     MarketsResponse,
     UserLeaderboardData,
     MarketOrdersResponse,
     AllLeaderboardsResponse,
+    TradeHistoryResponse,
     ApiError,
 } from '../types/api';
 
@@ -181,6 +183,34 @@ export async function fetchProfileStatsFromDB(
 }
 
 /**
+ * Get enhanced profile stats with scoring and streaks
+ * @param wallet - Optional wallet address
+ * @param username - Optional username
+ * @param search - Optional search query (username or wallet)
+ */
+export async function fetchEnhancedProfileStats(
+    wallet?: string,
+    username?: string,
+    search?: string
+): Promise<EnhancedProfileStatsResponse> {
+    let url = `${API_ENDPOINTS.profileStats.enhanced}?`;
+    const params: string[] = [];
+    if (wallet) params.push(`wallet=${wallet}`);
+    if (username) params.push(`username=${username}`);
+    if (search) params.push(`search=${search}`);
+    url += params.join('&');
+    return fetchApi<EnhancedProfileStatsResponse>(url, 30000);
+}
+
+/**
+ * Get top traders
+ * @param limit - Number of top traders to return (default: 3)
+ */
+export async function fetchTopTraders(limit: number = 3): Promise<EnhancedProfileStatsResponse[]> {
+    return fetchApi<EnhancedProfileStatsResponse[]>(`${API_ENDPOINTS.profileStats.topTraders}?limit=${limit}`, 60000);
+}
+
+/**
  * Fetch and save trades for a wallet address
  * @param walletAddress - Wallet address to fetch trades for
  */
@@ -327,5 +357,13 @@ export async function fetchMarketOrders(
     offset: number = 0
 ): Promise<MarketOrdersResponse> {
     return fetchApi<MarketOrdersResponse>(`/markets/orders?market_slug=${marketSlug}&limit=${limit}&offset=${offset}`, 30000);
+}
+
+/**
+ * Fetch comprehensive trade history for a wallet address
+ * @param walletAddress - Wallet address to fetch trade history for
+ */
+export async function fetchTradeHistory(walletAddress: string): Promise<TradeHistoryResponse> {
+    return fetchApi<TradeHistoryResponse>(`/trade-history?user=${walletAddress}`, 60000);
 }
 

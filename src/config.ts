@@ -49,6 +49,8 @@ export const API_ENDPOINTS = {
     profileStats: {
         fetch: '/profile/stats',
         fromDb: '/profile/stats/from-db',
+        enhanced: '/profile/stats/enhanced',
+        topTraders: '/profile/stats/top-traders',
     },
     trades: {
         fetch: '/trades',

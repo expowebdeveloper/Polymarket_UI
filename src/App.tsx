@@ -11,7 +11,9 @@ import { Activity } from './pages/Activity';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import ProfileStatsDemo from './pages/ProfileStatsDemo';
+import ProfileStats from './pages/ProfileStats';
 import TradesPage from './pages/TradesPage';
+import TradeHistory from './pages/TradeHistory';
 import LeaderboardViewAll from './pages/LeaderboardViewAll';
 import { WalletDashboard } from './pages/WalletDashboard';
 import { MarketDetailPage } from './pages/MarketDetail';
@@ -120,6 +122,15 @@ function App() {
               element={
                 <>
                   <TradingHeader title="Profile Stats" />
+                  <ProfileStats />
+                </>
+              }
+            />
+            <Route
+              path="/profile-stats-demo"
+              element={
+                <>
+                  <TradingHeader title="Profile Stats Demo" />
                   <ProfileStatsDemo />
                 </>
               }
@@ -130,6 +141,15 @@ function App() {
                 <>
                   <TradingHeader title="Trades" />
                   <TradesPage />
+                </>
+              }
+            />
+            <Route
+              path="/trade-history"
+              element={
+                <>
+                  <TradingHeader title="Trade History" />
+                  <TradeHistory />
                 </>
               }
             />
