@@ -16,9 +16,20 @@ export interface TraderDetails {
     wallet_address: string;
     total_trades: number;
     total_positions: number;
+    active_positions: number;
+    total_wins: number;
+    total_losses: number;
+    win_rate_percent: number;
+    pnl: number;
+    final_score: number;
     first_trade_date: string | null;
     last_trade_date: string | null;
-    // Add more fields as they become available from the API
+    categories: Record<string, {
+        total_wins: number;
+        total_losses: number;
+        win_rate_percent: number;
+        pnl: number;
+    }>;
 }
 
 export interface TraderBasicInfo {
@@ -419,6 +430,7 @@ export interface OverallMetrics {
     winning_trades: number;
     losing_trades: number;
     total_trades: number;
+    total_trades_with_pnl?: number;
     score: number;
     total_volume: number;
 }

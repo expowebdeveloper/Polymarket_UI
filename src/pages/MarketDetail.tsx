@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, TrendingUp, TrendingDown, Star, User, DollarSign, Activity } from 'lucide-react';
-import { fetchMarketOrders } from '../services/api';
+import { fetchMarketOrders, fetchMarketDetails } from '../services/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
-import type { MarketOrder, TraderRating } from '../types/api';
+import type { MarketOrder, TraderRating, Market } from '../types/api';
 
 // Helper function to format currency
 const formatCurrency = (value: number | string | undefined): string => {
@@ -104,6 +104,7 @@ const calculateTraderRatings = (orders: MarketOrder[]): TraderRating[] => {
 export function MarketDetailPage() {
   const { marketSlug } = useParams<{ marketSlug: string }>();
   const navigate = useNavigate();
+  const [market, setMarket] = useState<Market | null>(null);
   const [orders, setOrders] = useState<MarketOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -111,7 +112,7 @@ export function MarketDetailPage() {
   const [traders, setTraders] = useState<TraderRating[]>([]);
 
   useEffect(() => {
-    const loadOrders = async () => {
+    const loadMarketData = async () => {
       if (!marketSlug) {
         setError('Market slug is required');
         setLoading(false);
@@ -121,20 +122,30 @@ export function MarketDetailPage() {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetchMarketOrders(marketSlug, 1000, 0);
-        setOrders(response.orders || []);
+        
+        // Fetch market details and orders in parallel
+        const [marketDetails, ordersResponse] = await Promise.all([
+          fetchMarketDetails(marketSlug).catch(() => null), // Market details optional
+          fetchMarketOrders(marketSlug, 1000, 0)
+        ]);
+        
+        if (marketDetails) {
+          setMarket(marketDetails);
+        }
+        
+        setOrders(ordersResponse.orders || []);
         
         // Calculate trader ratings
-        const traderRatings = calculateTraderRatings(response.orders || []);
+        const traderRatings = calculateTraderRatings(ordersResponse.orders || []);
         setTraders(traderRatings);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load market orders');
+        setError(err instanceof Error ? err.message : 'Failed to load market data');
       } finally {
         setLoading(false);
       }
     };
 
-    loadOrders();
+    loadMarketData();
   }, [marketSlug]);
 
   // Group orders by transaction hash to show trades
@@ -149,8 +160,17 @@ export function MarketDetailPage() {
 
   const tradesList = Object.values(trades);
 
-  // Get market title from first order if available
-  const marketTitle = orders.length > 0 ? orders[0].title : marketSlug || 'Market Details';
+  // Get market title from market details, first order, or slug
+  const marketTitle = market?.question || market?.title || 
+                       (orders.length > 0 ? orders[0].title : null) || 
+                       marketSlug || 'Market Details';
+  
+  // Get market metadata
+  const marketVolume = market?.volume || 0;
+  const marketLiquidity = market?.liquidity || 0;
+  const marketStatus = market?.status || 'Unknown';
+  const marketCategory = market?.category || (market?.tags && market.tags[0]) || 'Uncategorized';
+  const marketEndDate = market?.endDate || market?.end_date || 'N/A';
 
   if (loading) {
     return (
@@ -179,9 +199,30 @@ export function MarketDetailPage() {
         >
           <ArrowLeft className="w-6 h-6 text-slate-400" />
         </button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-white">{marketTitle}</h1>
-          <p className="text-slate-400 text-sm">Market: {marketSlug}</p>
+          <div className="flex items-center gap-4 mt-2">
+            <p className="text-slate-400 text-sm">Market: {marketSlug}</p>
+            <span className="px-2 py-1 bg-slate-700 text-xs text-slate-300 rounded capitalize">
+              {marketStatus}
+            </span>
+            <span className="px-2 py-1 bg-slate-700 text-xs text-slate-300 rounded">
+              {marketCategory}
+            </span>
+            {marketVolume > 0 && (
+              <span className="text-slate-400 text-xs">
+                Volume: {formatCurrency(marketVolume)}
+              </span>
+            )}
+            {marketLiquidity > 0 && (
+              <span className="text-slate-400 text-xs">
+                Liquidity: {formatCurrency(marketLiquidity)}
+              </span>
+            )}
+            <span className="text-slate-400 text-xs">
+              Ends: {marketEndDate}
+            </span>
+          </div>
         </div>
       </div>
 

@@ -10,8 +10,9 @@ import {
   fetchPortfolioStats,
   fetchTraderDetails,
   fetchUserLeaderboardData,
+  fetchTradeHistory,
 } from '../services/api';
-import type { Position, ClosedPosition, Activity, ProfileStatsResponse, UserLeaderboardData } from '../types/api';
+import type { Position, ClosedPosition, Activity, ProfileStatsResponse, UserLeaderboardData, TradeHistoryResponse } from '../types/api';
 
 // Helper function to format currency
 const formatCurrency = (value: number | string | undefined): string => {
@@ -61,8 +62,9 @@ export function WalletDashboard() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [allActivities, setAllActivities] = useState<Activity[]>([]);
   const [portfolioStats, setPortfolioStats] = useState<any>(null);
-  const [traderDetails, setTraderDetails] = useState<any>(null);
+  const [traderDetails, setTraderDetails] = useState<TraderDetails | null>(null);
   const [userLeaderboardData, setUserLeaderboardData] = useState<UserLeaderboardData | null>(null);
+  const [tradeHistory, setTradeHistory] = useState<TradeHistoryResponse | null>(null);
   
   // Pagination states
   const [closedPositionsPage, setClosedPositionsPage] = useState(1);
@@ -85,6 +87,7 @@ export function WalletDashboard() {
         portfolioData,
         traderData,
         leaderboardData,
+        tradeHistoryData,
       ] = await Promise.allSettled([
         fetchProfileStats(walletAddress),
         fetchPositionsForWallet(walletAddress),
@@ -93,6 +96,7 @@ export function WalletDashboard() {
         fetchPortfolioStats(walletAddress),
         fetchTraderDetails(walletAddress),
         fetchUserLeaderboardData(walletAddress, 'overall'), // Fetch user leaderboard data (try overall first)
+        fetchTradeHistory(walletAddress), // Fetch trade history
       ]);
 
       // Set profile stats
@@ -135,6 +139,13 @@ export function WalletDashboard() {
         console.warn('Failed to fetch leaderboard data:', leaderboardData.reason);
       }
 
+      // Set trade history
+      if (tradeHistoryData.status === 'fulfilled') {
+        setTradeHistory(tradeHistoryData.value);
+      } else if (tradeHistoryData.status === 'rejected') {
+        console.warn('Failed to fetch trade history:', tradeHistoryData.reason);
+      }
+
       // Check for errors
       const errors = [
         profileData.status === 'rejected' ? 'Profile stats' : null,
@@ -144,9 +155,10 @@ export function WalletDashboard() {
         portfolioData.status === 'rejected' ? 'Portfolio stats' : null,
         traderData.status === 'rejected' ? 'Trader details' : null,
         leaderboardData.status === 'rejected' ? 'Leaderboard data' : null,
+        tradeHistoryData.status === 'rejected' ? 'Trade history' : null,
       ].filter(Boolean);
 
-      if (errors.length > 0 && errors.length === 7) {
+      if (errors.length > 0 && errors.length === 8) {
         setError(`Failed to load wallet data: ${errors.join(', ')}`);
       }
     } catch (err) {
@@ -168,6 +180,7 @@ export function WalletDashboard() {
         setClosedPositionsPage(1);
         setActivitiesPage(1);
         setUserLeaderboardData(null);
+        setTradeHistory(null);
       }
     } else {
       setIsValidWallet(false);
@@ -572,6 +585,165 @@ export function WalletDashboard() {
               </>
             )}
           </div>
+
+          {/* Trader Details / Analytics */}
+          {traderDetails && (
+            <div className="bg-slate-900 rounded-lg border border-slate-800 p-6">
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-purple-400" />
+                Trader Analytics
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <p className="text-slate-400 text-sm mb-1">Total Trades</p>
+                  <p className="text-2xl font-bold text-white">{traderDetails.total_trades || 0}</p>
+                </div>
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <p className="text-slate-400 text-sm mb-1">Total Positions</p>
+                  <p className="text-2xl font-bold text-white">{traderDetails.total_positions || 0}</p>
+                </div>
+                {traderDetails.final_score !== undefined && (
+                  <div className="bg-slate-800 rounded-lg p-4">
+                    <p className="text-slate-400 text-sm mb-1">Final Score</p>
+                    <p className="text-2xl font-bold text-purple-400">{traderDetails.final_score?.toFixed(1) || 0}</p>
+                  </div>
+                )}
+                {traderDetails.win_rate_percent !== undefined && (
+                  <div className="bg-slate-800 rounded-lg p-4">
+                    <p className="text-slate-400 text-sm mb-1">Win Rate</p>
+                    <p className="text-2xl font-bold text-blue-400">{traderDetails.win_rate_percent?.toFixed(1) || 0}%</p>
+                  </div>
+                )}
+              </div>
+              {traderDetails.pnl !== undefined && (
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <p className="text-slate-400 text-sm mb-1">Total PnL</p>
+                  <p className={`text-2xl font-bold ${(traderDetails.pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {formatCurrency(traderDetails.pnl || 0)}
+                  </p>
+                </div>
+              )}
+              {traderDetails.categories && Object.keys(traderDetails.categories).length > 0 && (
+                <div className="mt-4">
+                  <p className="text-slate-400 text-sm mb-2">Category Breakdown</p>
+                  <div className="space-y-2">
+                    {Object.entries(traderDetails.categories).map(([category, metrics]) => (
+                      <div key={category} className="bg-slate-800 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-white">{category}</span>
+                          <span className={`text-sm font-medium ${(metrics.pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {formatCurrency(metrics.pnl || 0)}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div>
+                            <span className="text-slate-400">Win Rate: </span>
+                            <span className="text-white">{metrics.win_rate_percent?.toFixed(1) || 0}%</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">Wins: </span>
+                            <span className="text-emerald-400">{formatCurrency(metrics.total_wins || 0)}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">Losses: </span>
+                            <span className="text-red-400">{formatCurrency(metrics.total_losses || 0)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Trade History Summary */}
+          {tradeHistory && (
+            <div className="bg-slate-900 rounded-lg border border-slate-800 p-6">
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-yellow-400" />
+                Trade History Summary
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <p className="text-slate-400 text-sm mb-1">Total PnL</p>
+                  <p className={`text-2xl font-bold ${(tradeHistory.overall_metrics.total_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {formatCurrency(tradeHistory.overall_metrics.total_pnl || 0)}
+                  </p>
+                </div>
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <p className="text-slate-400 text-sm mb-1">ROI</p>
+                  <p className={`text-2xl font-bold ${(tradeHistory.overall_metrics.roi || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {(tradeHistory.overall_metrics.roi || 0).toFixed(2)}%
+                  </p>
+                </div>
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <p className="text-slate-400 text-sm mb-1">Win Rate</p>
+                  <p className="text-2xl font-bold text-blue-400">
+                    {(tradeHistory.overall_metrics.win_rate || 0).toFixed(2)}%
+                  </p>
+                </div>
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <p className="text-slate-400 text-sm mb-1">Score</p>
+                  <p className="text-2xl font-bold text-purple-400">
+                    {(tradeHistory.overall_metrics.score || 0).toFixed(1)}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <p className="text-slate-400 text-sm mb-1">Open Positions</p>
+                  <p className="text-xl font-bold text-white">{tradeHistory.open_positions.length}</p>
+                </div>
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <p className="text-slate-400 text-sm mb-1">Closed Positions</p>
+                  <p className="text-xl font-bold text-white">{tradeHistory.closed_positions.length}</p>
+                </div>
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <p className="text-slate-400 text-sm mb-1">Total Trades</p>
+                  <p className="text-xl font-bold text-white">{tradeHistory.overall_metrics.total_trades || tradeHistory.trades.length}</p>
+                  {tradeHistory.overall_metrics.total_trades_with_pnl !== undefined && tradeHistory.overall_metrics.total_trades_with_pnl !== tradeHistory.overall_metrics.total_trades && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      {tradeHistory.overall_metrics.total_trades_with_pnl} with PnL
+                    </p>
+                  )}
+                </div>
+              </div>
+              {tradeHistory.category_breakdown && Object.keys(tradeHistory.category_breakdown).length > 0 && (
+                <div>
+                  <p className="text-slate-400 text-sm mb-2">Category Performance</p>
+                  <div className="space-y-2">
+                    {Object.entries(tradeHistory.category_breakdown).slice(0, 5).map(([category, metrics]) => (
+                      <div key={category} className="bg-slate-800 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-white">{category}</span>
+                          <span className={`text-sm font-medium ${(metrics.pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {formatCurrency(metrics.pnl || 0)}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div>
+                            <span className="text-slate-400">ROI: </span>
+                            <span className={`${(metrics.roi || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                              {(metrics.roi || 0).toFixed(2)}%
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">Win Rate: </span>
+                            <span className="text-white">{(metrics.win_rate || 0).toFixed(1)}%</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">Score: </span>
+                            <span className="text-purple-400">{(metrics.score || 0).toFixed(1)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Recent Activity */}
           <div className="bg-slate-900 rounded-lg border border-slate-800 p-6">

@@ -259,13 +259,18 @@ export async function fetchLiveLeaderboard(
  * @param status - Market status filter ('active', 'resolved', 'closed', etc.)
  * @param limit - Number of markets per page
  * @param offset - Offset for pagination
+ * @param tagSlug - Optional tag filter (e.g., 'sports', 'politics', 'crypto')
  */
 export async function fetchMarkets(
     status: string = 'active',
     limit: number = 20,
-    offset: number = 0
+    offset: number = 0,
+    tagSlug?: string
 ): Promise<MarketsResponse> {
-    const url = `${API_ENDPOINTS.markets.list}?status=${status}&limit=${limit}&offset=${offset}`;
+    let url = `${API_ENDPOINTS.markets.list}?status=${status}&limit=${limit}&offset=${offset}`;
+    if (tagSlug) {
+        url += `&tag_slug=${encodeURIComponent(tagSlug)}`;
+    }
     return fetchApi<MarketsResponse>(url, 30000);
 }
 
@@ -343,6 +348,14 @@ export async function fetchRoiShrunkLeaderboard(): Promise<LeaderboardResponse> 
  */
 export async function fetchPnlShrunkLeaderboard(): Promise<LeaderboardResponse> {
     return fetchApi<LeaderboardResponse>(API_ENDPOINTS.leaderboard.pnlShrunk, 60000, 'POST');
+}
+
+/**
+ * Fetch market details by slug from Polymarket API
+ * @param marketSlug - Market slug identifier
+ */
+export async function fetchMarketDetails(marketSlug: string): Promise<Market> {
+    return fetchApi<Market>(`/markets/${encodeURIComponent(marketSlug)}`, 30000);
 }
 
 /**
