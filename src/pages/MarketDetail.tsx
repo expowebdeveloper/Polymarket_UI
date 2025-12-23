@@ -202,7 +202,7 @@ export function MarketDetailPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-white">{marketTitle}</h1>
           <div className="flex items-center gap-4 mt-2">
-            <p className="text-slate-400 text-sm">Market: {marketSlug}</p>
+          <p className="text-slate-400 text-sm">Market: {marketSlug}</p>
             <span className="px-2 py-1 bg-slate-700 text-xs text-slate-300 rounded capitalize">
               {marketStatus}
             </span>

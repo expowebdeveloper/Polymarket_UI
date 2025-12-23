@@ -15,6 +15,8 @@ import type {
     MarketOrdersResponse,
     AllLeaderboardsResponse,
     TradeHistoryResponse,
+    LeaderboardTrader,
+    LeaderboardTradersResponse,
     ApiError,
 } from '../types/api';
 
@@ -76,6 +78,25 @@ async function fetchApi<T>(endpoint: string, timeoutMs: number = 30000, method: 
 export async function fetchTraders(limit: number = 50): Promise<TradersResponse> {
     // Use longer timeout for traders endpoint (60 seconds)
     return fetchApi<TradersResponse>(`${API_ENDPOINTS.traders.list}?limit=${limit}`, 60000);
+}
+
+/**
+ * Fetch traders from Polymarket Leaderboard API
+ * @param category - Category filter ('overall', 'politics', 'sports', etc.)
+ * @param timePeriod - Time period ('all', '1m', '3m', '6m', '1y')
+ * @param orderBy - Sort by ('VOL', 'PNL', 'ROI')
+ * @param limit - Maximum number of traders to return
+ * @param offset - Offset for pagination
+ */
+export async function fetchLeaderboardTraders(
+    category: string = 'overall',
+    timePeriod: string = 'all',
+    orderBy: string = 'VOL',
+    limit: number = 50,
+    offset: number = 0
+): Promise<LeaderboardTradersResponse> {
+    const url = `${API_ENDPOINTS.traders.list}/leaderboard?category=${category}&time_period=${timePeriod}&order_by=${orderBy}&limit=${limit}&offset=${offset}`;
+    return fetchApi<LeaderboardTradersResponse>(url, 60000);
 }
 
 /**

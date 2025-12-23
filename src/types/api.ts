@@ -456,3 +456,24 @@ export interface TradeHistoryResponse {
     overall_metrics: OverallMetrics;
     category_breakdown: Record<string, CategoryMetrics>;
 }
+
+// Leaderboard Trader Types
+export interface LeaderboardTrader {
+    wallet_address: string;
+    rank?: number;
+    userName?: string;
+    xUsername?: string;
+    verifiedBadge: boolean;
+    profileImage?: string;
+    vol: number;
+    pnl: number;
+    roi?: number;
+    winRate?: number;
+    totalTrades: number;
+}
+
+export interface LeaderboardTradersResponse {
+    count: number;
+    traders: LeaderboardTrader[];
+    pagination?: PaginationInfo;
+}

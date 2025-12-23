@@ -6,24 +6,22 @@ import { Dashboard } from './pages/Dashboard';
 import { Leaderboard } from './pages/Leaderboard';
 import { Markets } from './pages/Markets';
 import { WhaleTracker } from './pages/WhaleTracker';
-import { Positions } from './pages/Positions';
-import { Activity } from './pages/Activity';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
-import ProfileStatsDemo from './pages/ProfileStatsDemo';
-import ProfileStats from './pages/ProfileStats';
-import TradesPage from './pages/TradesPage';
-import TradeHistory from './pages/TradeHistory';
 import LeaderboardViewAll from './pages/LeaderboardViewAll';
 import { WalletDashboard } from './pages/WalletDashboard';
 import { MarketDetailPage } from './pages/MarketDetail';
+import { Traders } from './pages/Traders';
+import { TraderProfile } from './pages/TraderProfile';
+import { useTheme } from './contexts/ThemeContext';
 
 function App() {
   const [selectedSymbol, setSelectedSymbol] = useState('BTC/USD');
   const [collapsed, setCollapsed] = useState(false);
+  const { theme } = useTheme();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white">
       {/* FIXED FLEX LAYOUT */}
       <div className="flex">
         {/* LEFT SIDEBAR */}
@@ -73,29 +71,29 @@ function App() {
               }
             />
             <Route
+              path="/traders"
+              element={
+                <>
+                  <TradingHeader title="Traders" />
+                  <Traders />
+                </>
+              }
+            />
+            <Route
+              path="/traders/:wallet"
+              element={
+                <>
+                  <TradingHeader title="Trader Profile" />
+                  <TraderProfile />
+                </>
+              }
+            />
+            <Route
               path="/whale-tracker"
               element={
                 <>
                   <TradingHeader title="Whale Tracker" />
                   <WhaleTracker />
-                </>
-              }
-            />
-            <Route
-              path="/positions"
-              element={
-                <>
-                  <TradingHeader title="Positions" />
-                  <Positions />
-                </>
-              }
-            />
-            <Route
-              path="/activity"
-              element={
-                <>
-                  <TradingHeader title="Activity" />
-                  <Activity />
                 </>
               }
             />
@@ -114,42 +112,6 @@ function App() {
                 <>
                   <TradingHeader title="Settings" />
                   <Settings />
-                </>
-              }
-            />
-            <Route
-              path="/profile-stats"
-              element={
-                <>
-                  <TradingHeader title="Profile Stats" />
-                  <ProfileStats />
-                </>
-              }
-            />
-            <Route
-              path="/profile-stats-demo"
-              element={
-                <>
-                  <TradingHeader title="Profile Stats Demo" />
-                  <ProfileStatsDemo />
-                </>
-              }
-            />
-            <Route
-              path="/trades"
-              element={
-                <>
-                  <TradingHeader title="Trades" />
-                  <TradesPage />
-                </>
-              }
-            />
-            <Route
-              path="/trade-history"
-              element={
-                <>
-                  <TradingHeader title="Trade History" />
-                  <TradeHistory />
                 </>
               }
             />
