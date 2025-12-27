@@ -29,13 +29,13 @@ async function fetchApi<T>(endpoint: string, timeoutMs: number = 30000, method: 
 
     try {
         // Construct full URL - handle both absolute and relative URLs
-        const url = API_BASE_URL 
+        const url = API_BASE_URL
             ? `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
             : endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-        
+
         // Log the URL being called (helpful for debugging)
         console.log(`API Call: ${method} ${url}`);
-        
+
         const response = await fetch(url, {
             method,
             headers: {
@@ -344,6 +344,13 @@ export async function fetchViewAllLeaderboards(): Promise<AllLeaderboardsRespons
 }
 
 /**
+ * Fetch analytics from database
+ */
+export async function fetchTradersAnalytics(): Promise<AllLeaderboardsResponse> {
+    return fetchApi<AllLeaderboardsResponse>(`${API_ENDPOINTS.traders.list}/analytics`, 60000, 'GET');
+}
+
+/**
  * Fetch leaderboard sorted by W_shrunk (ascending)
  */
 export async function fetchWShrunkLeaderboard(): Promise<LeaderboardResponse> {
@@ -401,3 +408,18 @@ export async function fetchTradeHistory(walletAddress: string): Promise<TradeHis
     return fetchApi<TradeHistoryResponse>(`/trade-history?user=${walletAddress}`, 60000);
 }
 
+/**
+ * Fetch comprehensive dashboard data from local database
+ * @param walletAddress - Wallet address
+ */
+export async function fetchDBDashboard(walletAddress: string): Promise<any> {
+    return fetchApi<any>(`/dashboard/db/${walletAddress}`, 30000);
+}
+
+/**
+ * Trigger a full sync of wallet data from server to local database
+ * @param walletAddress - Wallet address
+ */
+export async function syncDBDashboard(walletAddress: string): Promise<any> {
+    return fetchApi<any>(`/dashboard/sync/${walletAddress}`, 120000, 'POST');
+}

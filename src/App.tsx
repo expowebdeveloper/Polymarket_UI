@@ -13,6 +13,8 @@ import { WalletDashboard } from './pages/WalletDashboard';
 import { MarketDetailPage } from './pages/MarketDetail';
 import { Traders } from './pages/Traders';
 import { TraderProfile } from './pages/TraderProfile';
+import { DatabaseLeaderboard } from './pages/DatabaseLeaderboard';
+import { DBWalletDashboard } from './pages/DBWalletDashboard';
 import { useTheme } from './contexts/ThemeContext';
 
 function App() {
@@ -121,6 +123,24 @@ function App() {
                 <>
                   <TradingHeader title="Wallet Dashboard" />
                   <WalletDashboard />
+                </>
+              }
+            />
+            <Route
+              path="/db-leaderboard"
+              element={
+                <>
+                  <TradingHeader title="DB Leaderboard" />
+                  <DatabaseLeaderboard />
+                </>
+              }
+            />
+            <Route
+              path="/db-wallet-dashboard"
+              element={
+                <>
+                  <TradingHeader title="DB Wallet Dashboard" />
+                  <DBWalletDashboard />
                 </>
               }
             />

@@ -5,6 +5,12 @@ export interface Trader {
     total_positions: number;
     first_trade_date: string | null;
     last_trade_date: string | null;
+    // Optional fields for DB Leaderboard
+    userName?: string;
+    profileImage?: string;
+    vol?: number;
+    pnl?: number;
+    winRate?: number;
 }
 
 export interface TradersResponse {
@@ -190,21 +196,21 @@ export interface EnhancedProfileStatsResponse {
     name?: string;
     pseudonym?: string;
     profileImage?: string;
-    
+
     // Highlighted Metrics
     finalScore: number;
     topPercent: number;
     rankingTag: string;
     longestWinningStreak: number;
     currentWinningStreak: number;
-    
+
     // View Details Metrics
     biggestWin: number;
     worstLoss: number;
     maximumStake: number;
     portfolioValue: number;
     averageStakeValue: number;
-    
+
     // Additional Info
     rank?: number;
     totalTrades: number;
