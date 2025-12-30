@@ -1094,6 +1094,68 @@ export function WalletDashboard() {
                             };
                             const Icon = icons[entry.category] || ActivityIcon;
                             const winRatePercent = entry.win_rate_percent || 0;
+                            const roiPercent = entry.roi_percent || 0;
+                            const riskPercent = (entry.risk_score || 0) * 100;
+                            
+                            // Determine which value to show in the progress bar based on selected metric
+                            const getProgressValue = () => {
+                              switch (distributionMetric) {
+                                case 'roi':
+                                  // Normalize ROI to 0-100% range (assuming ROI can be -100% to +200% or similar)
+                                  // For display, we'll show absolute ROI as percentage, capped at 100%
+                                  return Math.min(Math.abs(roiPercent), 100);
+                                case 'win_rate':
+                                  return winRatePercent;
+                                case 'risk':
+                                  // Risk is already a percentage (0-100)
+                                  return Math.min(riskPercent, 100);
+                                default:
+                                  return winRatePercent;
+                              }
+                            };
+                            
+                            const getProgressLabel = () => {
+                              switch (distributionMetric) {
+                                case 'roi':
+                                  return 'ROI %';
+                                case 'win_rate':
+                                  return 'Win Rate';
+                                case 'risk':
+                                  return 'Risk';
+                                default:
+                                  return 'Win Rate';
+                              }
+                            };
+                            
+                            const getProgressDisplayValue = () => {
+                              switch (distributionMetric) {
+                                case 'roi':
+                                  return `${roiPercent >= 0 ? '+' : ''}${roiPercent.toFixed(0)}%`;
+                                case 'win_rate':
+                                  return `${winRatePercent.toFixed(0)}%`;
+                                case 'risk':
+                                  return `${riskPercent.toFixed(1)}%`;
+                                default:
+                                  return `${winRatePercent.toFixed(0)}%`;
+                              }
+                            };
+                            
+                            const progressValue = getProgressValue();
+                            const progressLabel = getProgressLabel();
+                            const progressDisplayValue = getProgressDisplayValue();
+                            
+                            // Determine color based on metric and value
+                            const getProgressColor = () => {
+                              if (distributionMetric === 'roi') {
+                                return roiPercent >= 0 ? 'bg-emerald-400' : 'bg-red-400';
+                              } else if (distributionMetric === 'win_rate') {
+                                return winRatePercent >= 50 ? 'bg-emerald-400' : 'bg-red-400';
+                              } else if (distributionMetric === 'risk') {
+                                // Lower risk is better, so inverse the color logic
+                                return riskPercent <= 30 ? 'bg-emerald-400' : riskPercent <= 60 ? 'bg-yellow-400' : 'bg-red-400';
+                              }
+                              return 'bg-emerald-400';
+                            };
                             
                             return (
                               <div key={idx} className="bg-slate-900/50 rounded-lg p-4">
@@ -1116,23 +1178,21 @@ export function WalletDashboard() {
                                   )}
                                   {distributionMetric === 'risk' && (
                                     <span className="text-lg font-bold text-white">
-                                      {(entry.risk_score * 100).toFixed(1)}%
+                                      {riskPercent.toFixed(1)}%
                                     </span>
                                   )}
                                 </div>
                                 <div className="space-y-2">
-                                  {/* Win Rate Progress Bar */}
+                                  {/* Dynamic Progress Bar */}
                                   <div>
                                     <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-                                      <span>Win Rate</span>
-                                      <span>{winRatePercent.toFixed(0)}%</span>
+                                      <span>{progressLabel}</span>
+                                      <span>{progressDisplayValue}</span>
                                     </div>
                                     <div className="w-full bg-slate-700 rounded-full h-2">
                                       <div
-                                        className={`h-2 rounded-full ${
-                                          winRatePercent >= 50 ? 'bg-emerald-400' : 'bg-red-400'
-                                        }`}
-                                        style={{ width: `${Math.min(winRatePercent, 100)}%` }}
+                                        className={`h-2 rounded-full ${getProgressColor()}`}
+                                        style={{ width: `${Math.min(progressValue, 100)}%` }}
                                       />
                                     </div>
                                   </div>

@@ -10,7 +10,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, 
   PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ScatterChart, Scatter, ZAxis
 } from 'recharts';
-import { Trophy, TrendingUp, TrendingDown, Users, Award, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
+import { Trophy, TrendingUp, TrendingDown, Users, Award, BarChart3, PieChart as PieChartIcon, Copy, Check } from 'lucide-react';
 
 type LeaderboardType = 
     | 'w_shrunk' 
@@ -60,7 +60,20 @@ const LeaderboardViewAll: React.FC = () => {
         return `$${val.toFixed(2)}`;
     };
 
-    const formatPercent = (val: number) => `${val.toFixed(2)}%`;
+    const formatPercent = (val: number) => `${val >= 0 ? '+' : ''}${val.toFixed(2)}%`;
+    
+    const copyWallet = (wallet: string) => {
+        navigator.clipboard.writeText(wallet);
+        setCopiedWallet(wallet);
+        setTimeout(() => setCopiedWallet(null), 2000);
+    };
+
+    const getRankIcon = (rank: number) => {
+        if (rank === 1) return '🥇';
+        if (rank === 2) return '🥈';
+        if (rank === 3) return '🥉';
+        return null;
+    };
 
     const getCurrentLeaderboard = (): LeaderboardEntry[] => {
         if (!data?.leaderboards) return [];
@@ -486,96 +499,103 @@ const LeaderboardViewAll: React.FC = () => {
                             <table className="w-full border-collapse min-w-full">
                                 <thead>
                                     <tr className={theme === 'dark' ? 'bg-slate-900' : 'bg-slate-100'}>
-                                        <th className={`border ${borderColor} px-3 py-2 text-left text-sm ${textPrimary}`}>Rank</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-left text-sm ${textPrimary}`}>Wallet</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-sm ${textPrimary}`}>Total PnL</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-sm ${textPrimary}`}>ROI</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-sm ${textPrimary}`}>Win Rate</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-sm ${textPrimary}`}>Trades</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-sm ${textPrimary}`}>W_shrunk</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-sm ${textPrimary}`}>ROI_shrunk</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-sm ${textPrimary}`}>PNL_shrunk</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-sm ${textPrimary}`}>W_Score</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-sm ${textPrimary}`}>ROI_Score</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-sm ${textPrimary}`}>PNL_Score</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-sm ${textPrimary}`}>Risk_Score</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-sm ${textPrimary}`}>Final_Score</th>
+                                        <th className={`border ${borderColor} px-4 py-3 text-left text-sm font-semibold ${textPrimary}`}>Rank</th>
+                                        <th className={`border ${borderColor} px-4 py-3 text-left text-sm font-semibold ${textPrimary}`}>Trader</th>
+                                        <th className={`border ${borderColor} px-4 py-3 text-left text-sm font-semibold ${textPrimary}`}>Wallet Address</th>
+                                        <th className={`border ${borderColor} px-4 py-3 text-right text-sm font-semibold ${textPrimary}`}>PnL</th>
+                                        <th className={`border ${borderColor} px-4 py-3 text-right text-sm font-semibold ${textPrimary}`}>Volume</th>
+                                        <th className={`border ${borderColor} px-4 py-3 text-right text-sm font-semibold ${textPrimary}`}>ROI</th>
+                                        <th className={`border ${borderColor} px-4 py-3 text-right text-sm font-semibold ${textPrimary}`}>Win Rate</th>
+                                        <th className={`border ${borderColor} px-4 py-3 text-right text-sm font-semibold ${textPrimary}`}>Final Score</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {currentLeaderboard.length > 0 ? (
-                                        currentLeaderboard.map((entry, index) => (
-                                            <tr 
-                                                key={entry.wallet_address || index} 
-                                                className={`${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-slate-50'} transition-colors`}
-                                            >
-                                                <td className={`border ${borderColor} px-3 py-2 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'} font-bold`}>
-                                                    #{entry.rank || index + 1}
-                                                </td>
-                                                <td 
-                                                    className={`border ${borderColor} px-3 py-2 font-mono text-xs ${textPrimary} cursor-pointer hover:bg-opacity-50 transition-all relative group ${theme === 'dark' ? 'hover:bg-green-900' : 'hover:bg-green-100'}`}
-                                                    onClick={() => {
-                                                        if (entry.wallet_address) {
-                                                            navigator.clipboard.writeText(entry.wallet_address);
-                                                            setCopiedWallet(entry.wallet_address);
-                                                            setTimeout(() => setCopiedWallet(null), 2000);
-                                                        }
-                                                    }}
-                                                    title={`Click to copy: ${entry.wallet_address || 'N/A'}`}
+                                        currentLeaderboard.map((entry, index) => {
+                                            const rank = entry.rank || index + 1;
+                                            const rankIcon = getRankIcon(rank);
+                                            const traderName = entry.name || entry.pseudonym || 'Anonymous';
+                                            const traderInitial = traderName.charAt(0).toUpperCase();
+                                            
+                                            return (
+                                                <tr 
+                                                    key={entry.wallet_address || index} 
+                                                    className={`${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-slate-50'} transition-colors border-b ${borderColor}`}
                                                 >
-                                                    <div className="flex items-center gap-1">
-                                                        {entry.name || entry.pseudonym || `${entry.wallet_address?.slice(0, 8)}...${entry.wallet_address?.slice(-6)}`}
-                                                        <span className={`opacity-0 group-hover:opacity-100 transition-opacity text-xs ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
-                                                            📋
-                                                        </span>
-                                                    </div>
-                                                    {copiedWallet === entry.wallet_address && (
-                                                        <div className={`absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center ${theme === 'dark' ? 'bg-green-900' : 'bg-green-100'} bg-opacity-90 rounded z-10 text-xs font-bold ${theme === 'dark' ? 'text-green-300' : 'text-green-700'}`}>
-                                                            ✓ Copied!
+                                                    <td className={`px-4 py-3 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                                                        <div className="flex items-center gap-2">
+                                                            {rankIcon && <span className="text-xl">{rankIcon}</span>}
+                                                            <span className="font-semibold">{rank}</span>
                                                         </div>
-                                                    )}
-                                                </td>
-                                                <td className={`border ${borderColor} px-3 py-2 text-right text-sm ${entry.total_pnl >= 0 ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') : (theme === 'dark' ? 'text-red-400' : 'text-red-600')}`}>
-                                                    {formatCurrency(entry.total_pnl)}
-                                                </td>
-                                                <td className={`border ${borderColor} px-3 py-2 text-right text-sm ${entry.roi >= 0 ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') : (theme === 'dark' ? 'text-red-400' : 'text-red-600')}`}>
-                                                    {formatPercent(entry.roi)}
-                                                </td>
-                                                <td className={`border ${borderColor} px-3 py-2 text-right text-sm ${textPrimary}`}>
-                                                    {formatPercent(entry.win_rate)}
-                                                </td>
-                                                <td className={`border ${borderColor} px-3 py-2 text-right text-sm ${textPrimary}`}>
-                                                    {entry.total_trades}
-                                                </td>
-                                                <td className={`border ${borderColor} px-3 py-2 text-right text-xs font-mono ${textPrimary}`}>
-                                                    {entry.W_shrunk !== undefined && entry.W_shrunk !== null ? entry.W_shrunk.toFixed(6) : 'N/A'}
-                                                </td>
-                                                <td className={`border ${borderColor} px-3 py-2 text-right text-xs font-mono ${textPrimary}`}>
-                                                    {entry.roi_shrunk !== undefined && entry.roi_shrunk !== null ? entry.roi_shrunk.toFixed(6) : 'N/A'}
-                                                </td>
-                                                <td className={`border ${borderColor} px-3 py-2 text-right text-xs font-mono ${textPrimary}`}>
-                                                    {entry.pnl_shrunk !== undefined && entry.pnl_shrunk !== null ? entry.pnl_shrunk.toFixed(6) : 'N/A'}
-                                                </td>
-                                                <td className={`border ${borderColor} px-3 py-2 text-right text-sm ${textPrimary}`}>
-                                                    {entry.score_win_rate?.toFixed(4) || '0.0000'}
-                                                </td>
-                                                <td className={`border ${borderColor} px-3 py-2 text-right text-sm ${textPrimary}`}>
-                                                    {entry.score_roi?.toFixed(4) || '0.0000'}
-                                                </td>
-                                                <td className={`border ${borderColor} px-3 py-2 text-right text-sm ${textPrimary}`}>
-                                                    {entry.score_pnl?.toFixed(4) || '0.0000'}
-                                                </td>
-                                                <td className={`border ${borderColor} px-3 py-2 text-right text-sm ${textPrimary}`}>
-                                                    {entry.score_risk?.toFixed(4) || '0.0000'}
-                                                </td>
-                                                <td className={`border ${borderColor} px-3 py-2 text-right text-sm font-bold ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>
-                                                    {entry.final_score?.toFixed(2) || '0.00'}
-                                                </td>
-                                            </tr>
-                                        ))
+                                                    </td>
+                                                    <td className={`px-4 py-3 ${textPrimary}`}>
+                                                        <div className="flex items-center gap-3">
+                                                            {entry.profile_image ? (
+                                                                <img
+                                                                    src={entry.profile_image}
+                                                                    alt={traderName}
+                                                                    className="w-8 h-8 rounded-full"
+                                                                />
+                                                            ) : (
+                                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                                                                    theme === 'dark' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700'
+                                                                }`}>
+                                                                    {traderInitial}
+                                                                </div>
+                                                            )}
+                                                            <div>
+                                                                <div className="font-medium">{traderName}</div>
+                                                                {entry.pseudonym && entry.name && (
+                                                                    <div className={`text-xs ${textSecondary}`}>@{entry.pseudonym}</div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className={`px-4 py-3 font-mono text-xs ${textPrimary}`}>
+                                                        <div className="flex items-center gap-2">
+                                                            <span>{entry.wallet_address || 'N/A'}</span>
+                                                            <button
+                                                                onClick={() => entry.wallet_address && copyWallet(entry.wallet_address)}
+                                                                className={`p-1 rounded hover:${theme === 'dark' ? 'bg-slate-700' : 'bg-slate-200'} transition`}
+                                                                title="Copy wallet address"
+                                                            >
+                                                                {copiedWallet === entry.wallet_address ? (
+                                                                    <Check className="w-4 h-4 text-green-400" />
+                                                                ) : (
+                                                                    <Copy className="w-4 h-4" />
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                    <td className={`px-4 py-3 text-right font-semibold ${
+                                                        entry.total_pnl >= 0 
+                                                            ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') 
+                                                            : (theme === 'dark' ? 'text-red-400' : 'text-red-600')
+                                                    }`}>
+                                                        {formatCurrency(entry.total_pnl)}
+                                                    </td>
+                                                    <td className={`px-4 py-3 text-right ${textPrimary}`}>
+                                                        {formatCurrency(entry.total_stakes || 0)}
+                                                    </td>
+                                                    <td className={`px-4 py-3 text-right ${
+                                                        entry.roi >= 0 
+                                                            ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') 
+                                                            : (theme === 'dark' ? 'text-red-400' : 'text-red-600')
+                                                    }`}>
+                                                        {formatPercent(entry.roi)}
+                                                    </td>
+                                                    <td className={`px-4 py-3 text-right ${textPrimary}`}>
+                                                        {formatPercent(entry.win_rate || 0)}
+                                                    </td>
+                                                    <td className={`px-4 py-3 text-right font-bold ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>
+                                                        {entry.final_score?.toFixed(2) || '0.00'}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
                                     ) : (
                                         <tr>
-                                            <td colSpan={14} className={`border ${borderColor} px-4 py-8 text-center ${textSecondary}`}>
+                                            <td colSpan={8} className={`px-4 py-8 text-center ${textSecondary}`}>
                                                 No data available for this leaderboard
                                             </td>
                                         </tr>
