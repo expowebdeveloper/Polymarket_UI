@@ -17,6 +17,7 @@ import type {
     TradeHistoryResponse,
     LeaderboardTrader,
     LeaderboardTradersResponse,
+    RewardsMarketResponse,
     ApiError,
 } from '../types/api';
 
@@ -369,9 +370,19 @@ export async function fetchAllLeaderboards(): Promise<AllLeaderboardsResponse> {
 
 /**
  * Fetch all leaderboards with percentile information (GET endpoint)
+ * @param timePeriod - Time period for filtering (day, week, month, all)
+ * @param orderBy - Order by metric (PNL, VOL)
+ * @param limit - Maximum number of traders to return
+ * @param offset - Offset for pagination
  */
-export async function fetchViewAllLeaderboards(): Promise<AllLeaderboardsResponse> {
-    return fetchApi<AllLeaderboardsResponse>(API_ENDPOINTS.leaderboard.viewAll, 60000, 'GET');
+export async function fetchViewAllLeaderboards(
+    timePeriod: 'day' | 'week' | 'month' | 'all' = 'all',
+    orderBy: 'PNL' | 'VOL' = 'PNL',
+    limit: number = 100,
+    offset: number = 0
+): Promise<AllLeaderboardsResponse> {
+    const url = `${API_ENDPOINTS.leaderboard.viewAll}?time_period=${timePeriod}&order_by=${orderBy}&limit=${limit}&offset=${offset}`;
+    return fetchApi<AllLeaderboardsResponse>(url, 60000, 'GET');
 }
 
 /**
@@ -479,4 +490,149 @@ export async function fetchDBDashboard(walletAddress: string): Promise<any> {
  */
 export async function syncDBDashboard(walletAddress: string): Promise<any> {
     return fetchApi<any>(`/dashboard/sync/${walletAddress}`, 120000, 'POST');
+}
+
+/**
+ * Fetch rewards market data from Polymarket CLOB API
+ * @param conditionId - Condition ID of the market
+ */
+export async function fetchRewardsMarket(conditionId: string): Promise<RewardsMarketResponse> {
+    // Call Polymarket CLOB API directly
+    const url = `https://clob.polymarket.com/rewards/markets/${conditionId}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'accept': 'application/json',
+            },
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data as RewardsMarketResponse;
+    } catch (error) {
+        clearTimeout(timeoutId);
+
+        if (error instanceof Error && error.name === 'AbortError') {
+            throw {
+                message: 'Request timeout - the server is taking too long to respond',
+                status: 408,
+            } as ApiError;
+        }
+
+        console.error('Rewards Market API Error:', error);
+        throw {
+            message: error instanceof Error ? error.message : 'An unknown error occurred',
+            status: error instanceof Response ? error.status : undefined,
+        } as ApiError;
+    }
+}
+
+// ============================================================================
+// AUTHENTICATION API
+// ============================================================================
+
+export interface RegisterRequest {
+    email: string;
+    name: string;
+    password: string;
+}
+
+export interface LoginRequest {
+    email: string;
+    password: string;
+}
+
+export interface AuthResponse {
+    access_token: string;
+    token_type: string;
+}
+
+export interface UserResponse {
+    id: number;
+    email: string;
+    name: string;
+}
+
+/**
+ * Register a new user
+ */
+export async function register(data: RegisterRequest): Promise<UserResponse> {
+    const url = `${API_BASE_URL}${API_ENDPOINTS.auth.register}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Registration failed' }));
+            throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json() as UserResponse;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        console.error('Registration Error:', error);
+        throw {
+            message: error instanceof Error ? error.message : 'An unknown error occurred',
+            status: error instanceof Response ? error.status : undefined,
+        } as ApiError;
+    }
+}
+
+/**
+ * Login user and get access token
+ */
+export async function login(data: LoginRequest): Promise<AuthResponse> {
+    const url = `${API_BASE_URL}${API_ENDPOINTS.auth.login}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Login failed' }));
+            throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json() as AuthResponse;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        console.error('Login Error:', error);
+        throw {
+            message: error instanceof Error ? error.message : 'An unknown error occurred',
+            status: error instanceof Response ? error.status : undefined,
+        } as ApiError;
+    }
 }

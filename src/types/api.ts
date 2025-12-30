@@ -314,7 +314,45 @@ export interface Market {
     created_at?: string;
     updatedAt?: string;
     updated_at?: string;
+    condition_id?: string;
     [key: string]: any; // Allow additional fields from API
+}
+
+// Rewards Market Types
+export interface RewardsMarketToken {
+    token_id: string;
+    outcome: string;
+    price: number;
+}
+
+export interface RewardsConfig {
+    asset_address: string;
+    start_date: string;
+    end_date: string;
+    id: number;
+    rate_per_day: number;
+    total_rewards: number;
+    total_days: number;
+}
+
+export interface RewardsMarketData {
+    condition_id: string;
+    question: string;
+    market_slug: string;
+    event_slug: string;
+    image: string;
+    tokens: RewardsMarketToken[];
+    rewards_config: RewardsConfig[];
+    rewards_max_spread: number;
+    rewards_min_size: number;
+    market_competitiveness: number;
+}
+
+export interface RewardsMarketResponse {
+    data: RewardsMarketData[];
+    next_cursor: string;
+    limit: number;
+    count: number;
 }
 
 export interface PaginationInfo {

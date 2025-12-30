@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, TrendingDown, Star, User, DollarSign, Activity } from 'lucide-react';
-import { fetchMarketOrders, fetchMarketDetails } from '../services/api';
+import { ArrowLeft, TrendingUp, TrendingDown, Star, User, DollarSign, Activity, Gift } from 'lucide-react';
+import { fetchMarketOrders, fetchMarketDetails, fetchRewardsMarket } from '../services/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
-import type { MarketOrder, TraderRating, Market } from '../types/api';
+import type { MarketOrder, TraderRating, Market, RewardsMarketData } from '../types/api';
 
 // Helper function to format currency
 const formatCurrency = (value: number | string | undefined): string => {
@@ -108,8 +108,10 @@ export function MarketDetailPage() {
   const [orders, setOrders] = useState<MarketOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'orders' | 'trades' | 'traders'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'trades' | 'traders' | 'rewards'>('orders');
   const [traders, setTraders] = useState<TraderRating[]>([]);
+  const [rewardsMarket, setRewardsMarket] = useState<RewardsMarketData | null>(null);
+  const [loadingRewards, setLoadingRewards] = useState(false);
 
   useEffect(() => {
     const loadMarketData = async () => {
@@ -138,6 +140,27 @@ export function MarketDetailPage() {
         // Calculate trader ratings
         const traderRatings = calculateTraderRatings(ordersResponse.orders || []);
         setTraders(traderRatings);
+
+        // Fetch rewards market data if condition_id is available
+        const conditionId = marketDetails?.condition_id || 
+                           (ordersResponse.orders && ordersResponse.orders.length > 0 
+                            ? ordersResponse.orders[0].condition_id 
+                            : null);
+        
+        if (conditionId) {
+          setLoadingRewards(true);
+          try {
+            const rewardsResponse = await fetchRewardsMarket(conditionId);
+            if (rewardsResponse.data && rewardsResponse.data.length > 0) {
+              setRewardsMarket(rewardsResponse.data[0]);
+            }
+          } catch (err) {
+            // Silently fail - rewards market data is optional
+            console.warn('Failed to fetch rewards market data:', err);
+          } finally {
+            setLoadingRewards(false);
+          }
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load market data');
       } finally {
@@ -266,6 +289,21 @@ export function MarketDetailPage() {
                 >
                   Best Traders ({traders.length})
                 </button>
+                {rewardsMarket && (
+                  <button
+                    onClick={() => setActiveTab('rewards')}
+                    className={`px-4 py-3 font-medium transition ${
+                      activeTab === 'rewards'
+                        ? 'text-emerald-400 border-b-2 border-emerald-400'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Gift className="w-4 h-4" />
+                      Rewards
+                    </div>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -440,6 +478,140 @@ export function MarketDetailPage() {
                         </div>
                       </div>
                     ))
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'rewards' && (
+                <div className="space-y-6">
+                  {loadingRewards ? (
+                    <div className="text-center py-12">
+                      <LoadingSpinner message="Loading rewards data..." />
+                    </div>
+                  ) : rewardsMarket ? (
+                    <>
+                      {/* Rewards Market Overview */}
+                      <div className="bg-slate-800 rounded-lg p-6 border border-slate-700/50">
+                        <div className="flex items-center gap-3 mb-4">
+                          <Gift className="w-6 h-6 text-emerald-400" />
+                          <h3 className="text-xl font-bold text-white">Rewards Market</h3>
+                        </div>
+                        
+                        <div className="space-y-4">
+                          <div>
+                            <p className="text-slate-400 text-sm mb-1">Question</p>
+                            <p className="text-white font-medium">{rewardsMarket.question}</p>
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div>
+                              <p className="text-slate-400 text-sm mb-1">Market Competitiveness</p>
+                              <p className="text-white font-medium">{rewardsMarket.market_competitiveness.toFixed(2)}%</p>
+                            </div>
+                            <div>
+                              <p className="text-slate-400 text-sm mb-1">Max Spread</p>
+                              <p className="text-white font-medium">{rewardsMarket.rewards_max_spread}%</p>
+                            </div>
+                            <div>
+                              <p className="text-slate-400 text-sm mb-1">Min Size</p>
+                              <p className="text-white font-medium">{formatCurrency(rewardsMarket.rewards_min_size)}</p>
+                            </div>
+                            <div>
+                              <p className="text-slate-400 text-sm mb-1">Condition ID</p>
+                              <p className="text-white font-mono text-xs break-all">{rewardsMarket.condition_id}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tokens */}
+                      <div className="bg-slate-800 rounded-lg p-6 border border-slate-700/50">
+                        <h3 className="text-lg font-bold text-white mb-4">Outcomes</h3>
+                        <div className="space-y-3">
+                          {rewardsMarket.tokens.map((token, idx) => (
+                            <div
+                              key={token.token_id}
+                              className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-white font-medium">{token.outcome}</p>
+                                  <p className="text-slate-400 text-xs font-mono mt-1">
+                                    Token ID: {token.token_id.slice(0, 20)}...
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-slate-400 text-sm mb-1">Price</p>
+                                  <p className="text-emerald-400 font-bold text-lg">
+                                    {(token.price * 100).toFixed(2)}%
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Rewards Config */}
+                      {rewardsMarket.rewards_config && rewardsMarket.rewards_config.length > 0 && (
+                        <div className="bg-slate-800 rounded-lg p-6 border border-slate-700/50">
+                          <h3 className="text-lg font-bold text-white mb-4">Rewards Configuration</h3>
+                          <div className="space-y-4">
+                            {rewardsMarket.rewards_config.map((config, idx) => (
+                              <div
+                                key={config.id}
+                                className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50"
+                              >
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                  <div>
+                                    <p className="text-slate-400 text-sm mb-1">Rate per Day</p>
+                                    <p className="text-white font-medium">{formatCurrency(config.rate_per_day)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-slate-400 text-sm mb-1">Total Rewards</p>
+                                    <p className="text-white font-medium">{formatCurrency(config.total_rewards)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-slate-400 text-sm mb-1">Total Days</p>
+                                    <p className="text-white font-medium">{config.total_days.toLocaleString()}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-slate-400 text-sm mb-1">Period</p>
+                                    <p className="text-white font-medium text-xs">
+                                      {config.start_date} to {config.end_date}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="mt-3 pt-3 border-t border-slate-600">
+                                  <p className="text-slate-400 text-xs font-mono">
+                                    Asset: {config.asset_address}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Market Image */}
+                      {rewardsMarket.image && (
+                        <div className="bg-slate-800 rounded-lg p-6 border border-slate-700/50">
+                          <h3 className="text-lg font-bold text-white mb-4">Market Image</h3>
+                          <img
+                            src={rewardsMarket.image}
+                            alt={rewardsMarket.question}
+                            className="w-full rounded-lg"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-12 text-slate-400">
+                      No rewards data available for this market
+                    </div>
                   )}
                 </div>
               )}

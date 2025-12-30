@@ -73,4 +73,9 @@ export const API_ENDPOINTS = {
     markets: {
         list: '/markets',
     },
+    auth: {
+        register: '/auth/register',
+        login: '/auth/login',
+        me: '/auth/me',
+    },
 } as const;

@@ -33,10 +33,12 @@ const LeaderboardViewAll: React.FC = () => {
     const [showPercentiles, setShowPercentiles] = useState(true);
     const [selectedChart, setSelectedChart] = useState<'distribution' | 'top10' | 'scores' | 'radar'>('distribution');
     const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
+    const [timePeriod, setTimePeriod] = useState<'day' | 'week' | 'month' | 'all'>('all');
+    const [orderBy, setOrderBy] = useState<'PNL' | 'VOL'>('PNL');
 
     useEffect(() => {
         loadData();
-    }, [location.pathname]);
+    }, [location.pathname, timePeriod, orderBy]);
 
     const loadData = async () => {
         setLoading(true);
@@ -45,7 +47,7 @@ const LeaderboardViewAll: React.FC = () => {
             // Use fetchAllLeaderboards for /leaderboard/all route, fetchViewAllLeaderboards for /leaderboard/view-all
             const result = location.pathname === '/leaderboard/all' 
                 ? await fetchAllLeaderboards()
-                : await fetchViewAllLeaderboards();
+                : await fetchViewAllLeaderboards(timePeriod, orderBy);
             setData(result);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load leaderboards');
@@ -203,13 +205,60 @@ const LeaderboardViewAll: React.FC = () => {
             <div className="max-w-[95%] mx-auto space-y-6">
                 {/* Header */}
                 <div className="mb-8">
-                    <h1 className={`text-4xl font-bold ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'} mb-2 border-b-2 ${theme === 'dark' ? 'border-yellow-400' : 'border-yellow-600'} pb-2 flex items-center gap-3`}>
-                        <Trophy className="w-10 h-10" />
-                        All Leaderboards & Analytics
-                    </h1>
-                    <p className={`${textSecondary} mt-2`}>
-                        Comprehensive leaderboard analysis with percentile information and performance metrics
-                    </p>
+                    <div className="flex items-center justify-between mb-4">
+                        <div>
+                            <h1 className={`text-4xl font-bold ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'} mb-2 border-b-2 ${theme === 'dark' ? 'border-yellow-400' : 'border-yellow-600'} pb-2 flex items-center gap-3`}>
+                                <Trophy className="w-10 h-10" />
+                                All Leaderboards & Analytics
+                            </h1>
+                            <p className={`${textSecondary} mt-2`}>
+                                Comprehensive leaderboard analysis with percentile information and performance metrics
+                            </p>
+                        </div>
+                    </div>
+                    
+                    {/* Time Period and Order By Selector */}
+                    <div className={`${cardBg} rounded-lg p-4 border ${borderColor} flex flex-wrap items-center gap-4`}>
+                        <div className="flex items-center gap-2">
+                            <span className={`${textSecondary} text-sm font-medium`}>Time Period:</span>
+                            <div className="flex gap-2">
+                                {(['day', 'week', 'month', 'all'] as const).map((period) => (
+                                    <button
+                                        key={period}
+                                        onClick={() => setTimePeriod(period)}
+                                        className={`px-4 py-2 rounded text-sm font-medium transition ${
+                                            timePeriod === period
+                                                ? `${theme === 'dark' ? 'bg-emerald-600' : 'bg-emerald-500'} text-white`
+                                                : `${theme === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`
+                                        }`}
+                                    >
+                                        {period === 'all' ? 'Overall' : period.charAt(0).toUpperCase() + period.slice(1)}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className={`${textSecondary} text-sm font-medium`}>Order By:</span>
+                            <div className="flex gap-2">
+                                {(['PNL', 'VOL'] as const).map((order) => (
+                                    <button
+                                        key={order}
+                                        onClick={() => setOrderBy(order)}
+                                        className={`px-4 py-2 rounded text-sm font-medium transition ${
+                                            orderBy === order
+                                                ? `${theme === 'dark' ? 'bg-blue-600' : 'bg-blue-500'} text-white`
+                                                : `${theme === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`
+                                        }`}
+                                    >
+                                        {order}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className={`${textSecondary} text-xs ml-auto`}>
+                            <span className="font-semibold">Note:</span> Time period affects both wallet selection and metrics calculation
+                        </div>
+                    </div>
                 </div>
 
                 {/* Statistics Cards */}
@@ -499,14 +548,20 @@ const LeaderboardViewAll: React.FC = () => {
                             <table className="w-full border-collapse min-w-full">
                                 <thead>
                                     <tr className={theme === 'dark' ? 'bg-slate-900' : 'bg-slate-100'}>
-                                        <th className={`border ${borderColor} px-4 py-3 text-left text-sm font-semibold ${textPrimary}`}>Rank</th>
-                                        <th className={`border ${borderColor} px-4 py-3 text-left text-sm font-semibold ${textPrimary}`}>Trader</th>
-                                        <th className={`border ${borderColor} px-4 py-3 text-left text-sm font-semibold ${textPrimary}`}>Wallet Address</th>
-                                        <th className={`border ${borderColor} px-4 py-3 text-right text-sm font-semibold ${textPrimary}`}>PnL</th>
-                                        <th className={`border ${borderColor} px-4 py-3 text-right text-sm font-semibold ${textPrimary}`}>Volume</th>
-                                        <th className={`border ${borderColor} px-4 py-3 text-right text-sm font-semibold ${textPrimary}`}>ROI</th>
-                                        <th className={`border ${borderColor} px-4 py-3 text-right text-sm font-semibold ${textPrimary}`}>Win Rate</th>
-                                        <th className={`border ${borderColor} px-4 py-3 text-right text-sm font-semibold ${textPrimary}`}>Final Score</th>
+                                        <th className={`border ${borderColor} px-3 py-2 text-left text-xs font-semibold ${textPrimary}`}>Rank</th>
+                                        <th className={`border ${borderColor} px-3 py-2 text-left text-xs font-semibold ${textPrimary}`}>Wallet</th>
+                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>Total PnL</th>
+                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>ROI</th>
+                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>Win Rate</th>
+                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>Trades</th>
+                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>W_shrunk</th>
+                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>ROI_shrunk</th>
+                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>PNL_shrunk</th>
+                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>W_Score</th>
+                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>ROI_Score</th>
+                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>PNL_Score</th>
+                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>Risk_Score</th>
+                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>Final Score</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -522,72 +577,70 @@ const LeaderboardViewAll: React.FC = () => {
                                                     key={entry.wallet_address || index} 
                                                     className={`${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-slate-50'} transition-colors border-b ${borderColor}`}
                                                 >
-                                                    <td className={`px-4 py-3 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
-                                                        <div className="flex items-center gap-2">
-                                                            {rankIcon && <span className="text-xl">{rankIcon}</span>}
-                                                            <span className="font-semibold">{rank}</span>
+                                                    <td className={`px-3 py-2 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
+                                                        <div className="flex items-center gap-1">
+                                                            {rankIcon && <span className="text-lg">{rankIcon}</span>}
+                                                            <span className="font-semibold text-sm">{rank}</span>
                                                         </div>
                                                     </td>
-                                                    <td className={`px-4 py-3 ${textPrimary}`}>
-                                                        <div className="flex items-center gap-3">
-                                                            {entry.profile_image ? (
-                                                                <img
-                                                                    src={entry.profile_image}
-                                                                    alt={traderName}
-                                                                    className="w-8 h-8 rounded-full"
-                                                                />
-                                                            ) : (
-                                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                                                                    theme === 'dark' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700'
-                                                                }`}>
-                                                                    {traderInitial}
-                                                                </div>
-                                                            )}
-                                                            <div>
-                                                                <div className="font-medium">{traderName}</div>
-                                                                {entry.pseudonym && entry.name && (
-                                                                    <div className={`text-xs ${textSecondary}`}>@{entry.pseudonym}</div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className={`px-4 py-3 font-mono text-xs ${textPrimary}`}>
-                                                        <div className="flex items-center gap-2">
-                                                            <span>{entry.wallet_address || 'N/A'}</span>
+                                                    <td className={`px-3 py-2 font-mono text-xs ${textPrimary}`}>
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="truncate max-w-[120px]">{entry.wallet_address || 'N/A'}</span>
                                                             <button
                                                                 onClick={() => entry.wallet_address && copyWallet(entry.wallet_address)}
-                                                                className={`p-1 rounded hover:${theme === 'dark' ? 'bg-slate-700' : 'bg-slate-200'} transition`}
+                                                                className={`p-0.5 rounded hover:${theme === 'dark' ? 'bg-slate-700' : 'bg-slate-200'} transition flex-shrink-0`}
                                                                 title="Copy wallet address"
                                                             >
                                                                 {copiedWallet === entry.wallet_address ? (
-                                                                    <Check className="w-4 h-4 text-green-400" />
+                                                                    <Check className="w-3 h-3 text-green-400" />
                                                                 ) : (
-                                                                    <Copy className="w-4 h-4" />
+                                                                    <Copy className="w-3 h-3" />
                                                                 )}
                                                             </button>
                                                         </div>
                                                     </td>
-                                                    <td className={`px-4 py-3 text-right font-semibold ${
+                                                    <td className={`px-3 py-2 text-right text-xs font-semibold ${
                                                         entry.total_pnl >= 0 
                                                             ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') 
                                                             : (theme === 'dark' ? 'text-red-400' : 'text-red-600')
                                                     }`}>
                                                         {formatCurrency(entry.total_pnl)}
                                                     </td>
-                                                    <td className={`px-4 py-3 text-right ${textPrimary}`}>
-                                                        {formatCurrency(entry.total_stakes || 0)}
-                                                    </td>
-                                                    <td className={`px-4 py-3 text-right ${
+                                                    <td className={`px-3 py-2 text-right text-xs ${
                                                         entry.roi >= 0 
                                                             ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') 
                                                             : (theme === 'dark' ? 'text-red-400' : 'text-red-600')
                                                     }`}>
                                                         {formatPercent(entry.roi)}
                                                     </td>
-                                                    <td className={`px-4 py-3 text-right ${textPrimary}`}>
+                                                    <td className={`px-3 py-2 text-right text-xs ${textPrimary}`}>
                                                         {formatPercent(entry.win_rate || 0)}
                                                     </td>
-                                                    <td className={`px-4 py-3 text-right font-bold ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>
+                                                    <td className={`px-3 py-2 text-right text-xs ${textPrimary}`}>
+                                                        {entry.total_trades || 0}
+                                                    </td>
+                                                    <td className={`px-3 py-2 text-right text-xs font-mono ${textPrimary}`}>
+                                                        {entry.W_shrunk !== undefined && entry.W_shrunk !== null ? entry.W_shrunk.toFixed(6) : 'N/A'}
+                                                    </td>
+                                                    <td className={`px-3 py-2 text-right text-xs font-mono ${textPrimary}`}>
+                                                        {entry.roi_shrunk !== undefined && entry.roi_shrunk !== null ? entry.roi_shrunk.toFixed(6) : 'N/A'}
+                                                    </td>
+                                                    <td className={`px-3 py-2 text-right text-xs font-mono ${textPrimary}`}>
+                                                        {entry.pnl_shrunk !== undefined && entry.pnl_shrunk !== null ? entry.pnl_shrunk.toFixed(6) : 'N/A'}
+                                                    </td>
+                                                    <td className={`px-3 py-2 text-right text-xs ${textPrimary}`}>
+                                                        {entry.score_win_rate?.toFixed(4) || '0.0000'}
+                                                    </td>
+                                                    <td className={`px-3 py-2 text-right text-xs ${textPrimary}`}>
+                                                        {entry.score_roi?.toFixed(4) || '0.0000'}
+                                                    </td>
+                                                    <td className={`px-3 py-2 text-right text-xs ${textPrimary}`}>
+                                                        {entry.score_pnl?.toFixed(4) || '0.0000'}
+                                                    </td>
+                                                    <td className={`px-3 py-2 text-right text-xs ${textPrimary}`}>
+                                                        {entry.score_risk?.toFixed(4) || '0.0000'}
+                                                    </td>
+                                                    <td className={`px-3 py-2 text-right text-xs font-bold ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>
                                                         {entry.final_score?.toFixed(2) || '0.00'}
                                                     </td>
                                                 </tr>
@@ -595,7 +648,7 @@ const LeaderboardViewAll: React.FC = () => {
                                         })
                                     ) : (
                                         <tr>
-                                            <td colSpan={8} className={`px-4 py-8 text-center ${textSecondary}`}>
+                                            <td colSpan={14} className={`px-4 py-8 text-center ${textSecondary}`}>
                                                 No data available for this leaderboard
                                             </td>
                                         </tr>
