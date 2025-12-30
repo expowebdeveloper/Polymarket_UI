@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { fetchViewAllLeaderboards } from '../services/api';
+import { fetchViewAllLeaderboards, fetchAllLeaderboards } from '../services/api';
 import type { AllLeaderboardsResponse, LeaderboardEntry } from '../types/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLocation } from 'react-router-dom';
 import { 
   BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, 
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, 
@@ -24,22 +25,27 @@ type LeaderboardType =
 
 const LeaderboardViewAll: React.FC = () => {
     const { theme } = useTheme();
+    const location = useLocation();
     const [data, setData] = useState<AllLeaderboardsResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<LeaderboardType>('final_score');
     const [showPercentiles, setShowPercentiles] = useState(true);
     const [selectedChart, setSelectedChart] = useState<'distribution' | 'top10' | 'scores' | 'radar'>('distribution');
+    const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
 
     useEffect(() => {
         loadData();
-    }, []);
+    }, [location.pathname]);
 
     const loadData = async () => {
         setLoading(true);
         setError(null);
         try {
-            const result = await fetchViewAllLeaderboards();
+            // Use fetchAllLeaderboards for /leaderboard/all route, fetchViewAllLeaderboards for /leaderboard/view-all
+            const result = location.pathname === '/leaderboard/all' 
+                ? await fetchAllLeaderboards()
+                : await fetchViewAllLeaderboards();
             setData(result);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load leaderboards');
@@ -506,8 +512,28 @@ const LeaderboardViewAll: React.FC = () => {
                                                 <td className={`border ${borderColor} px-3 py-2 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'} font-bold`}>
                                                     #{entry.rank || index + 1}
                                                 </td>
-                                                <td className={`border ${borderColor} px-3 py-2 font-mono text-xs ${textPrimary}`}>
-                                                    {entry.name || entry.pseudonym || `${entry.wallet_address?.slice(0, 8)}...${entry.wallet_address?.slice(-6)}`}
+                                                <td 
+                                                    className={`border ${borderColor} px-3 py-2 font-mono text-xs ${textPrimary} cursor-pointer hover:bg-opacity-50 transition-all relative group ${theme === 'dark' ? 'hover:bg-green-900' : 'hover:bg-green-100'}`}
+                                                    onClick={() => {
+                                                        if (entry.wallet_address) {
+                                                            navigator.clipboard.writeText(entry.wallet_address);
+                                                            setCopiedWallet(entry.wallet_address);
+                                                            setTimeout(() => setCopiedWallet(null), 2000);
+                                                        }
+                                                    }}
+                                                    title={`Click to copy: ${entry.wallet_address || 'N/A'}`}
+                                                >
+                                                    <div className="flex items-center gap-1">
+                                                        {entry.name || entry.pseudonym || `${entry.wallet_address?.slice(0, 8)}...${entry.wallet_address?.slice(-6)}`}
+                                                        <span className={`opacity-0 group-hover:opacity-100 transition-opacity text-xs ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                                                            📋
+                                                        </span>
+                                                    </div>
+                                                    {copiedWallet === entry.wallet_address && (
+                                                        <div className={`absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center ${theme === 'dark' ? 'bg-green-900' : 'bg-green-100'} bg-opacity-90 rounded z-10 text-xs font-bold ${theme === 'dark' ? 'text-green-300' : 'text-green-700'}`}>
+                                                            ✓ Copied!
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className={`border ${borderColor} px-3 py-2 text-right text-sm ${entry.total_pnl >= 0 ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') : (theme === 'dark' ? 'text-red-400' : 'text-red-600')}`}>
                                                     {formatCurrency(entry.total_pnl)}

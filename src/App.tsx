@@ -15,6 +15,7 @@ import { Traders } from './pages/Traders';
 import { TraderProfile } from './pages/TraderProfile';
 import { DatabaseLeaderboard } from './pages/DatabaseLeaderboard';
 import { DBWalletDashboard } from './pages/DBWalletDashboard';
+import LiveLeaderboard from './pages/LiveLeaderboard';
 import { useTheme } from './contexts/ThemeContext';
 
 function App() {
@@ -42,6 +43,15 @@ function App() {
                 <>
                   <TradingHeader title="Leaderboard" />
                   <Leaderboard />
+                </>
+              }
+            />
+            <Route
+              path="/leaderboard/all"
+              element={
+                <>
+                  <TradingHeader title="All Leaderboards" />
+                  <LeaderboardViewAll />
                 </>
               }
             />
@@ -141,6 +151,15 @@ function App() {
                 <>
                   <TradingHeader title="DB Wallet Dashboard" />
                   <DBWalletDashboard />
+                </>
+              }
+            />
+            <Route
+              path="/leaderboard/live"
+              element={
+                <>
+                  <TradingHeader title="Live Leaderboard" />
+                  <LiveLeaderboard />
                 </>
               }
             />

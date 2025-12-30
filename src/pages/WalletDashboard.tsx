@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Wallet, TrendingUp, TrendingDown, Activity as ActivityIcon, BarChart3, DollarSign, User, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, Trophy, Fish, Flame, ChevronDown, ChevronUp, ChevronRight, Flag, Coins, DollarSign, Activity as ActivityIcon, Target } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
-import { TradePerformanceGraph } from '../components/TradePerformanceGraph';
-import { useTheme } from '../contexts/ThemeContext';
+import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import {
   fetchPositionsForWallet,
   fetchClosedPositionsForWallet,
@@ -14,7 +13,7 @@ import {
   fetchUserLeaderboardData,
   fetchTradeHistory,
 } from '../services/api';
-import type { Position, ClosedPosition, Activity, ProfileStatsResponse, UserLeaderboardData, TradeHistoryResponse, TraderDetails } from '../types/api';
+import type { Position, ClosedPosition, Activity, ProfileStatsResponse, UserLeaderboardData, TradeHistoryResponse } from '../types/api';
 
 // Helper function to format currency
 const formatCurrency = (value: number | string | undefined): string => {
@@ -51,7 +50,6 @@ const validateWallet = (address: string): boolean => {
 };
 
 export function WalletDashboard() {
-  const { theme } = useTheme();
   const [walletAddress, setWalletAddress] = useState('');
   const [isValidWallet, setIsValidWallet] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -60,19 +58,17 @@ export function WalletDashboard() {
   // Data states
   const [profileStats, setProfileStats] = useState<ProfileStatsResponse | null>(null);
   const [activePositions, setActivePositions] = useState<Position[]>([]);
-  const [closedPositions, setClosedPositions] = useState<ClosedPosition[]>([]);
   const [allClosedPositions, setAllClosedPositions] = useState<ClosedPosition[]>([]);
-  const [activities, setActivities] = useState<Activity[]>([]);
   const [allActivities, setAllActivities] = useState<Activity[]>([]);
   const [portfolioStats, setPortfolioStats] = useState<any>(null);
-  const [traderDetails, setTraderDetails] = useState<TraderDetails | null>(null);
   const [userLeaderboardData, setUserLeaderboardData] = useState<UserLeaderboardData | null>(null);
   const [tradeHistory, setTradeHistory] = useState<TradeHistoryResponse | null>(null);
-  
-  // Pagination states
-  const [closedPositionsPage, setClosedPositionsPage] = useState(1);
-  const [activitiesPage, setActivitiesPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity'>('history');
+  const [distributionMetric, setDistributionMetric] = useState<'roi' | 'win_rate' | 'risk'>('roi');
+  const [historyPage, setHistoryPage] = useState(1);
+  const [activityPage, setActivityPage] = useState(1);
+  const itemsPerPage = 20;
 
 
   const fetchWalletData = async () => {
@@ -107,7 +103,10 @@ export function WalletDashboard() {
         setProfileStats(profileData.value);
       }
       if (positionsData.status === 'fulfilled') {
-        setActivePositions(positionsData.value.positions || []);
+        setActivePositions(positionsData.value?.positions || []);
+      } else if (positionsData.status === 'rejected') {
+        console.warn('Failed to fetch positions:', positionsData.reason);
+        setActivePositions([]); // Set empty array on error
       }
       if (closedPositionsData.status === 'fulfilled') {
         const closedList = closedPositionsData.value || [];
@@ -120,9 +119,10 @@ export function WalletDashboard() {
       if (portfolioData.status === 'fulfilled') {
         setPortfolioStats(portfolioData.value);
       }
-      if (traderData.status === 'fulfilled') {
-        setTraderDetails(traderData.value);
-      }
+      // Trader details fetched but not used in UI (kept for future use)
+      // if (traderData.status === 'fulfilled') {
+      //   setTraderDetails(traderData.value);
+      // }
       if (leaderboardData.status === 'fulfilled') {
         setUserLeaderboardData(leaderboardData.value);
       } else if (leaderboardData.status === 'rejected') {
@@ -161,8 +161,6 @@ export function WalletDashboard() {
       setIsValidWallet(isValid);
       if (isValid && walletAddress) {
         fetchWalletData();
-        setClosedPositionsPage(1);
-        setActivitiesPage(1);
         setUserLeaderboardData(null);
         setTradeHistory(null);
       }
@@ -179,18 +177,282 @@ export function WalletDashboard() {
     }
   };
   
-  // Calculate largest win and highest loss
+  // Calculate highest loss
   const highestLoss = portfolioStats?.performance_metrics?.worst_loss !== undefined
     ? portfolioStats.performance_metrics.worst_loss
     : (allClosedPositions.length > 0
         ? Math.min(...allClosedPositions.map(pos => pos.realized_pnl || 0).filter(pnl => pnl < 0), 0)
         : 0);
-  
-  const largestWin = profileStats?.largestWin
-    ? parseFloat(String(profileStats.largestWin))
-    : (allClosedPositions.length > 0
-        ? Math.max(...allClosedPositions.map(pos => pos.realized_pnl || 0).filter(pnl => pnl > 0), 0)
-        : 0);
+
+  // Calculate streaks, wins, losses, rewards, and market distribution
+  const streaks = useMemo(() => {
+    if (!allClosedPositions || allClosedPositions.length === 0) {
+      return { longest_streak: 0, current_streak: 0, total_wins: 0, total_losses: 0 };
+    }
+    
+    // Sort by created_at or timestamp (oldest first)
+    const sorted = [...allClosedPositions].sort((a, b) => {
+      const timeA = (a as any).timestamp || (a.created_at ? new Date(a.created_at).getTime() : 0);
+      const timeB = (b as any).timestamp || (b.created_at ? new Date(b.created_at).getTime() : 0);
+      return timeA - timeB;
+    });
+    
+    let longestStreak = 0;
+    let currentStreak = 0;
+    let maxStreak = 0;
+    let totalWins = 0;
+    let totalLosses = 0;
+    
+    for (const pos of sorted) {
+      const pnl = pos.realized_pnl || 0;
+      if (pnl > 0) {
+        totalWins++;
+        currentStreak++;
+        maxStreak = Math.max(maxStreak, currentStreak);
+      } else if (pnl < 0) {
+        totalLosses++;
+        longestStreak = Math.max(longestStreak, maxStreak);
+        currentStreak = 0;
+        maxStreak = 0;
+      }
+    }
+    
+    longestStreak = Math.max(longestStreak, maxStreak);
+    
+    return {
+      longest_streak: longestStreak,
+      current_streak: currentStreak,
+      total_wins: totalWins,
+      total_losses: totalLosses,
+    };
+  }, [allClosedPositions]);
+
+  // Calculate rewards earned
+  const rewardsEarned = useMemo(() => {
+    return allActivities
+      .filter(activity => activity.type === 'REWARD')
+      .reduce((sum, activity) => sum + (parseFloat(String(activity.usdc_size || 0))), 0);
+  }, [allActivities]);
+
+  // Calculate total volume
+  const totalVolume = useMemo(() => {
+    let volume = 0;
+    // From closed positions
+    allClosedPositions.forEach(pos => {
+      const stake = (parseFloat(String((pos as any).total_bought || pos.size || 0)) * parseFloat(String(pos.avg_price || 0)));
+      volume += stake;
+    });
+    // From active positions
+    activePositions.forEach(pos => {
+      volume += parseFloat(String(pos.initial_value || 0));
+    });
+    // From activities
+    allActivities.forEach(activity => {
+      if (activity.usdc_size) {
+        volume += parseFloat(String(activity.usdc_size));
+      }
+    });
+    return volume || userLeaderboardData?.vol || portfolioStats?.performance_metrics?.total_investment || 0;
+  }, [allClosedPositions, activePositions, allActivities, userLeaderboardData, portfolioStats]);
+
+  // Helper function to categorize market
+  const categorizeMarket = useMemo(() => {
+    return (title: string, slug: string): string => {
+      const titleLower = (title || "").toLowerCase();
+      const slugLower = (slug || "").toLowerCase();
+      const combined = `${titleLower} ${slugLower}`;
+      
+      if (['president', 'election', 'politics', 'trump', 'biden', 'senate', 'congress', 'vote', 'poll', 'democrat', 'republican', 'political'].some(k => combined.includes(k))) {
+        return "Politics";
+      }
+      if (['bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'cryptocurrency', 'blockchain', 'defi', 'nft', 'token', 'coin'].some(k => combined.includes(k))) {
+        return "Crypto";
+      }
+      if (['nfl', 'nba', 'mlb', 'soccer', 'football', 'basketball', 'baseball', 'hockey', 'sports', 'game', 'match', 'championship', 'super bowl', 'world cup'].some(k => combined.includes(k))) {
+        return "Sports";
+      }
+      if (['fed', 'federal reserve', 'interest rate', 'inflation', 'gdp', 'unemployment', 'macro', 'rates', 'treasury', 'bond', 'economic'].some(k => combined.includes(k))) {
+        return "Macro / Rates";
+      }
+      return "Other";
+    };
+  }, []);
+
+  // Calculate detailed market distribution with ROI and Win Rate
+  const marketDistribution = useMemo(() => {
+    const categoryStats = new Map<string, {
+      capital: number;
+      totalPnl: number;
+      wins: number;
+      losses: number;
+      trades: number;
+      markets: Set<string>;
+    }>();
+    
+    // Process closed positions
+    allClosedPositions.forEach(pos => {
+      const title = pos.title || "Unknown";
+      const slug = pos.slug || "Unknown";
+      const category = categorizeMarket(title, slug);
+      
+      const stake = parseFloat(String((pos as any).total_bought || pos.size || 0)) * parseFloat(String(pos.avg_price || 0));
+      const pnl = parseFloat(String(pos.realized_pnl || 0));
+      
+      if (!categoryStats.has(category)) {
+        categoryStats.set(category, {
+          capital: 0,
+          totalPnl: 0,
+          wins: 0,
+          losses: 0,
+          trades: 0,
+          markets: new Set()
+        });
+      }
+      
+      const stats = categoryStats.get(category)!;
+      stats.capital += stake;
+      stats.totalPnl += pnl;
+      stats.trades += 1;
+      stats.markets.add(slug);
+      
+      if (pnl > 0) {
+        stats.wins += 1;
+      } else if (pnl < 0) {
+        stats.losses += 1;
+      }
+    });
+    
+    // Process active positions for capital
+    activePositions.forEach(pos => {
+      const title = pos.title || "Unknown";
+      const slug = pos.slug || "Unknown";
+      const category = categorizeMarket(title, slug);
+      
+      const capital = parseFloat(String(pos.initial_value || 0));
+      
+      if (!categoryStats.has(category)) {
+        categoryStats.set(category, {
+          capital: 0,
+          totalPnl: 0,
+          wins: 0,
+          losses: 0,
+          trades: 0,
+          markets: new Set()
+        });
+      }
+      
+      categoryStats.get(category)!.capital += capital;
+      categoryStats.get(category)!.markets.add(slug);
+    });
+    
+    // Calculate totals and percentages
+    const totalCapital = Array.from(categoryStats.values()).reduce((sum, s) => sum + s.capital, 0);
+    
+    const distribution = Array.from(categoryStats.entries()).map(([category, stats]) => {
+      const roiPercent = stats.capital > 0 ? (stats.totalPnl / stats.capital * 100) : 0;
+      const winRatePercent = stats.trades > 0 ? (stats.wins / stats.trades * 100) : 0;
+      const capitalPercent = totalCapital > 0 ? (stats.capital / totalCapital * 100) : 0;
+      const riskScore = stats.capital > 0 ? (Math.abs(stats.totalPnl < 0 ? stats.totalPnl : 0) / stats.capital) : 0;
+      
+      return {
+        category,
+        market: category,
+        capital: stats.capital,
+        capital_percent: capitalPercent,
+        roi_percent: roiPercent,
+        win_rate_percent: winRatePercent,
+        trades_count: stats.trades,
+        wins: stats.wins,
+        losses: stats.losses,
+        total_pnl: stats.totalPnl,
+        risk_score: riskScore,
+        unique_markets: stats.markets.size
+      };
+    });
+    
+    return distribution.sort((a, b) => b.capital - a.capital);
+  }, [allClosedPositions, activePositions, categorizeMarket]);
+
+  // Calculate primary edge
+  const primaryEdge = useMemo(() => {
+    if (marketDistribution.length === 0) return "No trading data available.";
+    
+    const primary = marketDistribution[0];
+    let edge = `Primary edge in ${primary.category} markets with `;
+    
+    if (primary.roi_percent > 0) {
+      edge += primary.roi_percent > 50 ? "high ROI " : "consistent ROI ";
+    } else {
+      edge += "moderate ROI ";
+    }
+    
+    if (primary.risk_score < 0.1) {
+      edge += "and low risk.";
+    } else if (primary.risk_score < 0.3) {
+      edge += "and moderate risk.";
+    } else {
+      edge += "and high risk.";
+    }
+    
+    return edge;
+  }, [marketDistribution]);
+
+  // Calculate profit trend for last 7 days
+  const profitTrend = useMemo(() => {
+    const days: { [key: string]: { day: string; profit: number } } = {};
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    
+    // Initialize last 7 days
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dayKey = date.toISOString().split('T')[0];
+      const dayName = dayNames[date.getDay()];
+      days[dayKey] = { day: dayName, profit: 0 };
+    }
+    
+    // Aggregate PnL by day from closed positions
+    allClosedPositions.forEach(pos => {
+      if (pos.created_at) {
+        const tradeDate = new Date(pos.created_at);
+        const dayKey = tradeDate.toISOString().split('T')[0];
+        
+        if (days[dayKey]) {
+          days[dayKey].profit += parseFloat(String(pos.realized_pnl || 0));
+        }
+      }
+    });
+    
+    // Convert to array and calculate cumulative
+    let cumulative = 0;
+    return Object.keys(days).sort().map(dayKey => {
+      cumulative += days[dayKey].profit;
+      return {
+        day: days[dayKey].day,
+        date: dayKey,
+        profit: days[dayKey].profit,
+        cumulative_profit: cumulative
+      };
+    });
+  }, [allClosedPositions]);
+
+  // Get scoring metrics from trade history or calculate from portfolio
+  const scoringMetrics = useMemo(() => {
+    const finalScore = (tradeHistory?.overall_metrics as any)?.final_score || 
+                      (tradeHistory?.overall_metrics as any)?.score || 
+                      (userLeaderboardData?.rank ? (100 - Number(userLeaderboardData.rank)) : 0);
+    
+    return {
+      final_score: finalScore,
+      total_pnl: portfolioStats?.pnl_metrics?.total_pnl || portfolioStats?.performance_metrics?.total_pnl || 0,
+      roi: portfolioStats?.performance_metrics?.roi || tradeHistory?.overall_metrics?.roi || 0,
+      win_rate: portfolioStats?.performance_metrics?.win_rate || tradeHistory?.overall_metrics?.win_rate || 0,
+      win_rate_percent: portfolioStats?.performance_metrics?.win_rate || tradeHistory?.overall_metrics?.win_rate || 0,
+      total_trades: profileStats?.trades || allClosedPositions.length || 0,
+      score_risk: (tradeHistory?.overall_metrics as any)?.risk_score || 0,
+      roi_shrunk: (tradeHistory?.overall_metrics as any)?.roi_shrunk || 0,
+    };
+  }, [tradeHistory, portfolioStats, userLeaderboardData, profileStats, allClosedPositions]);
 
   // Process trade data for performance graph (last 10 trades)
   // Use closed positions if trade history is not available
@@ -320,440 +582,699 @@ export function WalletDashboard() {
       {/* Wallet Information Display */}
       {!loading && isValidWallet && walletAddress && (
         <>
-          {/* Profile Header */}
-          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
-            <div className="flex items-start justify-between mb-6">
-              <div className="flex items-start gap-4">
-                {/* Profile Image */}
-                {userLeaderboardData?.profileImage && (
-                  <img
-                    src={userLeaderboardData.profileImage}
-                    alt="Profile"
-                    className="w-16 h-16 rounded-full border-2 border-emerald-400 object-cover"
-                  />
-                )}
-                {!userLeaderboardData?.profileImage && (
-                  <div className="w-16 h-16 rounded-full border-2 border-emerald-400 bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
-                    <User className="w-8 h-8 text-emerald-400" />
-                  </div>
-                )}
+          {/* Trader Metrics Header - Matching Image Design */}
+          <div className="bg-slate-900 rounded-lg border border-slate-800 p-6">
+            {/* Title and Wallet */}
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-white mb-2">Trader Metrics - Expandable Live...</h2>
+              <p className="text-slate-400 font-mono text-sm">{walletAddress}</p>
+              <p className="text-slate-500 text-sm mt-1">Trader Profile</p>
+            </div>
+
+            {/* Final Score & Badges */}
+            <div className="mb-6">
+              <div className="flex items-center gap-4 mb-3">
                 <div>
-                  <div className="flex items-center gap-3 mb-1">
-                    <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
-                      {userLeaderboardData?.userName || profileStats?.username || 'Unknown User'}
-                    </h3>
-                    {userLeaderboardData?.verifiedBadge && (
-                      <span className="text-emerald-400" title="Verified">✓</span>
-                    )}
+                  <p className="text-slate-400 text-sm mb-1">Final Score</p>
+                  <p className="text-5xl font-bold text-emerald-400">
+                    {scoringMetrics?.final_score?.toFixed(1) || '0.0'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {scoringMetrics?.final_score >= 90 && (
+                    <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs font-medium flex items-center gap-1">
+                      <Trophy className="w-3 h-3" />
+                      Top 10
+                    </span>
+                  )}
+                  {totalVolume >= 100000 && (
+                    <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs font-medium flex items-center gap-1">
+                      <Fish className="w-3 h-3" />
+                      Whale
+                    </span>
+                  )}
+                  {streaks.current_streak >= 5 && (
+                    <span className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-xs font-medium flex items-center gap-1">
+                      <Flame className="w-3 h-3" />
+                      Hot Streak
+                    </span>
+                  )}
+                </div>
+                {scoringMetrics?.final_score >= 90 && (
+                  <span className="ml-auto px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs font-medium">
+                    Top 1% Trader
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Streaks Section */}
+            <div className="bg-slate-800/50 rounded-lg p-4 mb-6">
+              <div className="grid grid-cols-5 gap-4">
+                <div className="flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-orange-400" />
+                  <div>
+                    <p className="text-slate-400 text-xs">LONGEST STREAK</p>
+                    <p className="text-white font-bold text-lg">{streaks.longest_streak}</p>
                   </div>
-                  {userLeaderboardData?.xUsername && (
-                    <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">
-                      @{userLeaderboardData.xUsername}
-                    </p>
-                  )}
-                  <p className="text-slate-600 dark:text-slate-400 font-mono text-sm">{walletAddress}</p>
-                  {userLeaderboardData?.rank && (
-                    <p className="text-slate-400 dark:text-slate-500 text-xs mt-1">
-                      Rank: #{userLeaderboardData.rank}
-                    </p>
-                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-blue-400" />
+                  <div>
+                    <p className="text-slate-400 text-xs">CURRENT STREAK</p>
+                    <p className="text-white font-bold text-lg">{streaks.current_streak}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-emerald-400" />
+                  <div>
+                    <p className="text-slate-400 text-xs">TOTAL WINS</p>
+                    <p className="text-white font-bold text-lg">{streaks.total_wins}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <TrendingDown className="w-5 h-5 text-red-400" />
+                  <div>
+                    <p className="text-slate-400 text-xs">TOTAL LOSSES</p>
+                    <p className="text-white font-bold text-lg">{streaks.total_losses}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-yellow-400" />
+                  <div>
+                    <p className="text-slate-400 text-xs">REWARD EARNED</p>
+                    <p className="text-white font-bold text-lg">{formatCurrency(rewardsEarned)}</p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              {profileStats && (
-                <>
-                  <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                    <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Total Trades</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{profileStats.trades || 0}</p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                    <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Largest Win</p>
-                    <p className="text-2xl font-bold text-emerald-400">
-                      {formatCurrency(largestWin)}
-                    </p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                    <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Highest Loss</p>
-                    <p className="text-2xl font-bold text-red-400">
-                      {formatCurrency(highestLoss)}
-                    </p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                    <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Profile Views</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{profileStats.views || 0}</p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                    <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Member Since</p>
-                    <p className="text-lg font-bold text-slate-900 dark:text-white">
-                      {profileStats.joinDate ? formatDate(profileStats.joinDate) : 'N/A'}
-                    </p>
-                  </div>
-                </>
-              )}
-              {userLeaderboardData && userLeaderboardData.vol !== undefined && (
-                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                  <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Volume</p>
+            {/* Metric Cards */}
+            <div className="grid grid-cols-5 gap-4 mb-6">
+              <div className="bg-slate-800/50 rounded-lg p-4">
+                <p className="text-slate-400 text-xs mb-1">ROI %</p>
+                <p className="text-2xl font-bold text-emerald-400">
+                  {scoringMetrics?.roi?.toFixed(2) || '0.00'}%
+                </p>
+                <p className="text-slate-500 text-xs mt-1">All-time</p>
+              </div>
+              <div className="bg-slate-800/50 rounded-lg p-4">
+                <p className="text-slate-400 text-xs mb-1">Win Rate</p>
+                <p className="text-2xl font-bold text-white">
+                  {scoringMetrics?.win_rate_percent?.toFixed(1) || '0.0'}%
+                </p>
+                <p className="text-slate-500 text-xs mt-1">
+                  {streaks.total_wins} of {streaks.total_wins + streaks.total_losses} trades
+                </p>
+              </div>
+              <div className="bg-slate-800/50 rounded-lg p-4">
+                <p className="text-slate-400 text-xs mb-1">Total Volume</p>
+                <p className="text-2xl font-bold text-white">{formatCurrency(totalVolume)}</p>
+                <p className="text-slate-500 text-xs mt-1">Across {marketDistribution.length} markets</p>
+              </div>
+              <div className="bg-slate-800/50 rounded-lg p-4">
+                <p className="text-slate-400 text-xs mb-1">Total Trades</p>
+                <p className="text-2xl font-bold text-white">{scoringMetrics?.total_trades || 0}</p>
+                <p className="text-slate-500 text-xs mt-1">Since joining</p>
+              </div>
+              <div className="bg-slate-800/50 rounded-lg p-4">
+                <p className="text-slate-400 text-xs mb-1">Total PnL</p>
+                <p className={`text-2xl font-bold ${(scoringMetrics?.total_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {formatCurrency(scoringMetrics?.total_pnl || 0)}
+                </p>
+                <p className="text-slate-500 text-xs mt-1">Realized + Unrealized</p>
+              </div>
+            </div>
+
+            {/* Advanced Metrics Toggle */}
+            <div className="mb-4">
+              <button
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="text-slate-400 hover:text-white text-sm flex items-center gap-1 transition-colors"
+              >
+                {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                {showAdvanced ? 'Hide Advanced' : 'View Advanced Metrics'}
+              </button>
+            </div>
+
+            {/* Advanced Metrics Section */}
+            {showAdvanced && (
+              <div className="grid grid-cols-5 gap-4 mt-4">
+                <div className="bg-slate-800/50 rounded-lg p-4">
+                  <p className="text-slate-400 text-xs mb-1">Risk Score</p>
+                  <p className="text-2xl font-bold text-white">{(scoringMetrics?.score_risk || 0).toFixed(2)}</p>
+                </div>
+                <div className="bg-slate-800/50 rounded-lg p-4">
+                  <p className="text-slate-400 text-xs mb-1">Max Drawdown</p>
+                  <p className="text-2xl font-bold text-red-400">
+                    {highestLoss ? `${highestLoss.toFixed(1)}%` : '0.0%'}
+                  </p>
+                </div>
+                <div className="bg-slate-800/50 rounded-lg p-4">
+                  <p className="text-slate-400 text-xs mb-1">Worst Loss</p>
+                  <p className="text-2xl font-bold text-red-400">{formatCurrency(highestLoss)}</p>
+                </div>
+                <div className="bg-slate-800/50 rounded-lg p-4">
+                  <p className="text-slate-400 text-xs mb-1">ROI (Shrunk)</p>
                   <p className="text-2xl font-bold text-emerald-400">
-                    {formatCurrency(userLeaderboardData.vol)}
+                    {scoringMetrics?.roi_shrunk ? `+${scoringMetrics.roi_shrunk.toFixed(1)}%` : '0.0%'}
                   </p>
                 </div>
-              )}
-            </div>
-
-            {/* Portfolio Metrics */}
-            {portfolioStats && (
-              <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                  <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Total PnL</p>
-                  <p
-                    className={`text-2xl font-bold ${
-                      (portfolioStats.pnl_metrics?.total_pnl || 0) >= 0
-                        ? 'text-emerald-400'
-                        : 'text-red-400'
-                    }`}
-                  >
-                    {formatCurrency(portfolioStats.pnl_metrics?.total_pnl || 0)}
-                  </p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                  <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Realized PnL</p>
-                  <p
-                    className={`text-2xl font-bold ${
-                      (portfolioStats.pnl_metrics?.realized_pnl || 0) >= 0
-                        ? 'text-emerald-400'
-                        : 'text-red-400'
-                    }`}
-                  >
-                    {formatCurrency(portfolioStats.pnl_metrics?.realized_pnl || 0)}
-                  </p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                  <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Unrealized PnL</p>
-                  <p
-                    className={`text-2xl font-bold ${
-                      (portfolioStats.pnl_metrics?.unrealized_pnl || 0) >= 0
-                        ? 'text-emerald-400'
-                        : 'text-red-400'
-                    }`}
-                  >
-                    {formatCurrency(portfolioStats.pnl_metrics?.unrealized_pnl || 0)}
-                  </p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                  <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">ROI</p>
-                  <p
-                    className={`text-2xl font-bold ${
-                      (portfolioStats.performance_metrics?.roi || 0) >= 0
-                        ? 'text-emerald-400'
-                        : 'text-red-400'
-                    }`}
-                  >
-                    {portfolioStats.performance_metrics?.roi?.toFixed(2) || 0}%
-                  </p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                  <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Total Investment</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {formatCurrency(portfolioStats.performance_metrics?.total_investment || 0)}
-                  </p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                  <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Open Positions</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {portfolioStats.positions_summary?.open_positions_count || 0}
-                  </p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                  <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Closed Positions</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {portfolioStats.positions_summary?.closed_positions_count || 0}
-                  </p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                  <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Win Rate</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {portfolioStats.performance_metrics?.win_rate?.toFixed(1) || 0}%
+                <div className="bg-slate-800/50 rounded-lg p-4">
+                  <p className="text-slate-400 text-xs mb-1">Market Concentration</p>
+                  <p className="text-2xl font-bold text-white">
+                    {marketDistribution.length > 0 
+                      ? `${((marketDistribution[0]?.trades_count || 0) / (Number(scoringMetrics?.total_trades) || 1) * 100).toFixed(0)}%`
+                      : '0%'}
                   </p>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Performance Graph */}
-          {performanceGraphData && performanceGraphData.length > 0 ? (
-            <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
-                <BarChart3 className="w-5 h-5 text-emerald-400" />
-                Recent Trades Performance (Last {performanceGraphData.length} Trades)
-              </h3>
-              <TradePerformanceGraph trades={performanceGraphData} />
+          {/* Tabs Section */}
+          <div className="bg-slate-900 rounded-lg border border-slate-800">
+            {/* Tab Headers */}
+            <div className="flex border-b border-slate-800">
+              <button
+                onClick={() => {
+                  setActiveTab('history');
+                  setHistoryPage(1); // Reset to first page when switching tabs
+                }}
+                className={`px-6 py-3 font-medium transition-colors ${
+                  activeTab === 'history'
+                    ? 'text-white border-b-2 border-emerald-400'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Trade History
+              </button>
+              <button
+                onClick={() => setActiveTab('performance')}
+                className={`px-6 py-3 font-medium transition-colors ${
+                  activeTab === 'performance'
+                    ? 'text-white border-b-2 border-emerald-400'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Performance
+              </button>
+              <button
+                onClick={() => setActiveTab('distribution')}
+                className={`px-6 py-3 font-medium transition-colors ${
+                  activeTab === 'distribution'
+                    ? 'text-white border-b-2 border-emerald-400'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Market Distribution
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('activity');
+                  setActivityPage(1); // Reset to first page when switching tabs
+                }}
+                className={`px-6 py-3 font-medium transition-colors ${
+                  activeTab === 'activity'
+                    ? 'text-white border-b-2 border-emerald-400'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Activity
+              </button>
             </div>
-          ) : (
-            <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
-                <BarChart3 className="w-5 h-5 text-emerald-400" />
-                Recent Trades Performance
-              </h3>
-              <div className="h-64 flex items-center justify-center text-slate-600 dark:text-slate-400">
-                {loading ? 'Loading trade data...' : 'No trade data available for performance graph'}
-              </div>
-            </div>
-          )}
 
-          {/* Active Positions */}
-          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
-            <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
-              <TrendingUp className="w-5 h-5 text-emerald-400" />
-              Active Positions ({activePositions.length})
-            </h3>
-            {activePositions.length === 0 ? (
-              <p className="text-slate-600 dark:text-slate-400 text-center py-8">No active positions</p>
-            ) : (
-              <div className="space-y-3">
-                {activePositions.slice(0, 10).map((position, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 border border-slate-200/50 dark:border-slate-700/50"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                          {position.title || position.asset || 'Untitled Position'}
-                        </h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                          <div>
-                            <p className="text-slate-600 dark:text-slate-400">Size</p>
-                            <p className="text-slate-900 dark:text-white font-medium">{formatSize(position.size)}</p>
-                          </div>
-                          <div>
-                            <p className="text-slate-600 dark:text-slate-400">Avg Price</p>
-                            <p className="text-slate-900 dark:text-white font-medium">
-                              {formatCurrency(position.avg_price || 0)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-slate-600 dark:text-slate-400">Current Value</p>
-                            <p className="text-slate-900 dark:text-white font-medium">
-                              {formatCurrency(position.current_value || 0)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-slate-600 dark:text-slate-400">PnL</p>
-                            <p
-                              className={`font-medium ${
-                                (position.cash_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'
-                              }`}
-                            >
-                              {formatCurrency(position.cash_pnl || 0)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Closed Positions - Table Format */}
-          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
-            <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
-              <TrendingDown className="w-5 h-5 text-red-400" />
-              Closed Positions ({allClosedPositions.length})
-            </h3>
-            {allClosedPositions.length === 0 ? (
-              <p className="text-slate-600 dark:text-slate-400 text-center py-8">No closed positions</p>
-            ) : (
-              <>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-800">
-                        <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium text-sm">Market</th>
-                        <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium text-sm">Size</th>
-                        <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium text-sm">Avg Price</th>
-                        <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium text-sm">Final Price</th>
-                        <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium text-sm">Realized PnL</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                  {allClosedPositions
-                    .slice((closedPositionsPage - 1) * pageSize, closedPositionsPage * pageSize)
-                    .map((position, idx) => (
-                          <tr
-                    key={idx}
-                            className="border-b border-slate-200/50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
-                  >
-                            <td className="py-3 px-4 text-slate-900 dark:text-white font-medium">
-                          {position.title || position.asset || 'Untitled Position'}
+            {/* Tab Content */}
+            <div className="p-6">
+              {activeTab === 'history' && (
+                <div>
+                  <div className="overflow-x-auto mb-4">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-slate-800">
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Trade Date</th>
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Market</th>
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Size</th>
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Price</th>
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">PnL</th>
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allClosedPositions
+                          .slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage)
+                          .map((position, idx) => (
+                          <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                            <td className="py-3 px-4 text-slate-300 text-sm">
+                              {formatDate(position.created_at)}
                             </td>
-                            <td className="py-3 px-4 text-slate-900 dark:text-white">{formatSize(position.size)}</td>
-                            <td className="py-3 px-4 text-slate-900 dark:text-white">
-                              {formatCurrency(position.avg_price || 0)}
+                            <td className="py-3 px-4 text-white font-medium">
+                              {position.title || position.slug || 'Market'}
                             </td>
-                            <td className="py-3 px-4 text-slate-900 dark:text-white">
-                              {formatCurrency(position.cur_price || 0)}
-                            </td>
-                            <td
-                              className={`py-3 px-4 font-medium ${
-                                (position.realized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'
-                              }`}
-                            >
+                            <td className="py-3 px-4 text-white">{formatSize((position as any).total_bought || position.size)}</td>
+                            <td className="py-3 px-4 text-white">{formatCurrency(position.avg_price || 0)}</td>
+                            <td className={`py-3 px-4 font-medium ${
+                              (position.realized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'
+                            }`}>
                               {formatCurrency(position.realized_pnl || 0)}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="px-2 py-1 rounded text-xs font-medium bg-slate-700/50 text-slate-300">
+                                Closed
+                              </span>
                             </td>
                           </tr>
                         ))}
-                    </tbody>
-                  </table>
-                </div>
-                
-                {/* Pagination */}
-                {allClosedPositions.length > pageSize && (
-                  <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
-                    <div className="text-sm text-slate-600 dark:text-slate-400">
-                      Showing {((closedPositionsPage - 1) * pageSize) + 1}-{Math.min(closedPositionsPage * pageSize, allClosedPositions.length)} of {allClosedPositions.length}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {/* Pagination Controls */}
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="text-slate-400 text-sm">
+                      Showing {(historyPage - 1) * itemsPerPage + 1} to {Math.min(historyPage * itemsPerPage, allClosedPositions.length)} of {allClosedPositions.length} trades
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex gap-2">
                       <button
-                        onClick={() => setClosedPositionsPage(p => Math.max(1, p - 1))}
-                        disabled={closedPositionsPage === 1}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
-                          closedPositionsPage > 1
-                            ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 cursor-not-allowed opacity-50'
+                        onClick={() => setHistoryPage(prev => Math.max(1, prev - 1))}
+                        disabled={historyPage === 1}
+                        className={`px-4 py-2 rounded text-sm font-medium transition ${
+                          historyPage === 1
+                            ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed'
+                            : 'bg-slate-700 hover:bg-slate-600 text-white'
                         }`}
                       >
-                        <ChevronLeft className="w-4 h-4" />
                         Previous
                       </button>
-                      <span className="text-sm text-slate-600 dark:text-slate-400">
-                        Page {closedPositionsPage} of {Math.ceil(allClosedPositions.length / pageSize)}
+                      <span className="px-4 py-2 text-slate-300 text-sm">
+                        Page {historyPage} of {Math.ceil(allClosedPositions.length / itemsPerPage) || 1}
                       </span>
                       <button
-                        onClick={() => setClosedPositionsPage(p => Math.min(Math.ceil(allClosedPositions.length / pageSize), p + 1))}
-                        disabled={closedPositionsPage >= Math.ceil(allClosedPositions.length / pageSize)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
-                          closedPositionsPage < Math.ceil(allClosedPositions.length / pageSize)
-                            ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 cursor-not-allowed opacity-50'
+                        onClick={() => setHistoryPage(prev => Math.min(Math.ceil(allClosedPositions.length / itemsPerPage), prev + 1))}
+                        disabled={historyPage >= Math.ceil(allClosedPositions.length / itemsPerPage)}
+                        className={`px-4 py-2 rounded text-sm font-medium transition ${
+                          historyPage >= Math.ceil(allClosedPositions.length / itemsPerPage)
+                            ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed'
+                            : 'bg-slate-700 hover:bg-slate-600 text-white'
                         }`}
                       >
                         Next
-                        <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
-                )}
-              </>
-            )}
+                </div>
+              )}
+
+              {activeTab === 'performance' && (
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-4">Trader Profit Trends (Last 7 Days)</h3>
+                  {profitTrend && profitTrend.length > 0 ? (
+                    <div className="h-80 min-h-[320px]">
+                      <ResponsiveContainer width="100%" height="100%" minHeight={320}>
+                        <LineChart data={profitTrend}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                          <XAxis 
+                            dataKey="day" 
+                            stroke="#9CA3AF"
+                            style={{ fontSize: '12px' }}
+                          />
+                          <YAxis 
+                            stroke="#9CA3AF"
+                            style={{ fontSize: '12px' }}
+                          />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: '#1F2937', 
+                              border: '1px solid #374151',
+                              borderRadius: '8px',
+                              color: '#fff'
+                            }}
+                            formatter={(value: any) => [`$${value.toFixed(2)}`, 'Profit']}
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="cumulative_profit" 
+                            stroke="#10B981" 
+                            strokeWidth={2}
+                            dot={{ fill: '#10B981', r: 4 }}
+                            activeDot={{ r: 6 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <p className="text-slate-400 text-center py-8">No profit trend data available</p>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'distribution' && (
+                <div className="space-y-6">
+                  {/* Primary Edge Summary */}
+                  {primaryEdge && (
+                    <div className="bg-slate-800/50 rounded-lg p-4 flex items-center justify-between">
+                      <p className="text-slate-300 text-sm">{primaryEdge}</p>
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                    </div>
+                  )}
+
+                  {/* Donut Chart and Table Layout */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Left: Donut Chart */}
+                    <div className="bg-slate-800/50 rounded-lg p-6">
+                      <h4 className="text-white font-semibold mb-4">Capital Allocation by Market</h4>
+                      {marketDistribution.length > 0 ? (
+                        <div className="h-64 min-h-[256px]">
+                          <ResponsiveContainer width="100%" height="100%" minHeight={256}>
+                            <PieChart>
+                              <Pie
+                                data={marketDistribution}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={60}
+                                outerRadius={100}
+                                paddingAngle={2}
+                                dataKey="capital"
+                                label={({ capital_percent }: any) => `${capital_percent.toFixed(0)}%`}
+                              >
+                                {marketDistribution.map((entry: any, index: number) => {
+                                  const colors: Record<string, string> = {
+                                    'Politics': '#A855F7',
+                                    'Crypto': '#10B981',
+                                    'Sports': '#3B82F6',
+                                    'Macro / Rates': '#F97316',
+                                    'Other': '#6B7280'
+                                  };
+                                  return (
+                                    <Cell 
+                                      key={`cell-${index}`} 
+                                      fill={colors[entry.category] || '#6B7280'} 
+                                    />
+                                  );
+                                })}
+                              </Pie>
+                              <Tooltip 
+                                formatter={(value: any, _name: string, props: any) => {
+                                  try {
+                                    // Recharts Pie chart tooltip structure
+                                    const payload = props?.payload || props;
+                                    if (!payload) {
+                                      return ['', ''];
+                                    }
+                                    
+                                    // Get index from payload
+                                    const index = payload.index ?? payload.payloadIndex ?? 0;
+                                    
+                                    // Get entry from marketDistribution
+                                    const entry = marketDistribution[index];
+                                    if (!entry || !entry.category) {
+                                      return ['', ''];
+                                    }
+                                    
+                                    const capital = Number(value) || entry.capital || 0;
+                                    const tradesCount = entry.trades_count || 0;
+                                    
+                                    return [
+                                      `$${capital.toFixed(2)} in ${tradesCount} trades`,
+                                      entry.category
+                                    ];
+                                  } catch (error) {
+                                    console.error('Tooltip formatter error:', error);
+                                    return ['', ''];
+                                  }
+                                }}
+                                contentStyle={{ 
+                                  backgroundColor: '#1F2937', 
+                                  border: '1px solid #374151',
+                                  borderRadius: '8px',
+                                  color: '#fff'
+                                }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <p className="text-slate-400 text-center py-8">No data available</p>
+                      )}
+                      
+                      {/* Legend */}
+                      {marketDistribution.length > 0 && (
+                        <div className="mt-4 space-y-2">
+                          {marketDistribution.map((entry: any, idx: number) => {
+                            const colors: Record<string, string> = {
+                              'Politics': '#A855F7',
+                              'Crypto': '#10B981',
+                              'Sports': '#3B82F6',
+                              'Macro / Rates': '#F97316',
+                              'Other': '#6B7280'
+                            };
+                            return (
+                              <div key={idx} className="flex items-center gap-2 text-sm">
+                                <div 
+                                  className="w-3 h-3 rounded-full" 
+                                  style={{ backgroundColor: colors[entry.category] || '#6B7280' }}
+                                />
+                                <span className="text-slate-300">{entry.category}:</span>
+                                <span className="text-white font-medium">{entry.capital_percent.toFixed(0)}%</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right: Table */}
+                    <div className="bg-slate-800/50 rounded-lg p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-white font-semibold">Capital Allocation by Market</h4>
+                        {/* Metric Tabs */}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setDistributionMetric('roi')}
+                            className={`px-3 py-1 rounded text-xs font-medium transition ${
+                              distributionMetric === 'roi'
+                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-slate-700/50 text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            ROI %
+                          </button>
+                          <button
+                            onClick={() => setDistributionMetric('win_rate')}
+                            className={`px-3 py-1 rounded text-xs font-medium transition ${
+                              distributionMetric === 'win_rate'
+                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-slate-700/50 text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            Win Rate
+                          </button>
+                          <button
+                            onClick={() => setDistributionMetric('risk')}
+                            className={`px-3 py-1 rounded text-xs font-medium transition ${
+                              distributionMetric === 'risk'
+                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-slate-700/50 text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            Risk
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {marketDistribution.length > 0 ? (
+                        <div className="space-y-3">
+                          {marketDistribution.map((entry: any, idx: number) => {
+                            const icons: Record<string, any> = {
+                              'Politics': Flag,
+                              'Crypto': Coins,
+                              'Sports': Target,
+                              'Macro / Rates': DollarSign,
+                              'Other': ActivityIcon
+                            };
+                            const Icon = icons[entry.category] || ActivityIcon;
+                            const winRatePercent = entry.win_rate_percent || 0;
+                            
+                            return (
+                              <div key={idx} className="bg-slate-900/50 rounded-lg p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <Icon className="w-4 h-4 text-slate-400" />
+                                    <span className="text-white font-medium">{entry.category}</span>
+                                  </div>
+                                  {distributionMetric === 'roi' && (
+                                    <span className={`text-lg font-bold ${
+                                      entry.roi_percent >= 0 ? 'text-emerald-400' : 'text-red-400'
+                                    }`}>
+                                      {entry.roi_percent >= 0 ? '+' : ''}{entry.roi_percent.toFixed(0)}%
+                                    </span>
+                                  )}
+                                  {distributionMetric === 'win_rate' && (
+                                    <span className="text-lg font-bold text-white">
+                                      {winRatePercent.toFixed(0)}%
+                                    </span>
+                                  )}
+                                  {distributionMetric === 'risk' && (
+                                    <span className="text-lg font-bold text-white">
+                                      {(entry.risk_score * 100).toFixed(1)}%
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="space-y-2">
+                                  {/* Win Rate Progress Bar */}
+                                  <div>
+                                    <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+                                      <span>Win Rate</span>
+                                      <span>{winRatePercent.toFixed(0)}%</span>
+                                    </div>
+                                    <div className="w-full bg-slate-700 rounded-full h-2">
+                                      <div
+                                        className={`h-2 rounded-full ${
+                                          winRatePercent >= 50 ? 'bg-emerald-400' : 'bg-red-400'
+                                        }`}
+                                        style={{ width: `${Math.min(winRatePercent, 100)}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                  {/* Additional Info */}
+                                  <div className="flex items-center justify-between text-xs text-slate-400">
+                                    <span>{entry.trades_count} trades</span>
+                                    <span>{formatCurrency(entry.capital)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-slate-400 text-center py-8">No market distribution data available</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'activity' && (
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-4">Wallet Activity</h3>
+                  {allActivities && allActivities.length > 0 ? (
+                    <>
+                      <div className="space-y-3 mb-4">
+                        {allActivities
+                          .slice((activityPage - 1) * itemsPerPage, activityPage * itemsPerPage)
+                          .map((activity, idx) => {
+                        const activityDate = activity.timestamp 
+                          ? new Date(activity.timestamp * 1000).toLocaleString()
+                          : 'N/A';
+                        
+                        const getActivityTypeColor = (type: string) => {
+                          switch (type) {
+                            case 'TRADE':
+                              return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+                            case 'REDEEM':
+                              return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+                            case 'REWARD':
+                              return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+                            default:
+                              return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+                          }
+                        };
+
+                        return (
+                          <div key={idx} className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className={`px-2 py-1 rounded text-xs font-medium border ${getActivityTypeColor(activity.type || 'UNKNOWN')}`}>
+                                    {activity.type || 'UNKNOWN'}
+                                  </span>
+                                  {activity.title && (
+                                    <span className="text-white font-medium text-sm">{activity.title}</span>
+                                  )}
+                                </div>
+                                {activity.slug && (
+                                  <p className="text-slate-400 text-xs mb-1">{activity.slug}</p>
+                                )}
+                                {activity.outcome && (
+                                  <p className="text-slate-300 text-sm">Outcome: {activity.outcome}</p>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                {activity.usdc_size && (
+                                  <p className={`text-lg font-bold ${
+                                    (activity.type === 'REWARD' || activity.type === 'REDEEM') 
+                                      ? 'text-emerald-400' 
+                                      : activity.side === 'SELL' 
+                                      ? 'text-emerald-400' 
+                                      : 'text-blue-400'
+                                  }`}>
+                                    {activity.side === 'SELL' ? '+' : activity.type === 'REWARD' || activity.type === 'REDEEM' ? '+' : ''}
+                                    {formatCurrency(activity.usdc_size)}
+                                  </p>
+                                )}
+                                <p className="text-slate-500 text-xs mt-1">{activityDate}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs text-slate-400 mt-2">
+                              {activity.size && (
+                                <span>Size: {formatSize(activity.size)}</span>
+                              )}
+                              {activity.price && (
+                                <span>Price: ${Number(activity.price).toFixed(4)}</span>
+                              )}
+                              {activity.transaction_hash && (
+                                <span className="truncate max-w-[200px]" title={activity.transaction_hash}>
+                                  TX: {activity.transaction_hash.slice(0, 10)}...
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                        })}
+                      </div>
+                      
+                      {/* Pagination Controls */}
+                      <div className="flex items-center justify-between mt-4">
+                        <div className="text-slate-400 text-sm">
+                          Showing {(activityPage - 1) * itemsPerPage + 1} to {Math.min(activityPage * itemsPerPage, allActivities.length)} of {allActivities.length} activities
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setActivityPage(prev => Math.max(1, prev - 1))}
+                            disabled={activityPage === 1}
+                            className={`px-4 py-2 rounded text-sm font-medium transition ${
+                              activityPage === 1
+                                ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed'
+                                : 'bg-slate-700 hover:bg-slate-600 text-white'
+                            }`}
+                          >
+                            Previous
+                          </button>
+                          <span className="px-4 py-2 text-slate-300 text-sm">
+                            Page {activityPage} of {Math.ceil(allActivities.length / itemsPerPage) || 1}
+                          </span>
+                          <button
+                            onClick={() => setActivityPage(prev => Math.min(Math.ceil(allActivities.length / itemsPerPage), prev + 1))}
+                            disabled={activityPage >= Math.ceil(allActivities.length / itemsPerPage)}
+                            className={`px-4 py-2 rounded text-sm font-medium transition ${
+                              activityPage >= Math.ceil(allActivities.length / itemsPerPage)
+                                ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed'
+                                : 'bg-slate-700 hover:bg-slate-600 text-white'
+                            }`}
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-slate-400 text-center py-8">No activity data available</p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Recent Trades - Table Format */}
-          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
-            <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
-              <ActivityIcon className="w-5 h-5 text-blue-400" />
-              Recent Trades ({allActivities.length})
-            </h3>
-            {allActivities.length === 0 ? (
-              <p className="text-slate-600 dark:text-slate-400 text-center py-8">No recent trades</p>
-            ) : (
-              <>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-800">
-                        <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium text-sm">TRADE Date</th>
-                        <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium text-sm">Market</th>
-                        <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium text-sm">Size</th>
-                        <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium text-sm">Price</th>
-                        <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium text-sm">USDC Size</th>
-                        <th className="text-left py-3 px-4 text-slate-600 dark:text-slate-400 font-medium text-sm">Side</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                  {allActivities
-                    .slice((activitiesPage - 1) * pageSize, activitiesPage * pageSize)
-                    .map((activity, idx) => (
-                          <tr
-                    key={idx}
-                            className="border-b border-slate-200/50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
-                          >
-                            <td className="py-3 px-4 text-slate-600 dark:text-slate-400 text-sm">
-                            {formatDate(activity.timestamp)}
-                            </td>
-                            <td className="py-3 px-4 text-slate-900 dark:text-white font-medium">
-                          {activity.title || activity.asset || 'Activity'}
-                            </td>
-                            <td className="py-3 px-4 text-slate-900 dark:text-white">{formatSize(activity.size)}</td>
-                            <td className="py-3 px-4 text-slate-900 dark:text-white">
-                              {formatCurrency(activity.price || 0)}
-                            </td>
-                            <td className="py-3 px-4 text-slate-900 dark:text-white">
-                              {formatCurrency(activity.usdc_size || 0)}
-                            </td>
-                            <td className="py-3 px-4">
-                          {activity.side && (
-                                <span
-                                  className={`px-2 py-1 rounded text-xs font-medium ${
-                                    activity.side === 'BUY'
-                                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                                }`}
-                              >
-                                {activity.side}
-                                </span>
-                          )}
-                            </td>
-                          </tr>
-                    ))}
-                    </tbody>
-                  </table>
-                </div>
-                
-                {/* Pagination */}
-                {allActivities.length > pageSize && (
-                  <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
-                    <div className="text-sm text-slate-600 dark:text-slate-400">
-                      Showing {((activitiesPage - 1) * pageSize) + 1}-{Math.min(activitiesPage * pageSize, allActivities.length)} of {allActivities.length}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setActivitiesPage(p => Math.max(1, p - 1))}
-                        disabled={activitiesPage === 1}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
-                          activitiesPage > 1
-                            ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 cursor-not-allowed opacity-50'
-                        }`}
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                        Previous
-                      </button>
-                      <span className="text-sm text-slate-600 dark:text-slate-400">
-                        Page {activitiesPage} of {Math.ceil(allActivities.length / pageSize)}
-                      </span>
-                      <button
-                        onClick={() => setActivitiesPage(p => Math.min(Math.ceil(allActivities.length / pageSize), p + 1))}
-                        disabled={activitiesPage >= Math.ceil(allActivities.length / pageSize)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
-                          activitiesPage < Math.ceil(allActivities.length / pageSize)
-                            ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 cursor-not-allowed opacity-50'
-                        }`}
-                      >
-                        Next
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
         </>
       )}
     </div>

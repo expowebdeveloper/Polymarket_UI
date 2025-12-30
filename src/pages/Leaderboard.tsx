@@ -18,6 +18,7 @@ export function Leaderboard() {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [limit] = useState(50);
+  const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
 
   const loadTraders = async () => {
     try {
@@ -118,8 +119,26 @@ export function Leaderboard() {
                             <span className="font-semibold">{rank}</span>
                           </div>
                         </td>
-                        <td className="py-4 px-4 font-mono text-xs">
-                          {trader.wallet_address.slice(0, 6)}...{trader.wallet_address.slice(-4)}
+                        <td 
+                          className="py-4 px-4 font-mono text-xs cursor-pointer hover:bg-slate-700/60 transition-all relative group"
+                          onClick={() => {
+                            navigator.clipboard.writeText(trader.wallet_address);
+                            setCopiedWallet(trader.wallet_address);
+                            setTimeout(() => setCopiedWallet(null), 2000);
+                          }}
+                          title={`Click to copy: ${trader.wallet_address}`}
+                        >
+                          <div className="flex items-center gap-1">
+                            {trader.wallet_address.slice(0, 6)}...{trader.wallet_address.slice(-4)}
+                            <span className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-emerald-400">
+                              📋
+                            </span>
+                          </div>
+                          {copiedWallet === trader.wallet_address && (
+                            <div className="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-emerald-900/90 rounded z-10 text-xs font-bold text-emerald-300">
+                              ✓ Copied!
+                            </div>
+                          )}
                         </td>
                         <td className="py-4 px-4 font-medium text-emerald-400">
                           {trader.total_trades.toLocaleString()}

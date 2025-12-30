@@ -41,6 +41,7 @@ export const API_ENDPOINTS = {
         details: (wallet: string) => `/traders/${wallet}`,
         basic: (wallet: string) => `/traders/${wallet}/basic`,
         trades: (wallet: string) => `/traders/${wallet}/trades`,
+        polymarketProfile: (wallet: string) => `/traders/${wallet}/polymarket-profile`,
     },
     positions: {
         fetch: '/positions',
@@ -61,6 +62,7 @@ export const API_ENDPOINTS = {
         liveRoi: '/leaderboard/live-roi',
         livePnl: '/leaderboard/live-pnl',
         liveRisk: '/leaderboard/live-risk',
+        biggestWinners: '/leaderboard/live/biggest-winners',
         all: '/leaderboard/all',
         viewAll: '/leaderboard/view-all',
         wShrunk: '/leaderboard/w-shrunk',

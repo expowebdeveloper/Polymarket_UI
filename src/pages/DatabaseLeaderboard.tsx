@@ -31,17 +31,23 @@ export const DatabaseLeaderboard: React.FC = () => {
     const [showPercentiles, setShowPercentiles] = useState(true);
     const [selectedChart, setSelectedChart] = useState<'distribution' | 'top10' | 'scores' | 'radar'>('distribution');
     const [syncing, setSyncing] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(100);
+    const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
 
     useEffect(() => {
         loadData();
     }, []);
 
-    const loadData = async () => {
+    const loadData = async (page: number = currentPage, size: number = pageSize) => {
         setLoading(true);
         setError(null);
         try {
-            const result = await fetchTradersAnalytics();
+            const offset = (page - 1) * size;
+            const result = await fetchTradersAnalytics(size, offset);
             setData(result);
+            setCurrentPage(page);
+            setPageSize(size);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load leaderboards from database');
         } finally {
@@ -483,8 +489,28 @@ export const DatabaseLeaderboard: React.FC = () => {
                                                 <td className={`border ${borderColor} px-3 py-2 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'} font-bold`}>
                                                     #{entry.rank || index + 1}
                                                 </td>
-                                                <td className={`border ${borderColor} px-3 py-2 font-mono text-xs ${textPrimary}`}>
-                                                    {entry.name || entry.pseudonym || `${entry.wallet_address?.slice(0, 8)}...${entry.wallet_address?.slice(-6)}`}
+                                                <td 
+                                                    className={`border ${borderColor} px-3 py-2 font-mono text-xs ${textPrimary} cursor-pointer hover:bg-opacity-50 transition-all relative group ${theme === 'dark' ? 'hover:bg-green-900' : 'hover:bg-green-100'}`}
+                                                    onClick={() => {
+                                                        if (entry.wallet_address) {
+                                                            navigator.clipboard.writeText(entry.wallet_address);
+                                                            setCopiedWallet(entry.wallet_address);
+                                                            setTimeout(() => setCopiedWallet(null), 2000);
+                                                        }
+                                                    }}
+                                                    title={`Click to copy: ${entry.wallet_address || 'N/A'}`}
+                                                >
+                                                    <div className="flex items-center gap-1">
+                                                        {entry.name || entry.pseudonym || `${entry.wallet_address?.slice(0, 8)}...${entry.wallet_address?.slice(-6)}`}
+                                                        <span className={`opacity-0 group-hover:opacity-100 transition-opacity text-xs ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                                                            📋
+                                                        </span>
+                                                    </div>
+                                                    {copiedWallet === entry.wallet_address && (
+                                                        <span className={`absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center ${theme === 'dark' ? 'bg-green-900 bg-opacity-95' : 'bg-green-200'} text-xs font-semibold ${theme === 'dark' ? 'text-green-300' : 'text-green-800'} rounded z-10`}>
+                                                            ✓ Copied!
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className={`border ${borderColor} px-3 py-2 text-right text-sm ${entry.total_pnl >= 0 ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') : (theme === 'dark' ? 'text-red-400' : 'text-red-600')}`}>
                                                     {formatCurrency(entry.total_pnl)}
@@ -534,6 +560,61 @@ export const DatabaseLeaderboard: React.FC = () => {
                                 </tbody>
                             </table>
                         </div>
+                        
+                        {/* Pagination Controls */}
+                        {currentLeaderboard.length > 0 && (
+                            <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                    <span className={textSecondary}>Page size:</span>
+                                    <select
+                                        value={pageSize}
+                                        onChange={(e) => {
+                                            const newSize = parseInt(e.target.value);
+                                            loadData(1, newSize);
+                                        }}
+                                        className={`px-3 py-1 rounded border ${borderColor} ${theme === 'dark' ? 'bg-slate-700 text-white' : 'bg-white text-slate-900'}`}
+                                    >
+                                        <option value={50}>50</option>
+                                        <option value={100}>100</option>
+                                        <option value={200}>200</option>
+                                        <option value={500}>500</option>
+                                    </select>
+                                    <span className={textSecondary}>
+                                        Showing {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, (data?.total_traders || 0))} of {data?.total_traders || 0} traders
+                                    </span>
+                                </div>
+                                
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => loadData(currentPage - 1, pageSize)}
+                                        disabled={currentPage === 1 || loading}
+                                        className={`px-4 py-2 rounded transition-colors ${
+                                            currentPage === 1 || loading
+                                                ? 'bg-slate-500 cursor-not-allowed text-slate-300'
+                                                : `${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-200 hover:bg-slate-300'} ${textPrimary}`
+                                        }`}
+                                    >
+                                        Previous
+                                    </button>
+                                    
+                                    <span className={textSecondary}>
+                                        Page {currentPage} of {Math.max(1, Math.ceil((data?.total_traders || 0) / pageSize))}
+                                    </span>
+                                    
+                                    <button
+                                        onClick={() => loadData(currentPage + 1, pageSize)}
+                                        disabled={currentPage * pageSize >= (data?.total_traders || 0) || loading}
+                                        className={`px-4 py-2 rounded transition-colors ${
+                                            currentPage * pageSize >= (data?.total_traders || currentLeaderboard.length) || loading
+                                                ? 'bg-slate-500 cursor-not-allowed text-slate-300'
+                                                : `${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-200 hover:bg-slate-300'} ${textPrimary}`
+                                        }`}
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

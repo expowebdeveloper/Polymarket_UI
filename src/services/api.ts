@@ -92,11 +92,17 @@ export async function fetchLeaderboardTraders(
     category: string = 'overall',
     timePeriod: string = 'all',
     orderBy: string = 'VOL',
-    limit: number = 50,
+    limit: number | null = null,
     offset: number = 0
 ): Promise<LeaderboardTradersResponse> {
-    const url = `${API_ENDPOINTS.traders.list}/leaderboard?category=${category}&time_period=${timePeriod}&order_by=${orderBy}&limit=${limit}&offset=${offset}`;
-    return fetchApi<LeaderboardTradersResponse>(url, 60000);
+    // If limit is null or 0, don't include it in the URL to fetch all traders
+    let url = `${API_ENDPOINTS.traders.list}/leaderboard?category=${category}&time_period=${timePeriod}&order_by=${orderBy}`;
+    if (limit !== null && limit > 0) {
+        url += `&limit=${limit}&offset=${offset}`;
+    }
+    // Use longer timeout when fetching all traders (5 minutes)
+    const timeout = limit === null || limit === 0 ? 300000 : 60000;
+    return fetchApi<LeaderboardTradersResponse>(url, timeout);
 }
 
 /**
@@ -105,6 +111,14 @@ export async function fetchLeaderboardTraders(
  */
 export async function fetchTraderDetails(wallet: string): Promise<TraderDetails> {
     return fetchApi<TraderDetails>(API_ENDPOINTS.traders.details(wallet));
+}
+
+/**
+ * Fetch Polymarket-style trader profile (comprehensive format matching Polymarket UI)
+ * @param wallet - Wallet address of the trader
+ */
+export async function fetchPolymarketTraderProfile(wallet: string): Promise<any> {
+    return fetchApi<any>(`${API_ENDPOINTS.traders.list}/${wallet}/polymarket-profile`, 60000);
 }
 
 /**
@@ -258,21 +272,38 @@ export async function fetchTradesFromDB(
 }
 
 /**
- * Fetch live leaderboard data
- * @param type - Type of leaderboard to fetch
+ * Fetch live leaderboard data from Polymarket API
+ * @param timePeriod - Time period: day, week, month, or all
+ * @param orderBy - Order by metric: PNL or VOL
+ * @param limit - Maximum number of entries
+ * @param offset - Offset for pagination
  */
 export async function fetchLiveLeaderboard(
-    type: 'all' | 'roi' | 'pnl' | 'risk' = 'all'
+    timePeriod: 'day' | 'week' | 'month' | 'all' = 'day',
+    orderBy: 'PNL' | 'VOL' = 'PNL',
+    limit: number = 20,
+    offset: number = 0
 ): Promise<LeaderboardResponse> {
-    const endpoints = {
-        'all': API_ENDPOINTS.leaderboard.live,
-        'roi': API_ENDPOINTS.leaderboard.liveRoi,
-        'pnl': API_ENDPOINTS.leaderboard.livePnl,
-        'risk': API_ENDPOINTS.leaderboard.liveRisk
-    };
+    const endpoint = API_ENDPOINTS.leaderboard.live;
+    const url = `${endpoint}?time_period=${timePeriod}&order_by=${orderBy}&limit=${limit}&offset=${offset}`;
+    // POST request with query parameters
+    return fetchApi<LeaderboardResponse>(url, 60000, 'POST');
+}
 
-    // These are POST requests in backend
-    return fetchApi<LeaderboardResponse>(endpoints[type], 60000, 'POST');
+/**
+ * Fetch biggest winners from Polymarket API
+ * @param timePeriod - Time period: day, week, month, or all
+ * @param limit - Maximum number of entries
+ * @param offset - Offset for pagination
+ */
+export async function fetchBiggestWinners(
+    timePeriod: 'day' | 'week' | 'month' | 'all' = 'day',
+    limit: number = 20,
+    offset: number = 0
+): Promise<LeaderboardResponse> {
+    const endpoint = API_ENDPOINTS.leaderboard.biggestWinners;
+    const url = `${endpoint}?time_period=${timePeriod}&limit=${limit}&offset=${offset}`;
+    return fetchApi<LeaderboardResponse>(url, 60000, 'GET');
 }
 
 /**
@@ -344,10 +375,36 @@ export async function fetchViewAllLeaderboards(): Promise<AllLeaderboardsRespons
 }
 
 /**
- * Fetch analytics from database
+ * Fetch analytics from database with retry logic
  */
-export async function fetchTradersAnalytics(): Promise<AllLeaderboardsResponse> {
-    return fetchApi<AllLeaderboardsResponse>(`${API_ENDPOINTS.traders.list}/analytics`, 60000, 'GET');
+export async function fetchTradersAnalytics(limit: number = 100, offset: number = 0, retries: number = 2): Promise<AllLeaderboardsResponse> {
+    // Use longer timeout (120 seconds) for analytics endpoint as it processes many traders
+    // Don't pass max_traders to process all traders (backend will handle pagination)
+    const url = `${API_ENDPOINTS.traders.list}/analytics?limit=${limit}&offset=${offset}`;
+    
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            return await fetchApi<AllLeaderboardsResponse>(url, 120000, 'GET');
+        } catch (error: any) {
+            const isLastAttempt = attempt === retries;
+            const isTimeout = error?.status === 408 || error?.message?.includes('timeout');
+            
+            if (isLastAttempt) {
+                throw error; // Re-throw on last attempt
+            }
+            
+            if (isTimeout) {
+                // Wait before retrying (exponential backoff)
+                const delay = Math.min(1000 * Math.pow(2, attempt), 5000);
+                console.log(`Request timeout, retrying in ${delay}ms... (attempt ${attempt + 1}/${retries + 1})`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            } else {
+                throw error; // Don't retry on non-timeout errors
+            }
+        }
+    }
+    
+    throw new Error('Failed to fetch analytics after retries');
 }
 
 /**
@@ -382,8 +439,8 @@ export async function fetchPnlShrunkLeaderboard(): Promise<LeaderboardResponse> 
  * Fetch market details by slug from Polymarket API
  * @param marketSlug - Market slug identifier
  */
-export async function fetchMarketDetails(marketSlug: string): Promise<Market> {
-    return fetchApi<Market>(`/markets/${encodeURIComponent(marketSlug)}`, 30000);
+export async function fetchMarketDetails(marketSlug: string): Promise<any> {
+    return fetchApi<any>(`/markets/${encodeURIComponent(marketSlug)}`, 30000);
 }
 
 /**

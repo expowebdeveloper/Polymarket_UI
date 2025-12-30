@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, TrendingUp, TrendingDown, Activity as ActivityIcon, BarChart3, Database, User } from 'lucide-react';
+import { Search, TrendingUp, TrendingDown, Activity as ActivityIcon, BarChart3, Database, User, Trophy, Fish, Flame, ChevronDown, ChevronUp } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { TradePerformanceGraph } from '../components/TradePerformanceGraph';
@@ -54,6 +54,13 @@ export function DBWalletDashboard() {
     const [portfolioStats, setPortfolioStats] = useState<any>(null);
     const [userLeaderboardData, setUserLeaderboardData] = useState<UserLeaderboardData | null>(null);
     const [tradeHistory, setTradeHistory] = useState<TradeHistoryResponse | null>(null);
+    const [scoringMetrics, setScoringMetrics] = useState<any>(null);
+    const [streaks, setStreaks] = useState<any>(null);
+    const [rewardsEarned, setRewardsEarned] = useState<number>(0);
+    const [totalVolume, setTotalVolume] = useState<number>(0);
+    const [marketDistribution, setMarketDistribution] = useState<any[]>([]);
+    const [showAdvanced, setShowAdvanced] = useState(false);
+    const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution'>('history');
 
     // Pagination states
     const [closedPositionsPage, setClosedPositionsPage] = useState(1);
@@ -86,6 +93,11 @@ export function DBWalletDashboard() {
                 setAllClosedPositions(data.closed_positions || []);
                 setAllActivities(data.activities || []);
                 setTradeHistory(data.trade_history);
+                setScoringMetrics(data.scoring_metrics || {});
+                setStreaks(data.streaks || { longest_streak: 0, current_streak: 0, total_wins: 0, total_losses: 0 });
+                setRewardsEarned(data.rewards_earned || 0);
+                setTotalVolume(data.total_volume || 0);
+                setMarketDistribution(data.market_distribution || []);
             }
 
         } catch (err) {
@@ -248,123 +260,288 @@ export function DBWalletDashboard() {
             {/* Wallet Information Display */}
             {!loading && isValidWallet && walletAddress && (
                 <>
-                    {/* Profile Header */}
-                    <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
-                        <div className="flex items-start justify-between mb-6">
-                            <div className="flex items-start gap-4">
-                                {/* Profile Image */}
-                                {userLeaderboardData?.profileImage && (
-                                    <img
-                                        src={userLeaderboardData.profileImage}
-                                        alt="Profile"
-                                        className="w-16 h-16 rounded-full border-2 border-purple-400 object-cover"
-                                    />
-                                )}
-                                {!userLeaderboardData?.profileImage && (
-                                    <div className="w-16 h-16 rounded-full border-2 border-purple-400 bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
-                                        <User className="w-8 h-8 text-purple-400" />
-                                    </div>
-                                )}
+                    {/* Trader Metrics Header - Matching Image Design */}
+                    <div className="bg-slate-900 rounded-lg border border-slate-800 p-6">
+                        {/* Title and Wallet */}
+                        <div className="mb-6">
+                            <h2 className="text-xl font-semibold text-white mb-2">Trader Metrics - Expandable Live...</h2>
+                            <p className="text-slate-400 font-mono text-sm">{walletAddress}</p>
+                            <p className="text-slate-500 text-sm mt-1">Trader Profile</p>
+                        </div>
+
+                        {/* Final Score & Badges */}
+                        <div className="mb-6">
+                            <div className="flex items-center gap-4 mb-3">
                                 <div>
-                                    <div className="flex items-center gap-3 mb-1">
-                                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
-                                            {userLeaderboardData?.userName || profileStats?.username || 'Unknown User'}
-                                        </h3>
+                                    <p className="text-slate-400 text-sm mb-1">Final Score</p>
+                                    <p className="text-5xl font-bold text-emerald-400">
+                                        {scoringMetrics?.final_score?.toFixed(1) || '0.0'}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {scoringMetrics?.final_score >= 90 && (
+                                        <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs font-medium flex items-center gap-1">
+                                            <Trophy className="w-3 h-3" />
+                                            Top 10
+                                        </span>
+                                    )}
+                                    {totalVolume >= 100000 && (
+                                        <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs font-medium flex items-center gap-1">
+                                            <Fish className="w-3 h-3" />
+                                            Whale
+                                        </span>
+                                    )}
+                                    {streaks?.current_streak >= 5 && (
+                                        <span className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-xs font-medium flex items-center gap-1">
+                                            <Flame className="w-3 h-3" />
+                                            Hot Streak
+                                        </span>
+                                    )}
+                                </div>
+                                {scoringMetrics?.final_score >= 90 && (
+                                    <span className="ml-auto px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs font-medium">
+                                        Top 1% Trader
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Streaks Section */}
+                        <div className="bg-slate-800/50 rounded-lg p-4 mb-6">
+                            <div className="grid grid-cols-5 gap-4">
+                                <div className="flex items-center gap-2">
+                                    <Flame className="w-5 h-5 text-orange-400" />
+                                    <div>
+                                        <p className="text-slate-400 text-xs">LONGEST STREAK</p>
+                                        <p className="text-white font-bold text-lg">{streaks?.longest_streak || 0}</p>
                                     </div>
-                                    <p className="text-slate-600 dark:text-slate-400 font-mono text-sm">{walletAddress}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <TrendingUp className="w-5 h-5 text-blue-400" />
+                                    <div>
+                                        <p className="text-slate-400 text-xs">CURRENT STREAK</p>
+                                        <p className="text-white font-bold text-lg">{streaks?.current_streak || 0}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <TrendingUp className="w-5 h-5 text-emerald-400" />
+                                    <div>
+                                        <p className="text-slate-400 text-xs">TOTAL WINS</p>
+                                        <p className="text-white font-bold text-lg">{streaks?.total_wins || 0}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <TrendingDown className="w-5 h-5 text-red-400" />
+                                    <div>
+                                        <p className="text-slate-400 text-xs">TOTAL LOSSES</p>
+                                        <p className="text-white font-bold text-lg">{streaks?.total_losses || 0}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Trophy className="w-5 h-5 text-yellow-400" />
+                                    <div>
+                                        <p className="text-slate-400 text-xs">REWARD EARNED</p>
+                                        <p className="text-white font-bold text-lg">{formatCurrency(rewardsEarned)}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Stats Grid */}
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                            {profileStats && (
-                                <>
-                                    <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                                        <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Total Trades</p>
-                                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{profileStats.trades || 0}</p>
-                                    </div>
-                                    <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                                        <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Largest Win</p>
-                                        <p className="text-2xl font-bold text-emerald-400">
-                                            {formatCurrency(largestWin)}
-                                        </p>
-                                    </div>
-                                    <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                                        <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Highest Loss</p>
-                                        <p className="text-2xl font-bold text-red-400">
-                                            {formatCurrency(highestLoss)}
-                                        </p>
-                                    </div>
-                                    <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                                        <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Profile Views</p>
-                                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{profileStats.views || 0}</p>
-                                    </div>
-                                    <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                                        <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Member Since</p>
-                                        <p className="text-lg font-bold text-slate-900 dark:text-white">
-                                            {profileStats.joinDate ? formatDate(profileStats.joinDate) : 'N/A'}
-                                        </p>
-                                    </div>
-                                </>
-                            )}
+                        {/* Metric Cards */}
+                        <div className="grid grid-cols-5 gap-4 mb-6">
+                            <div className="bg-slate-800/50 rounded-lg p-4">
+                                <p className="text-slate-400 text-xs mb-1">ROI %</p>
+                                <p className="text-2xl font-bold text-emerald-400">
+                                    {scoringMetrics?.roi?.toFixed(2) || portfolioStats?.performance_metrics?.roi?.toFixed(2) || '0.00'}%
+                                </p>
+                                <p className="text-slate-500 text-xs mt-1">All-time</p>
+                            </div>
+                            <div className="bg-slate-800/50 rounded-lg p-4">
+                                <p className="text-slate-400 text-xs mb-1">Win Rate</p>
+                                <p className="text-2xl font-bold text-white">
+                                    {scoringMetrics?.win_rate_percent?.toFixed(1) || portfolioStats?.performance_metrics?.win_rate?.toFixed(1) || '0.0'}%
+                                </p>
+                                <p className="text-slate-500 text-xs mt-1">
+                                    {streaks?.total_wins || 0} of {streaks?.total_wins + streaks?.total_losses || 0} trades
+                                </p>
+                            </div>
+                            <div className="bg-slate-800/50 rounded-lg p-4">
+                                <p className="text-slate-400 text-xs mb-1">Total Volume</p>
+                                <p className="text-2xl font-bold text-white">{formatCurrency(totalVolume)}</p>
+                                <p className="text-slate-500 text-xs mt-1">Across {marketDistribution.length} markets</p>
+                            </div>
+                            <div className="bg-slate-800/50 rounded-lg p-4">
+                                <p className="text-slate-400 text-xs mb-1">Total Trades</p>
+                                <p className="text-2xl font-bold text-white">{scoringMetrics?.total_trades || 0}</p>
+                                <p className="text-slate-500 text-xs mt-1">Since joining</p>
+                            </div>
+                            <div className="bg-slate-800/50 rounded-lg p-4">
+                                <p className="text-slate-400 text-xs mb-1">Total PnL</p>
+                                <p className={`text-2xl font-bold ${(scoringMetrics?.total_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    {formatCurrency(scoringMetrics?.total_pnl || portfolioStats?.performance_metrics?.total_pnl || 0)}
+                                </p>
+                                <p className="text-slate-500 text-xs mt-1">Realized + Unrealized</p>
+                            </div>
                         </div>
 
-                        {/* Portfolio Metrics */}
-                        {portfolioStats && (
-                            <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
-                                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                                    <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Total PnL</p>
-                                    <p
-                                        className={`text-2xl font-bold ${(portfolioStats.performance_metrics?.total_pnl || 0) >= 0
-                                            ? 'text-emerald-400'
-                                            : 'text-red-400'
-                                            }`}
-                                    >
-                                        {formatCurrency(portfolioStats.performance_metrics?.total_pnl || 0)}
+                        {/* Advanced Metrics Toggle */}
+                        <div className="mb-4">
+                            <button
+                                onClick={() => setShowAdvanced(!showAdvanced)}
+                                className="text-slate-400 hover:text-white text-sm flex items-center gap-1 transition-colors"
+                            >
+                                {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                {showAdvanced ? 'Hide Advanced' : 'View Advanced Metrics'}
+                            </button>
+                        </div>
+
+                        {/* Advanced Metrics Section */}
+                        {showAdvanced && (
+                            <div className="grid grid-cols-5 gap-4 mt-4">
+                                <div className="bg-slate-800/50 rounded-lg p-4">
+                                    <p className="text-slate-400 text-xs mb-1">Risk Score</p>
+                                    <p className="text-2xl font-bold text-white">{(scoringMetrics?.score_risk || 0).toFixed(2)}</p>
+                                </div>
+                                <div className="bg-slate-800/50 rounded-lg p-4">
+                                    <p className="text-slate-400 text-xs mb-1">Max Drawdown</p>
+                                    <p className="text-2xl font-bold text-red-400">
+                                        {portfolioStats?.performance_metrics?.worst_loss ? `${portfolioStats.performance_metrics.worst_loss.toFixed(1)}%` : '0.0%'}
                                     </p>
                                 </div>
-                                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                                    <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Realized PnL</p>
-                                    <p
-                                        className={`text-2xl font-bold ${(portfolioStats.performance_metrics?.realized_pnl || 0) >= 0
-                                            ? 'text-emerald-400'
-                                            : 'text-red-400'
-                                            }`}
-                                    >
-                                        {formatCurrency(portfolioStats.performance_metrics?.realized_pnl || 0)}
+                                <div className="bg-slate-800/50 rounded-lg p-4">
+                                    <p className="text-slate-400 text-xs mb-1">Worst Loss</p>
+                                    <p className="text-2xl font-bold text-red-400">{formatCurrency(portfolioStats?.performance_metrics?.worst_loss || 0)}</p>
+                                </div>
+                                <div className="bg-slate-800/50 rounded-lg p-4">
+                                    <p className="text-slate-400 text-xs mb-1">ROI (Shrunk)</p>
+                                    <p className="text-2xl font-bold text-emerald-400">
+                                        {scoringMetrics?.roi_shrunk ? `+${scoringMetrics.roi_shrunk.toFixed(1)}%` : '0.0%'}
                                     </p>
                                 </div>
-                                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                                    <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Unrealized PnL</p>
-                                    <p
-                                        className={`text-2xl font-bold ${(portfolioStats.performance_metrics?.unrealized_pnl || 0) >= 0
-                                            ? 'text-emerald-400'
-                                            : 'text-red-400'
-                                            }`}
-                                    >
-                                        {formatCurrency(portfolioStats.performance_metrics?.unrealized_pnl || 0)}
-                                    </p>
-                                </div>
-                                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                                    <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">ROI</p>
-                                    <p
-                                        className={`text-2xl font-bold ${(portfolioStats.performance_metrics?.roi || 0) >= 0
-                                            ? 'text-emerald-400'
-                                            : 'text-red-400'
-                                            }`}
-                                    >
-                                        {portfolioStats.performance_metrics?.roi?.toFixed(2) || 0}%
-                                    </p>
-                                </div>
-                                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                                    <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Total Investment</p>
-                                    <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                        {formatCurrency(portfolioStats.performance_metrics?.total_investment || 0)}
+                                <div className="bg-slate-800/50 rounded-lg p-4">
+                                    <p className="text-slate-400 text-xs mb-1">Market Concentration</p>
+                                    <p className="text-2xl font-bold text-white">
+                                        {marketDistribution.length > 0 
+                                            ? `${((marketDistribution[0]?.trades_count || 0) / (scoringMetrics?.total_trades || 1) * 100).toFixed(0)}%`
+                                            : '0%'}
                                     </p>
                                 </div>
                             </div>
                         )}
+                    </div>
+
+                    {/* Tabs Section */}
+                    <div className="bg-slate-900 rounded-lg border border-slate-800">
+                        {/* Tab Headers */}
+                        <div className="flex border-b border-slate-800">
+                            <button
+                                onClick={() => setActiveTab('history')}
+                                className={`px-6 py-3 font-medium transition-colors ${
+                                    activeTab === 'history'
+                                        ? 'text-white border-b-2 border-purple-400'
+                                        : 'text-slate-400 hover:text-white'
+                                }`}
+                            >
+                                Trade History
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('performance')}
+                                className={`px-6 py-3 font-medium transition-colors ${
+                                    activeTab === 'performance'
+                                        ? 'text-white border-b-2 border-purple-400'
+                                        : 'text-slate-400 hover:text-white'
+                                }`}
+                            >
+                                Performance
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('distribution')}
+                                className={`px-6 py-3 font-medium transition-colors ${
+                                    activeTab === 'distribution'
+                                        ? 'text-white border-b-2 border-purple-400'
+                                        : 'text-slate-400 hover:text-white'
+                                }`}
+                            >
+                                Market Distribution
+                            </button>
+                        </div>
+
+                        {/* Tab Content */}
+                        <div className="p-6">
+                            {activeTab === 'history' && (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead>
+                                            <tr className="border-b border-slate-800">
+                                                <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Trade Date</th>
+                                                <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Market</th>
+                                                <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Size</th>
+                                                <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Price</th>
+                                                <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Side</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {allActivities.slice(0, 20).map((activity, idx) => (
+                                                <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                                                    <td className="py-3 px-4 text-slate-300 text-sm">
+                                                        {formatDate(activity.timestamp)}
+                                                    </td>
+                                                    <td className="py-3 px-4 text-white font-medium">
+                                                        {activity.title || activity.asset || 'Activity'}
+                                                    </td>
+                                                    <td className="py-3 px-4 text-white">{formatSize(activity.size)}</td>
+                                                    <td className="py-3 px-4 text-white">{formatCurrency(activity.price || 0)}</td>
+                                                    <td className="py-3 px-4">
+                                                        {activity.side && (
+                                                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                                                activity.side === 'BUY'
+                                                                    ? 'bg-emerald-500/20 text-emerald-400'
+                                                                    : 'bg-red-500/20 text-red-400'
+                                                            }`}>
+                                                                {activity.side}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+
+                            {activeTab === 'performance' && (
+                                <div>
+                                    {performanceGraphData && performanceGraphData.length > 0 ? (
+                                        <TradePerformanceGraph trades={performanceGraphData} />
+                                    ) : (
+                                        <p className="text-slate-400 text-center py-8">No performance data available</p>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeTab === 'distribution' && (
+                                <div>
+                                    {marketDistribution.length > 0 ? (
+                                        <div className="space-y-3">
+                                            {marketDistribution.map((market, idx) => (
+                                                <div key={idx} className="bg-slate-800/50 rounded-lg p-4 flex items-center justify-between">
+                                                    <div>
+                                                        <p className="text-white font-medium">{market.market || 'Unknown Market'}</p>
+                                                        <p className="text-slate-400 text-sm">{market.market_slug}</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-white font-bold text-lg">{market.trades_count}</p>
+                                                        <p className="text-slate-400 text-xs">trades</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-slate-400 text-center py-8">No market distribution data available</p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Performance Graph */}

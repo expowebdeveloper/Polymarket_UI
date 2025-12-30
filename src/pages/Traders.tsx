@@ -51,22 +51,27 @@ export function Traders() {
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(50);
+  const [fetchAll, setFetchAll] = useState(true); // Default to fetching all traders
 
   useEffect(() => {
     setCurrentPage(1);
     loadTraders(1);
-  }, [selectedCategory, selectedTimePeriod, selectedSort]);
+  }, [selectedCategory, selectedTimePeriod, selectedSort, fetchAll]);
 
   const loadTraders = async (page: number = currentPage) => {
     try {
       setLoading(true);
       setError(null);
-      const offset = (page - 1) * pageSize;
+      
+      // If fetchAll is true, don't pass limit/offset to get all traders
+      const limit = fetchAll ? null : pageSize;
+      const offset = fetchAll ? 0 : (page - 1) * pageSize;
+      
       const response = await fetchLeaderboardTraders(
         selectedCategory,
         selectedTimePeriod,
         selectedSort,
-        pageSize,
+        limit,
         offset
       );
       setTraders(response.traders || []);
@@ -187,11 +192,29 @@ export function Traders() {
           <h2 className="text-2xl font-bold capitalize">
             Top Traders - {selectedCategory}
           </h2>
-          {pagination && (
-            <div className="text-sm text-slate-400">
-              Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, pagination.total || filteredTraders.length)} of {pagination.total || filteredTraders.length}
-            </div>
-          )}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setFetchAll(!fetchAll)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                fetchAll
+                  ? 'bg-emerald-400/20 text-emerald-400 border border-emerald-400/30'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+              }`}
+              title={fetchAll ? "Currently fetching all traders. Click to enable pagination." : "Currently using pagination. Click to fetch all traders."}
+            >
+              {fetchAll ? '✓ Fetching All' : 'Fetch All Traders'}
+            </button>
+            {pagination && !fetchAll && (
+              <div className="text-sm text-slate-400">
+                Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, pagination.total || filteredTraders.length)} of {pagination.total || filteredTraders.length}
+              </div>
+            )}
+            {fetchAll && (
+              <div className="text-sm text-slate-400">
+                Showing all {filteredTraders.length} traders
+              </div>
+            )}
+          </div>
         </div>
 
         {filteredTraders.length === 0 ? (
@@ -307,7 +330,7 @@ export function Traders() {
             </div>
 
             {/* Pagination Controls */}
-            {pagination && (
+            {pagination && !fetchAll && (
               <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-800">
                 <div className="text-sm text-slate-400">
                   Page {currentPage} of {totalPages}
