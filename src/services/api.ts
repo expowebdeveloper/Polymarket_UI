@@ -308,6 +308,38 @@ export async function fetchBiggestWinners(
 }
 
 /**
+ * Fetch daily volume leaderboard from database
+ * @param limit - Maximum number of entries
+ * @param offset - Offset for pagination
+ * @param orderBy - Order by metric ('VOL' or 'PNL')
+ */
+export async function fetchDailyVolumeLeaderboard(
+    limit: number = 50,
+    offset: number = 0,
+    orderBy: 'PNL' | 'VOL' = 'VOL'
+): Promise<LeaderboardResponse> {
+    const endpoint = API_ENDPOINTS.leaderboard.dailyVolume;
+    const url = `${endpoint}?limit=${limit}&offset=${offset}&order_by=${orderBy}`;
+    return fetchApi<LeaderboardResponse>(url, 30000, 'GET');
+}
+
+/**
+ * Fetch monthly volume leaderboard from database
+ * @param limit - Maximum number of entries
+ * @param offset - Offset for pagination
+ * @param orderBy - Order by metric ('VOL' or 'PNL')
+ */
+export async function fetchMonthlyVolumeLeaderboard(
+    limit: number = 50,
+    offset: number = 0,
+    orderBy: 'PNL' | 'VOL' = 'VOL'
+): Promise<LeaderboardResponse> {
+    const endpoint = API_ENDPOINTS.leaderboard.monthlyVolume;
+    const url = `${endpoint}?limit=${limit}&offset=${offset}&order_by=${orderBy}`;
+    return fetchApi<LeaderboardResponse>(url, 30000, 'GET');
+}
+
+/**
  * Fetch markets from the API
  * @param status - Market status filter ('active', 'resolved', 'closed', etc.)
  * @param limit - Number of markets per page
@@ -392,18 +424,18 @@ export async function fetchTradersAnalytics(limit: number = 100, offset: number 
     // Use longer timeout (120 seconds) for analytics endpoint as it processes many traders
     // Don't pass max_traders to process all traders (backend will handle pagination)
     const url = `${API_ENDPOINTS.traders.list}/analytics?limit=${limit}&offset=${offset}`;
-    
+
     for (let attempt = 0; attempt <= retries; attempt++) {
         try {
             return await fetchApi<AllLeaderboardsResponse>(url, 120000, 'GET');
         } catch (error: any) {
             const isLastAttempt = attempt === retries;
             const isTimeout = error?.status === 408 || error?.message?.includes('timeout');
-            
+
             if (isLastAttempt) {
                 throw error; // Re-throw on last attempt
             }
-            
+
             if (isTimeout) {
                 // Wait before retrying (exponential backoff)
                 const delay = Math.min(1000 * Math.pow(2, attempt), 5000);
@@ -414,7 +446,7 @@ export async function fetchTradersAnalytics(limit: number = 100, offset: number 
             }
         }
     }
-    
+
     throw new Error('Failed to fetch analytics after retries');
 }
 

@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { fetchLiveLeaderboard, fetchBiggestWinners } from '../services/api';
+import { fetchLiveLeaderboard, fetchBiggestWinners, fetchDailyVolumeLeaderboard, fetchMonthlyVolumeLeaderboard } from '../services/api';
 import type { LeaderboardResponse, LeaderboardEntry } from '../types/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
-import { Trophy, TrendingUp, Copy, Check, RefreshCw } from 'lucide-react';
+import { Trophy, TrendingUp, Copy, Check, RefreshCw, Database } from 'lucide-react';
 import '../styles/LiveLeaderboard.css';
 
 type TimePeriod = 'day' | 'week' | 'month' | 'all';
 type OrderBy = 'PNL' | 'VOL';
-type ViewType = 'leaderboard' | 'biggest_winners';
+type ViewType = 'leaderboard' | 'biggest_winners' | 'daily_volume' | 'monthly_volume';
 
 export const LiveLeaderboard: React.FC = () => {
     const [data, setData] = useState<LeaderboardResponse | null>(null);
@@ -18,10 +18,12 @@ export const LiveLeaderboard: React.FC = () => {
     const [orderBy, setOrderBy] = useState<OrderBy>('PNL');
     const [viewType, setViewType] = useState<ViewType>('leaderboard');
     const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(50);
 
     useEffect(() => {
         loadData();
-    }, [timePeriod, orderBy, viewType]);
+    }, [timePeriod, orderBy, viewType, currentPage]);
 
     const loadData = async () => {
         setLoading(true);
@@ -30,6 +32,12 @@ export const LiveLeaderboard: React.FC = () => {
             let result: LeaderboardResponse;
             if (viewType === 'biggest_winners') {
                 result = await fetchBiggestWinners(timePeriod, 20, 0);
+            } else if (viewType === 'daily_volume') {
+                const offset = (currentPage - 1) * itemsPerPage;
+                result = await fetchDailyVolumeLeaderboard(itemsPerPage, offset, orderBy);
+            } else if (viewType === 'monthly_volume') {
+                const offset = (currentPage - 1) * itemsPerPage;
+                result = await fetchMonthlyVolumeLeaderboard(itemsPerPage, offset, orderBy);
             } else {
                 result = await fetchLiveLeaderboard(timePeriod, orderBy, 20, 0);
             }
@@ -46,8 +54,6 @@ export const LiveLeaderboard: React.FC = () => {
         if (Math.abs(val) >= 1000) return `$${(val / 1000).toFixed(2)}K`;
         return `$${val.toFixed(2)}`;
     };
-
-    const formatPercent = (val: number) => `${val >= 0 ? '+' : ''}${val.toFixed(2)}%`;
 
     const copyWallet = (wallet: string) => {
         navigator.clipboard.writeText(wallet);
@@ -75,36 +81,66 @@ export const LiveLeaderboard: React.FC = () => {
             <div className="leaderboard-tabs">
                 <button
                     className={`tab-btn ${viewType === 'leaderboard' ? 'active' : ''}`}
-                    onClick={() => setViewType('leaderboard')}
+                    onClick={() => {
+                        setViewType('leaderboard');
+                        setCurrentPage(1);
+                    }}
                 >
                     <Trophy className="w-4 h-4" />
                     Leaderboard
                 </button>
                 <button
                     className={`tab-btn ${viewType === 'biggest_winners' ? 'active' : ''}`}
-                    onClick={() => setViewType('biggest_winners')}
+                    onClick={() => {
+                        setViewType('biggest_winners');
+                        setCurrentPage(1);
+                    }}
                 >
                     <TrendingUp className="w-4 h-4" />
                     Biggest Winners
+                </button>
+                <button
+                    className={`tab-btn ${viewType === 'daily_volume' ? 'active' : ''}`}
+                    onClick={() => {
+                        setViewType('daily_volume');
+                        setTimePeriod('day');
+                        setCurrentPage(1);
+                    }}
+                >
+                    <Database className="w-4 h-4" />
+                    Daily Volume (DB)
+                </button>
+                <button
+                    className={`tab-btn ${viewType === 'monthly_volume' ? 'active' : ''}`}
+                    onClick={() => {
+                        setViewType('monthly_volume');
+                        setTimePeriod('month');
+                        setCurrentPage(1);
+                    }}
+                >
+                    <Database className="w-4 h-4" />
+                    Monthly Volume (DB)
                 </button>
             </div>
 
             {/* Filters */}
             <div className="filters-container">
-                <div className="filter-group">
-                    <label>Time Period:</label>
-                    <select
-                        value={timePeriod}
-                        onChange={(e) => setTimePeriod(e.target.value as TimePeriod)}
-                        className="filter-select"
-                    >
-                        <option value="day">Day</option>
-                        <option value="week">Week</option>
-                        <option value="month">Month</option>
-                        <option value="all">All Time</option>
-                    </select>
-                </div>
-                {viewType === 'leaderboard' && (
+                {viewType !== 'daily_volume' && viewType !== 'monthly_volume' && (
+                    <div className="filter-group">
+                        <label>Time Period:</label>
+                        <select
+                            value={timePeriod}
+                            onChange={(e) => setTimePeriod(e.target.value as TimePeriod)}
+                            className="filter-select"
+                        >
+                            <option value="day">Day</option>
+                            <option value="week">Week</option>
+                            <option value="month">Month</option>
+                            <option value="all">All Time</option>
+                        </select>
+                    </div>
+                )}
+                {(viewType === 'leaderboard' || viewType === 'daily_volume' || viewType === 'monthly_volume') && (
                     <div className="filter-group">
                         <label>Order By:</label>
                         <select
@@ -141,11 +177,15 @@ export const LiveLeaderboard: React.FC = () => {
                     <>
                         <div className="table-header">
                             <h3>
-                                {viewType === 'biggest_winners' 
-                                    ? 'Biggest Winners' 
-                                    : `${orderBy === 'PNL' ? 'PnL' : 'Volume'} Leaderboard`}
+                                {viewType === 'biggest_winners'
+                                    ? 'Biggest Winners'
+                                    : viewType === 'daily_volume'
+                                        ? `Daily ${orderBy === 'PNL' ? 'PnL' : 'Volume'} Leaderboard (DB)`
+                                        : viewType === 'monthly_volume'
+                                            ? `Monthly ${orderBy === 'PNL' ? 'PnL' : 'Volume'} Leaderboard (DB)`
+                                            : `${orderBy === 'PNL' ? 'PnL' : 'Volume'} Leaderboard`}
                             </h3>
-                            <span className="period-badge">{timePeriod.toUpperCase()}</span>
+                            <span className="period-badge">{(data?.period || timePeriod).toUpperCase()}</span>
                         </div>
                         <table className="live-table">
                             <thead>
@@ -158,6 +198,23 @@ export const LiveLeaderboard: React.FC = () => {
                                             <th>PnL</th>
                                             <th>Initial Value</th>
                                             <th>Final Value</th>
+                                        </>
+                                    ) : (viewType === 'daily_volume' || viewType === 'monthly_volume') ? (
+                                        <>
+                                            <th
+                                                onClick={() => setOrderBy('VOL')}
+                                                style={{ cursor: 'pointer', color: orderBy === 'VOL' ? '#60a5fa' : 'inherit' }}
+                                                className="sortable-header"
+                                            >
+                                                Volume {orderBy === 'VOL' && '↓'}
+                                            </th>
+                                            <th
+                                                onClick={() => setOrderBy('PNL')}
+                                                style={{ cursor: 'pointer', color: orderBy === 'PNL' ? '#60a5fa' : 'inherit' }}
+                                                className="sortable-header"
+                                            >
+                                                PnL {orderBy === 'PNL' && '↓'}
+                                            </th>
                                         </>
                                     ) : (
                                         <>
@@ -233,7 +290,7 @@ export const LiveLeaderboard: React.FC = () => {
                                         ) : (
                                             <>
                                                 <td className={`metric-cell ${orderBy === 'PNL' ? (entry.total_pnl >= 0 ? 'positive' : 'negative') : ''}`}>
-                                                    {orderBy === 'PNL' 
+                                                    {orderBy === 'PNL'
                                                         ? formatCurrency(entry.total_pnl)
                                                         : formatCurrency(entry.total_stakes || 0)}
                                                 </td>
@@ -253,6 +310,33 @@ export const LiveLeaderboard: React.FC = () => {
                                 ))}
                             </tbody>
                         </table>
+                        {(viewType === 'daily_volume' || viewType === 'monthly_volume') && data.entries.length === itemsPerPage && (
+                            <div className="pagination-container" style={{ marginTop: '20px', display: 'flex', justifyContent: 'center', gap: '10px', alignItems: 'center' }}>
+                                <button
+                                    onClick={() => {
+                                        if (currentPage > 1) {
+                                            setCurrentPage(currentPage - 1);
+                                        }
+                                    }}
+                                    disabled={currentPage === 1 || loading}
+                                    className="pagination-btn"
+                                    style={{ padding: '8px 16px', borderRadius: '4px', border: '1px solid #334155', background: currentPage === 1 ? '#1e293b' : '#0f172a', color: '#e2e8f0', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                                >
+                                    Previous
+                                </button>
+                                <span style={{ color: '#94a3b8' }}>Page {currentPage}</span>
+                                <button
+                                    onClick={() => {
+                                        setCurrentPage(currentPage + 1);
+                                    }}
+                                    disabled={loading}
+                                    className="pagination-btn"
+                                    style={{ padding: '8px 16px', borderRadius: '4px', border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0', cursor: 'pointer' }}
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        )}
                     </>
                 )}
             </div>
