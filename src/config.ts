@@ -70,6 +70,7 @@ export const API_ENDPOINTS = {
     roiShrunk: '/leaderboard/roi-shrunk',
     pnlShrunk: '/leaderboard/pnl-shrunk',
     dailyVolume: '/leaderboard/daily-volume',
+    weeklyVolume: '/leaderboard/weekly-volume',
     monthlyVolume: '/leaderboard/monthly-volume',
   },
   markets: {

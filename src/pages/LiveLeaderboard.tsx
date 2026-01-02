@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchLiveLeaderboard, fetchBiggestWinners, fetchDailyVolumeLeaderboard, fetchMonthlyVolumeLeaderboard } from '../services/api';
+import { fetchLiveLeaderboard, fetchBiggestWinners, fetchDailyVolumeLeaderboard, fetchWeeklyVolumeLeaderboard, fetchMonthlyVolumeLeaderboard } from '../services/api';
 import type { LeaderboardResponse, LeaderboardEntry } from '../types/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
@@ -8,7 +8,7 @@ import '../styles/LiveLeaderboard.css';
 
 type TimePeriod = 'day' | 'week' | 'month' | 'all';
 type OrderBy = 'PNL' | 'VOL';
-type ViewType = 'leaderboard' | 'biggest_winners' | 'daily_volume' | 'monthly_volume';
+type ViewType = 'leaderboard' | 'biggest_winners' | 'daily_volume' | 'weekly_volume' | 'monthly_volume';
 
 export const LiveLeaderboard: React.FC = () => {
     const [data, setData] = useState<LeaderboardResponse | null>(null);
@@ -20,6 +20,7 @@ export const LiveLeaderboard: React.FC = () => {
     const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(50);
+    const showScores = viewType === 'leaderboard' || viewType === 'monthly_volume';
 
     useEffect(() => {
         loadData();
@@ -35,6 +36,9 @@ export const LiveLeaderboard: React.FC = () => {
             } else if (viewType === 'daily_volume') {
                 const offset = (currentPage - 1) * itemsPerPage;
                 result = await fetchDailyVolumeLeaderboard(itemsPerPage, offset, orderBy);
+            } else if (viewType === 'weekly_volume') {
+                const offset = (currentPage - 1) * itemsPerPage;
+                result = await fetchWeeklyVolumeLeaderboard(itemsPerPage, offset, orderBy);
             } else if (viewType === 'monthly_volume') {
                 const offset = (currentPage - 1) * itemsPerPage;
                 result = await fetchMonthlyVolumeLeaderboard(itemsPerPage, offset, orderBy);
@@ -111,6 +115,17 @@ export const LiveLeaderboard: React.FC = () => {
                     Daily Volume (DB)
                 </button>
                 <button
+                    className={`tab-btn ${viewType === 'weekly_volume' ? 'active' : ''}`}
+                    onClick={() => {
+                        setViewType('weekly_volume');
+                        setTimePeriod('week');
+                        setCurrentPage(1);
+                    }}
+                >
+                    <Database className="w-4 h-4" />
+                    Weekly Volume (DB)
+                </button>
+                <button
                     className={`tab-btn ${viewType === 'monthly_volume' ? 'active' : ''}`}
                     onClick={() => {
                         setViewType('monthly_volume');
@@ -125,7 +140,7 @@ export const LiveLeaderboard: React.FC = () => {
 
             {/* Filters */}
             <div className="filters-container">
-                {viewType !== 'daily_volume' && viewType !== 'monthly_volume' && (
+                {viewType !== 'daily_volume' && viewType !== 'weekly_volume' && viewType !== 'monthly_volume' && (
                     <div className="filter-group">
                         <label>Time Period:</label>
                         <select
@@ -140,7 +155,7 @@ export const LiveLeaderboard: React.FC = () => {
                         </select>
                     </div>
                 )}
-                {(viewType === 'leaderboard' || viewType === 'daily_volume' || viewType === 'monthly_volume') && (
+                {(viewType === 'leaderboard' || viewType === 'daily_volume' || viewType === 'weekly_volume' || viewType === 'monthly_volume') && (
                     <div className="filter-group">
                         <label>Order By:</label>
                         <select
@@ -181,9 +196,11 @@ export const LiveLeaderboard: React.FC = () => {
                                     ? 'Biggest Winners'
                                     : viewType === 'daily_volume'
                                         ? `Daily ${orderBy === 'PNL' ? 'PnL' : 'Volume'} Leaderboard (DB)`
-                                        : viewType === 'monthly_volume'
-                                            ? `Monthly ${orderBy === 'PNL' ? 'PnL' : 'Volume'} Leaderboard (DB)`
-                                            : `${orderBy === 'PNL' ? 'PnL' : 'Volume'} Leaderboard`}
+                                        : viewType === 'weekly_volume'
+                                            ? `Weekly ${orderBy === 'PNL' ? 'PnL' : 'Volume'} Leaderboard (DB)`
+                                            : viewType === 'monthly_volume'
+                                                ? `Monthly ${orderBy === 'PNL' ? 'PnL' : 'Volume'} Leaderboard (DB)`
+                                                : `${orderBy === 'PNL' ? 'PnL' : 'Volume'} Leaderboard`}
                             </h3>
                             <span className="period-badge">{(data?.period || timePeriod).toUpperCase()}</span>
                         </div>
@@ -192,14 +209,13 @@ export const LiveLeaderboard: React.FC = () => {
                                 <tr>
                                     <th>Rank</th>
                                     <th>Trader</th>
-                                    <th>Wallet Address</th>
                                     {viewType === 'biggest_winners' ? (
                                         <>
                                             <th>PnL</th>
                                             <th>Initial Value</th>
                                             <th>Final Value</th>
                                         </>
-                                    ) : (viewType === 'daily_volume' || viewType === 'monthly_volume') ? (
+                                    ) : (viewType === 'daily_volume' || viewType === 'weekly_volume' || viewType === 'monthly_volume') ? (
                                         <>
                                             <th
                                                 onClick={() => setOrderBy('VOL')}
@@ -215,12 +231,30 @@ export const LiveLeaderboard: React.FC = () => {
                                             >
                                                 PnL {orderBy === 'PNL' && '↓'}
                                             </th>
+                                            {showScores && (
+                                                <>
+                                                    <th>W Score</th>
+                                                    <th>R Score</th>
+                                                    <th>P Score</th>
+                                                    <th>Risk</th>
+                                                    <th>Score</th>
+                                                </>
+                                            )}
                                         </>
                                     ) : (
                                         <>
                                             <th>{orderBy === 'PNL' ? 'PnL' : 'Volume'}</th>
                                             {orderBy === 'PNL' && <th>Volume</th>}
                                             {orderBy === 'VOL' && <th>PnL</th>}
+                                            {showScores && (
+                                                <>
+                                                    <th>W Score</th>
+                                                    <th>R Score</th>
+                                                    <th>P Score</th>
+                                                    <th>Risk</th>
+                                                    <th>Score</th>
+                                                </>
+                                            )}
                                         </>
                                     )}
                                 </tr>
@@ -256,23 +290,24 @@ export const LiveLeaderboard: React.FC = () => {
                                                             @{entry.pseudonym}
                                                         </div>
                                                     )}
+                                                    <div className="trader-wallet-mini">
+                                                        <span>{entry.wallet_address.substring(0, 6)}...{entry.wallet_address.substring(38)}</span>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                copyWallet(entry.wallet_address);
+                                                            }}
+                                                            className="copy-btn-mini"
+                                                            title="Copy wallet address"
+                                                        >
+                                                            {copiedWallet === entry.wallet_address ? (
+                                                                <Check size={10} className="text-green-400" />
+                                                            ) : (
+                                                                <Copy size={10} />
+                                                            )}
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td className="wallet-cell">
-                                            <div className="wallet-container">
-                                                <span>{entry.wallet_address}</span>
-                                                <button
-                                                    onClick={() => copyWallet(entry.wallet_address)}
-                                                    className="copy-btn"
-                                                    title="Copy wallet address"
-                                                >
-                                                    {copiedWallet === entry.wallet_address ? (
-                                                        <Check className="w-4 h-4 text-green-400" />
-                                                    ) : (
-                                                        <Copy className="w-4 h-4" />
-                                                    )}
-                                                </button>
                                             </div>
                                         </td>
                                         {viewType === 'biggest_winners' ? (
@@ -304,13 +339,24 @@ export const LiveLeaderboard: React.FC = () => {
                                                         {formatCurrency(entry.total_pnl)}
                                                     </td>
                                                 )}
+                                                {showScores && (
+                                                    <>
+                                                        <td className="metric-cell score-comp">{((entry.score_win_rate ?? 0) * 100).toFixed(1)}</td>
+                                                        <td className="metric-cell score-comp">{((entry.score_roi ?? 0) * 100).toFixed(1)}</td>
+                                                        <td className="metric-cell score-comp">{((entry.score_pnl ?? 0) * 100).toFixed(1)}</td>
+                                                        <td className="metric-cell score-comp">{((entry.score_risk ?? 0) * 100).toFixed(0)}%</td>
+                                                        <td className="metric-cell score-cell" style={{ color: '#fbbf24', fontWeight: 'bold' }}>
+                                                            {entry.final_score?.toFixed(2) || '0.00'}
+                                                        </td>
+                                                    </>
+                                                )}
                                             </>
                                         )}
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
-                        {(viewType === 'daily_volume' || viewType === 'monthly_volume') && data.entries.length === itemsPerPage && (
+                        {(viewType === 'daily_volume' || viewType === 'weekly_volume' || viewType === 'monthly_volume') && data.entries.length === itemsPerPage && (
                             <div className="pagination-container" style={{ marginTop: '20px', display: 'flex', justifyContent: 'center', gap: '10px', alignItems: 'center' }}>
                                 <button
                                     onClick={() => {

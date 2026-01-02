@@ -459,3 +459,51 @@
         gap: 12px;
     }
 }
+/* Compact Wallet Info */
+.trader-wallet-mini {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.trader-wallet-mini span {
+    font-size: 0.8rem;
+    color: #60a5fa;
+    font-family: monospace;
+    opacity: 0.8;
+}
+
+.copy-btn-mini {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+}
+
+.copy-btn-mini:hover {
+    color: #60a5fa;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.metric-cell.score-comp {
+    color: #94a3b8;
+    font-size: 0.95rem;
+    text-align: center;
+}
+
+.live-table th {
+    text-align: center;
+}
+
+.live-table th:first-child,
+.live-table th:nth-child(2),
+.live-table td:first-child,
+.live-table td:nth-child(2) {
+    text-align: left;
+}

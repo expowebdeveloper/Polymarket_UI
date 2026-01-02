@@ -324,6 +324,22 @@ export async function fetchDailyVolumeLeaderboard(
 }
 
 /**
+ * Fetch weekly volume leaderboard from database
+ * @param limit - Maximum number of entries
+ * @param offset - Offset for pagination
+ * @param orderBy - Order by metric ('VOL' or 'PNL')
+ */
+export async function fetchWeeklyVolumeLeaderboard(
+    limit: number = 50,
+    offset: number = 0,
+    orderBy: 'PNL' | 'VOL' = 'VOL'
+): Promise<LeaderboardResponse> {
+    const endpoint = API_ENDPOINTS.leaderboard.weeklyVolume;
+    const url = `${endpoint}?limit=${limit}&offset=${offset}&order_by=${orderBy}`;
+    return fetchApi<LeaderboardResponse>(url, 30000, 'GET');
+}
+
+/**
  * Fetch monthly volume leaderboard from database
  * @param limit - Maximum number of entries
  * @param offset - Offset for pagination
