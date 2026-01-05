@@ -139,6 +139,14 @@ export async function fetchTraderTrades(wallet: string): Promise<TradesResponse>
 }
 
 /**
+ * Sync trades for a specific trader (incremental update)
+ * @param wallet - Wallet address to sync
+ */
+export async function syncTradesForWallet(wallet: string): Promise<{ message: string, new_trades_saved: number }> {
+    return fetchApi<{ message: string, new_trades_saved: number }>(`/trades/sync?user=${wallet}`, 300000, 'POST');
+}
+
+/**
  * Fetch and save positions
  */
 export async function fetchPositions(): Promise<PositionsResponse> {

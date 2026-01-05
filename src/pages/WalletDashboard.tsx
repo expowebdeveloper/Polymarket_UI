@@ -12,6 +12,7 @@ import {
   fetchTraderDetails,
   fetchUserLeaderboardData,
   fetchTradeHistory,
+  syncTradesForWallet,
 } from '../services/api';
 import type { Position, ClosedPosition, Activity, ProfileStatsResponse, UserLeaderboardData, TradeHistoryResponse } from '../types/api';
 
@@ -78,6 +79,13 @@ export function WalletDashboard() {
     setError(null);
 
     try {
+      // First sync trades to ensure fresh data
+      try {
+        await syncTradesForWallet(walletAddress);
+      } catch (e) {
+        console.warn("Auto-sync failed, proceeding with existing data", e);
+      }
+
       // Fetch all data in parallel
       const [
         profileData,
@@ -446,9 +454,9 @@ export function WalletDashboard() {
       final_score: finalScore,
       total_pnl: portfolioStats?.pnl_metrics?.total_pnl || portfolioStats?.performance_metrics?.total_pnl || 0,
       roi: portfolioStats?.performance_metrics?.roi || tradeHistory?.overall_metrics?.roi || 0,
-      win_rate: portfolioStats?.performance_metrics?.win_rate || tradeHistory?.overall_metrics?.win_rate || 0,
-      win_rate_percent: portfolioStats?.performance_metrics?.win_rate || tradeHistory?.overall_metrics?.win_rate || 0,
-      total_trades: profileStats?.trades || allClosedPositions.length || 0,
+      win_rate: tradeHistory?.overall_metrics?.win_rate || portfolioStats?.performance_metrics?.win_rate || 0,
+      win_rate_percent: tradeHistory?.overall_metrics?.win_rate || portfolioStats?.performance_metrics?.win_rate || 0,
+      total_trades: tradeHistory?.overall_metrics?.total_trades || profileStats?.trades || allClosedPositions.length || 0,
       score_risk: (tradeHistory?.overall_metrics as any)?.risk_score || 0,
       roi_shrunk: (tradeHistory?.overall_metrics as any)?.roi_shrunk || 0,
     };
