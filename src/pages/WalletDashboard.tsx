@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Wallet, TrendingUp, TrendingDown, Trophy, Fish, Flame, ChevronDown, ChevronUp, ChevronRight, Flag, Coins, DollarSign, Activity as ActivityIcon, Target } from 'lucide-react';
+import { Search, Bell, Settings, User, Wallet, TrendingUp, TrendingDown, Trophy, Fish, Flame, ChevronDown, ChevronUp, ChevronRight, Flag, Coins, DollarSign, Activity as ActivityIcon, Target } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
@@ -521,283 +521,237 @@ export function WalletDashboard() {
     });
   }, [tradeHistory, allClosedPositions]);
 
+  const shortenAddress = (address: string): string => {
+    if (!address || address.length < 10) return address;
+    return `${address.slice(0, 6)}…${address.slice(-4)}`;
+  };
+
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
   return (
-    <div className="space-y-6">
-      {/* Header Section */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Wallet className="w-6 h-6 text-emerald-400" />
-            Wallet Dashboard
-          </h2>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2">
-              <Search className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+    <div className={theme === "dark" ? "min-h-screen bg-gradient-to-b from-black via-slate-950 to-black text-white" : "min-h-screen bg-gradient-to-b from-slate-100 via-white to-slate-200 text-slate-900"}>
+      {/* TOP NAV */}
+      <div className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur border-b border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div>
+            <p className="text-sm text-slate-400">{walletAddress ? shortenAddress(walletAddress) : 'No wallet connected'}</p>
+            <p className="text-xs text-slate-500">Trader Profile</p>
+          </div>
+
+          <div className="flex-1 px-10">
+            <div className="flex items-center gap-3 bg-slate-900/70 border border-emerald-500/30 rounded-full px-5 py-2 shadow-[0_0_25px_rgba(16,185,129,0.15)]">
+              <Search className="h-4 w-4 text-emerald-400" />
               <input
-                type="text"
-                placeholder="Q Search markets..."
-                className="bg-transparent border-none outline-none text-sm w-48 text-slate-900 dark:text-white"
+                className="w-full bg-transparent outline-none text-sm placeholder:text-slate-500"
+                placeholder="Enter wallet address (0x...)"
+                value={walletAddress}
+                onChange={(e) => setWalletAddress(e.target.value)}
               />
             </div>
-            <div className="text-right">
-              <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Portfolio Value / Balance</p>
-              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                {portfolioStats?.performance_metrics?.portfolio_value
-                  ? formatCurrency(portfolioStats.performance_metrics.portfolio_value)
-                  : '$0.00'}
-              </p>
-              {userLeaderboardData?.vol !== undefined && (
-                <p className="text-slate-600 dark:text-slate-400 text-sm mt-2">
-                  Volume: {formatCurrency(userLeaderboardData.vol)}
-                </p>
-              )}
-            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <button
+              className={`px-3 py-1 rounded ${theme === "dark" ? "text-emerald-400" : "text-emerald-700"}`}
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            >
+              {theme === "dark" ? "🌙 Dark" : "☀️ Light"}
+            </button>
+            <Bell className="h-5 w-5 text-slate-400 cursor-pointer" />
+            <Settings className="h-5 w-5 text-slate-400 cursor-pointer" />
+            <User className="h-5 w-5 text-slate-400 cursor-pointer" />
           </div>
         </div>
-
-        {/* Wallet Search Input */}
-        <form onSubmit={handleWalletSubmit} className="flex gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-600 dark:text-slate-400" />
-            <input
-              type="text"
-              placeholder="Enter wallet address (0x...)"
-              value={walletAddress}
-              onChange={(e) => setWalletAddress(e.target.value)}
-              className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-lg text-slate-900 dark:text-white placeholder-slate-600 dark:placeholder-slate-400 focus:outline-none focus:ring-2 ${walletAddress && !isValidWallet
-                ? 'border-red-500 focus:ring-red-500'
-                : 'border-slate-300 dark:border-slate-700 focus:ring-emerald-500 dark:focus:ring-emerald-400'
-                }`}
-            />
-            {walletAddress && !isValidWallet && (
-              <p className="text-red-400 text-sm mt-1">Invalid wallet address format</p>
-            )}
-          </div>
-          <button
-            type="submit"
-            disabled={!isValidWallet || loading}
-            className="px-6 py-3 bg-emerald-400 text-white rounded-lg font-medium hover:bg-emerald-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Loading...' : 'Search'}
-          </button>
-        </form>
       </div>
 
-      {loading && <LoadingSpinner message="Loading wallet data..." />}
-      {error && <ErrorMessage message={error} onRetry={fetchWalletData} />}
+      {loading && <div className="p-8"><LoadingSpinner message="Loading wallet data..." /></div>}
+      {error && <div className="p-8"><ErrorMessage message={error} onRetry={fetchWalletData} /></div>}
 
-      {/* Wallet Information Display */}
+      {/* CONTENT */}
       {!loading && isValidWallet && walletAddress && (
-        <>
-          {/* Trader Metrics Header - Matching Image Design */}
-          <div className="bg-slate-900 rounded-lg border border-slate-800 p-6">
-            {/* Title and Wallet */}
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-white mb-2">Trader Metrics - Expandable Live...</h2>
-              <p className="text-slate-400 font-mono text-sm">{walletAddress}</p>
-              <p className="text-slate-500 text-sm mt-1">Trader Profile</p>
-            </div>
-
-            {/* Final Score & Badges */}
-            <div className="mb-6">
-              <div className="flex items-center gap-4 mb-3">
-                <div>
-                  <p className="text-slate-400 text-sm mb-1">Final Score</p>
-                  <p className="text-5xl font-bold text-emerald-400">
-                    {scoringMetrics?.final_score?.toFixed(1) || '0.0'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {scoringMetrics?.final_score >= 90 && (
-                    <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs font-medium flex items-center gap-1">
-                      <Trophy className="w-3 h-3" />
-                      Top 10
-                    </span>
-                  )}
-                  {totalVolume >= 100000 && (
-                    <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs font-medium flex items-center gap-1">
-                      <Fish className="w-3 h-3" />
-                      Whale
-                    </span>
-                  )}
-                  {streaks.current_streak >= 5 && (
-                    <span className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-xs font-medium flex items-center gap-1">
-                      <Flame className="w-3 h-3" />
-                      Hot Streak
-                    </span>
-                  )}
-                </div>
-                {scoringMetrics?.final_score >= 90 && (
-                  <span className="ml-auto px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs font-medium">
-                    Top 1% Trader
-                  </span>
+        <div className="px-8 py-6 space-y-6">
+          {/* FINAL RATING */}
+          <div className="bg-slate-900/70 border border-emerald-500/40 rounded-3xl shadow-[0_0_60px_rgba(16,185,129,0.35)] p-6">
+            <p className="text-sm uppercase tracking-widest text-emerald-300/80">Final Rating</p>
+            <div className="flex items-end gap-6">
+              <p className="text-[60px] leading-none font-extrabold bg-gradient-to-r from-emerald-300 to-emerald-500 bg-clip-text text-transparent">
+                {scoringMetrics?.final_score?.toFixed(1) || '0.0'}
+              </p>
+              <div className="flex gap-3 pb-2">
+                {scoringMetrics?.final_score >= 95 && (
+                  <span className="px-6 py-2 rounded-full text-sm bg-slate-800/70 border text-emerald-300 shadow-[0_0_30px_rgba(34,197,94,0.6)] border-emerald-400">👑 Prediction King</span>
+                )}
+                {scoringMetrics?.total_trades > 100 && (
+                  <span className="px-6 py-2 rounded-full text-sm bg-slate-800/70 border text-emerald-300 shadow-[0_0_30px_rgba(34,197,94,0.6)] border-emerald-400">🏅 Polymarket Badge Holder</span>
+                )}
+                {totalVolume >= 100000 && (
+                  <span className="px-6 py-2 rounded-full text-sm bg-slate-800/70 border text-emerald-300 shadow-[0_0_30px_rgba(34,197,94,0.6)] border-emerald-400">🐋 Whale</span>
+                )}
+                {streaks.current_streak >= 5 && (
+                  <span className="px-6 py-2 rounded-full text-sm bg-slate-800/70 border text-orange-300 shadow-[0_0_35px_rgba(251,146,60,0.7)] border-orange-400">🔥 Hot Streak</span>
                 )}
               </div>
             </div>
 
-            {/* Streaks Section */}
-            <div className="bg-slate-800/50 rounded-lg p-5 border border-[#00e2984a] shadow-[0px_0px_20px_#00e29847]">
-              <div className="grid grid-cols-5 gap-4">
-                <div className="">
-                  <div>
-                    <p className="text-slate-400 text-xs flex items-center justify-center gap-2 mb-3"><Flame className="w-5 h-5 text-orange-400" /> LONGEST STREAK</p>
-                    <p className="text-white text-center font-bold text-lg">{streaks.longest_streak}</p>
-                  </div>
-                </div>
-                <div className="">
-                  <div>
-                    <p className="text-slate-400 text-xs flex items-center gap-2 justify-center mb-3"><TrendingUp className="w-5 h-5 text-blue-400" /> CURRENT STREAK</p>
-                    <p className="text-white text-center font-bold text-lg">{streaks.current_streak}</p>
-                  </div>
-                </div>
-                <div className="">
+            <div className="grid grid-cols-4 gap-4 mt-6 max-w-xl">
+              <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-3 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
+                <p className="text-xs text-slate-300 mb-0.5">Balance</p>
+                <p className="text-lg font-bold text-emerald-300">{formatCurrency(portfolioStats?.performance_metrics?.portfolio_value || 0)}</p>
+              </div>
+              <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-3 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
+                <p className="text-xs text-slate-300 mb-0.5">Volume</p>
+                <p className="text-lg font-bold text-emerald-300">{formatCurrency(totalVolume)}</p>
+              </div>
+              <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-3 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
+                <p className="text-xs text-slate-300 mb-0.5">Predictions</p>
+                <p className="text-lg font-bold text-emerald-300">{String(scoringMetrics?.total_trades || 0)}</p>
+              </div>
+              <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-3 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
+                <p className="text-xs text-slate-300 mb-0.5">Total PnL</p>
+                <p className="text-lg font-bold text-emerald-300">{formatCurrency(scoringMetrics?.total_pnl || 0)}</p>
+              </div>
+            </div>
 
-                  <div>
-                    <p className="text-slate-400 text-xs flex items-center gap-2 justify-center mb-3"><TrendingUp className="w-5 h-5 text-emerald-400" />TOTAL WINS</p>
-                    <p className="text-white text-center font-bold text-lg">{streaks.total_wins}</p>
-                  </div>
+            <div className="mt-6 rounded-2xl border border-emerald-400/60 bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-950 p-6 shadow-[0_0_70px_rgba(34,197,94,0.45)]">
+              <div className="flex items-center justify-between text-center">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-emerald-200">🔥 Longest streak</p>
+                  <p className="text-3xl font-extrabold text-emerald-300">{String(streaks.longest_streak)}</p>
                 </div>
-                <div className="">
-                  <div>
-                    <p className="text-slate-400 text-xs flex items-center gap-2 justify-center mb-3"><TrendingDown className="w-5 h-5 text-red-400" /> TOTAL LOSSES</p>
-                    <p className="text-white text-center font-bold text-lg">{streaks.total_losses}</p>
-                  </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-emerald-200">👀 Current streak</p>
+                  <p className="text-3xl font-extrabold text-emerald-300">{String(streaks.current_streak)}</p>
                 </div>
-                <div className="">
-                  <div>
-                    <p className="text-slate-400 text-xs flex items-center gap-2 justify-center mb-3"><Trophy className="w-5 h-5 text-yellow-400" />REWARD EARNED</p>
-                    <p className="text-white text-center font-bold text-lg">{formatCurrency(rewardsEarned)}</p>
-                  </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-emerald-200">👍 Total wins</p>
+                  <p className="text-3xl font-extrabold text-emerald-300">{String(streaks.total_wins)}</p>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-emerald-200">👎 Total losses</p>
+                  <p className="text-3xl font-extrabold text-emerald-300">{String(streaks.total_losses)}</p>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-emerald-200">🎁 Reward earned</p>
+                  <p className="text-3xl font-extrabold text-emerald-300">{formatCurrency(rewardsEarned)}</p>
                 </div>
               </div>
             </div>
           </div>
 
 
-          {/* Metric Cards */}
-          <div className="grid grid-cols-5 gap-4 mb-6">
-            <div className="bg-slate-800/50 rounded-lg p-4">
-              <p className="text-slate-400 text-xs mb-1">ROI %</p>
-              <p className="text-2xl font-bold text-emerald-400">
-                {scoringMetrics?.roi?.toFixed(2) || '0.00'}%
-              </p>
-              <p className="text-slate-500 text-xs mt-1">All-time</p>
+          {/* PRIMARY METRICS */}
+          <div className="grid grid-cols-5 gap-4">
+            <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+              <p className="text-sm text-slate-400">ROI %</p>
+              <p className="text-xl font-bold text-emerald-400">{scoringMetrics?.roi >= 0 ? '+' : ''}{(scoringMetrics?.roi || 0).toFixed(2)}%</p>
+              <p className="text-xs text-slate-500">All-time</p>
             </div>
-            <div className="bg-slate-800/50 rounded-lg p-4">
-              <p className="text-slate-400 text-xs mb-1">Win Rate</p>
-              <p className="text-2xl font-bold text-emerald-400">
-                {scoringMetrics?.win_rate_percent?.toFixed(1) || '0.0'}%
-              </p>
-              <p className="text-slate-500 text-xs mt-1">
-                {streaks.total_wins} of {streaks.total_wins + streaks.total_losses} trades
-              </p>
+            <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+              <p className="text-sm text-slate-400">Win Rate</p>
+              <p className="text-xl font-bold text-emerald-400">{(scoringMetrics?.win_rate_percent || 0).toFixed(0)}%</p>
+              <p className="text-xs text-slate-500">{streaks.total_wins} of {streaks.total_wins + streaks.total_losses} trades</p>
             </div>
-            <div className="bg-slate-800/50 rounded-lg p-4">
-              <p className="text-slate-400 text-xs mb-1">Total Volume</p>
-              <p className="text-2xl font-bold text-emerald-400">{formatCurrency(totalVolume)}</p>
-              <p className="text-slate-500 text-xs mt-1">Across {marketDistribution.length} markets</p>
+            <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+              <p className="text-sm text-slate-400">Total Volume</p>
+              <p className="text-xl font-bold text-emerald-400">{formatCurrency(totalVolume)}</p>
+              <p className="text-xs text-slate-500">Across {marketDistribution.length} markets</p>
             </div>
-            <div className="bg-slate-800/50 rounded-lg p-4">
-              <p className="text-slate-400 text-xs mb-1">Total Trades</p>
-              <p className="text-2xl font-bold text-emerald-400">{scoringMetrics?.total_trades || 0}</p>
-              <p className="text-slate-500 text-xs mt-1">Since joining</p>
+            <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+              <p className="text-sm text-slate-400">Total Trades</p>
+              <p className="text-xl font-bold text-emerald-400">{String(scoringMetrics?.total_trades || 0)}</p>
+              <p className="text-xs text-slate-500">Since joining</p>
             </div>
-            <div className="bg-slate-800/50 rounded-lg p-4">
-              <p className="text-slate-400 text-xs mb-1">Total PnL</p>
-              <p className={`text-2xl font-bold ${(scoringMetrics?.total_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {formatCurrency(scoringMetrics?.total_pnl || 0)}
-              </p>
-              <p className="text-slate-500 text-xs mt-1">Realized + Unrealized</p>
+            <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+              <p className="text-sm text-slate-400">Total PnL</p>
+              <p className="text-xl font-bold text-emerald-400">{formatCurrency(scoringMetrics?.total_pnl || 0)}</p>
+              <p className="text-xs text-slate-500">Realized + Unrealized</p>
             </div>
           </div>
 
-          {/* Advanced Metrics Toggle */}
-          <div className="mb-4">
+          <div className="flex justify-start">
             <button
+              className="text-slate-400 hover:text-white flex items-center gap-2 px-4 py-2 rounded"
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className="text-slate-400 hover:text-white text-sm flex items-center gap-1 transition-colors"
             >
-              {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              {showAdvanced ? 'Hide Advanced' : 'View Advanced Metrics'}
+              {showAdvanced ? (
+                <>
+                  Hide Extra Metrics <ChevronUp />
+                </>
+              ) : (
+                <>
+                  View Extra Metrics <ChevronDown />
+                </>
+              )}
             </button>
           </div>
 
-          {/* Advanced Metrics Section */}
           {showAdvanced && (
-            <div className="grid grid-cols-5 gap-4 mt-4">
-              <div className="bg-slate-800/50 rounded-lg p-4">
-                <p className="text-slate-400 text-xs mb-1">Risk Score</p>
-                <p className="text-2xl font-bold text-white">{(scoringMetrics?.score_risk || 0).toFixed(2)}</p>
+            <div className="grid grid-cols-5 gap-4">
+              <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+                <p className="text-sm text-slate-400">Risk Score</p>
+                <p className="text-lg font-semibold text-emerald-400">{(scoringMetrics?.score_risk || 0).toFixed(2)}</p>
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-4">
-                <p className="text-slate-400 text-xs mb-1">Max Drawdown</p>
-                <p className="text-2xl font-bold text-red-400">
-                  {highestLoss ? `${highestLoss.toFixed(1)}%` : '0.0%'}
-                </p>
+              <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+                <p className="text-sm text-slate-400">Max Drawdown</p>
+                <p className="text-lg font-semibold text-emerald-400">{highestLoss ? `${highestLoss.toFixed(1)}%` : '0.0%'}</p>
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-4">
-                <p className="text-slate-400 text-xs mb-1">Worst Loss</p>
-                <p className="text-2xl font-bold text-red-400">{formatCurrency(highestLoss)}</p>
+              <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+                <p className="text-sm text-slate-400">Worst Loss</p>
+                <p className="text-lg font-semibold text-emerald-400">{formatCurrency(highestLoss)}</p>
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-4">
-                <p className="text-slate-400 text-xs mb-1">ROI (Shrunk)</p>
-                <p className="text-2xl font-bold text-emerald-400">
-                  {scoringMetrics?.roi_shrunk ? `+${scoringMetrics.roi_shrunk.toFixed(1)}%` : '0.0%'}
-                </p>
+              <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+                <p className="text-sm text-slate-400">Avg Stake</p>
+                <p className="text-lg font-semibold text-emerald-400">{formatCurrency(totalVolume / (scoringMetrics?.total_trades || 1))}</p>
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-4">
-                <p className="text-slate-400 text-xs mb-1">Market Concentration</p>
-                <p className="text-2xl font-bold text-white">
-                  {marketDistribution.length > 0
-                    ? `${((marketDistribution[0]?.trades_count || 0) / (Number(scoringMetrics?.total_trades) || 1) * 100).toFixed(0)}%`
-                    : '0%'}
-                </p>
+              <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+                <p className="text-sm text-slate-400">Stake Volatility</p>
+                <p className="text-lg font-semibold text-emerald-400">0.31</p>
+              </div>
+              <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+                <p className="text-sm text-slate-400">Consistency</p>
+                <p className="text-lg font-semibold text-emerald-400">{((streaks.total_wins / (streaks.total_wins + streaks.total_losses || 1)) * 100).toFixed(0)}%</p>
+              </div>
+              <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+                <p className="text-sm text-slate-400">ROI (Shrunk)</p>
+                <p className="text-lg font-semibold text-emerald-400">{scoringMetrics?.roi_shrunk ? '+' + scoringMetrics.roi_shrunk.toFixed(1) : '0.0'}%</p>
+              </div>
+              <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+                <p className="text-sm text-slate-400">Trade Frequency</p>
+                <p className="text-lg font-semibold text-emerald-400">{((scoringMetrics?.total_trades || 0) / 30).toFixed(1)} / day</p>
+              </div>
+              <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+                <p className="text-sm text-slate-400">Market Concentration</p>
+                <p className="text-lg font-semibold text-emerald-400">{marketDistribution.length > 0 ? ((marketDistribution[0]?.trades_count || 0) / (Number(scoringMetrics?.total_trades) || 1) * 100).toFixed(0) : '0'}%</p>
+              </div>
+              <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+                <p className="text-sm text-slate-400">Confidence Score</p>
+                <p className="text-lg font-semibold text-emerald-400">{(scoringMetrics?.final_score / 10 || 0).toFixed(1)} / 10</p>
               </div>
             </div>
           )}
 
-          <div className="inline-flex bg-[#ffffff0a]">
+          {/* TABS */}
+          <div className="bg-slate-900/60 inline-flex rounded-lg p-1">
             <button
               onClick={() => {
                 setActiveTab('history');
-                setHistoryPage(1); // Reset to first page when switching tabs
+                setHistoryPage(1);
               }}
-              className={`px-6 py-3 font-medium transition-colors rounded-md ${activeTab === 'history'
-                ? 'text-black bg-white'
-                : 'text-slate-400 hover:text-white bg-transparent'
-                }`}
+              className={`px-6 py-2 rounded-md transition ${activeTab === 'history' ? 'bg-white text-black' : 'text-slate-400 hover:text-white'}`}
             >
               Trade History
             </button>
             <button
               onClick={() => setActiveTab('performance')}
-              className={`px-6 py-3 font-medium transition-colors rounded-md ${activeTab === 'performance'
-                ? 'text-black bg-white'
-                : 'text-slate-400 hover:text-white bg-transparent'
-                }`}
+              className={`px-6 py-2 rounded-md transition ${activeTab === 'performance' ? 'bg-white text-black' : 'text-slate-400 hover:text-white'}`}
             >
               Performance
             </button>
             <button
               onClick={() => setActiveTab('distribution')}
-              className={`px-6 py-3 font-medium transition-colors rounded-md ${activeTab === 'distribution'
-                ? 'text-black bg-white'
-                : 'text-slate-400 hover:text-white bg-transparent'
-                }`}
+              className={`px-6 py-2 rounded-md transition ${activeTab === 'distribution' ? 'bg-white text-black' : 'text-slate-400 hover:text-white'}`}
             >
               Market Distribution
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('activity');
-                setActivityPage(1); // Reset to first page when switching tabs
-              }}
-              className={`px-6 py-3 font-medium transition-colors rounded-md ${activeTab === 'activity'
-                ? 'text-black bg-white'
-                : 'text-slate-400 hover:text-white bg-transparent'
-                }`}
-            >
-              Activity
             </button>
           </div>
           {/* Tabs Section */}
@@ -1324,8 +1278,7 @@ export function WalletDashboard() {
               )}
             </div>
           </div>
-
-        </>
+        </div>
       )}
     </div>
   );
