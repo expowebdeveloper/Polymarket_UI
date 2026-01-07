@@ -347,7 +347,7 @@ export function DBWalletDashboard() {
                             </div>
                         </div>
 
-                        {/* Metric Cards */}
+                        {/* Featured Metrics Cards */}
                         <div className="grid grid-cols-5 gap-4 mb-6">
                             <div className="bg-slate-800/50 rounded-lg p-4">
                                 <p className="text-slate-400 text-xs mb-1">ROI %</p>
@@ -366,65 +366,88 @@ export function DBWalletDashboard() {
                                 </p>
                             </div>
                             <div className="bg-slate-800/50 rounded-lg p-4">
-                                <p className="text-slate-400 text-xs mb-1">Total Volume</p>
-                                <p className="text-2xl font-bold text-white">{formatCurrency(totalVolume)}</p>
-                                <p className="text-slate-500 text-xs mt-1">Across {marketDistribution.length} markets</p>
+                                <p className="text-slate-400 text-xs mb-1">Open Positions</p>
+                                <p className="text-2xl font-bold text-white">{activePositions.length}</p>
+                                <p className="text-slate-500 text-xs mt-1">Active markets</p>
                             </div>
                             <div className="bg-slate-800/50 rounded-lg p-4">
-                                <p className="text-slate-400 text-xs mb-1">Total Trades</p>
-                                <p className="text-2xl font-bold text-white">{scoringMetrics?.total_trades || 0}</p>
-                                <p className="text-slate-500 text-xs mt-1">Since joining</p>
-                            </div>
-                            <div className="bg-slate-800/50 rounded-lg p-4">
-                                <p className="text-slate-400 text-xs mb-1">Total PnL</p>
-                                <p className={`text-2xl font-bold ${(scoringMetrics?.total_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                    {formatCurrency(scoringMetrics?.total_pnl || portfolioStats?.performance_metrics?.total_pnl || 0)}
+                                <p className="text-slate-400 text-xs mb-1">Unrealized PnL</p>
+                                <p className={`text-2xl font-bold ${(portfolioStats?.performance_metrics?.unrealized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    {formatCurrency(portfolioStats?.performance_metrics?.unrealized_pnl || 0)}
                                 </p>
-                                <p className="text-slate-500 text-xs mt-1">Realized + Unrealized</p>
+                                <p className="text-slate-500 text-xs mt-1">Paper value</p>
+                            </div>
+                            <div className="bg-slate-800/50 rounded-lg p-4">
+                                <p className="text-slate-400 text-xs mb-1">Realized PnL</p>
+                                <p className={`text-2xl font-bold ${(portfolioStats?.performance_metrics?.realized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    {formatCurrency(portfolioStats?.performance_metrics?.realized_pnl || 0)}
+                                </p>
+                                <p className="text-slate-500 text-xs mt-1">Locked in</p>
                             </div>
                         </div>
 
-                        {/* Advanced Metrics Toggle */}
+                        {/* Extra Metrics Toggle */}
                         <div className="mb-4">
                             <button
                                 onClick={() => setShowAdvanced(!showAdvanced)}
                                 className="text-slate-400 hover:text-white text-sm flex items-center gap-1 transition-colors"
                             >
                                 {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                {showAdvanced ? 'Hide Advanced' : 'View Advanced Metrics'}
+                                {showAdvanced ? 'Hide Extra Metrics' : 'Click on extra metrics'}
                             </button>
                         </div>
 
-                        {/* Advanced Metrics Section */}
+                        {/* Extra Metrics Section */}
                         {showAdvanced && (
-                            <div className="grid grid-cols-5 gap-4 mt-4">
+                            <div className="grid grid-cols-5 gap-4 mt-4 mb-6">
                                 <div className="bg-slate-800/50 rounded-lg p-4">
-                                    <p className="text-slate-400 text-xs mb-1">Risk Score</p>
-                                    <p className="text-2xl font-bold text-white">{(scoringMetrics?.score_risk || 0).toFixed(2)}</p>
-                                </div>
-                                <div className="bg-slate-800/50 rounded-lg p-4">
-                                    <p className="text-slate-400 text-xs mb-1">Max Drawdown</p>
-                                    <p className="text-2xl font-bold text-red-400">
-                                        {portfolioStats?.performance_metrics?.worst_loss ? `${portfolioStats.performance_metrics.worst_loss.toFixed(1)}%` : '0.0%'}
-                                    </p>
+                                    <p className="text-slate-400 text-xs mb-1">Biggest Win</p>
+                                    <p className="text-xl font-bold text-emerald-400">{formatCurrency(largestWin)}</p>
                                 </div>
                                 <div className="bg-slate-800/50 rounded-lg p-4">
                                     <p className="text-slate-400 text-xs mb-1">Worst Loss</p>
-                                    <p className="text-2xl font-bold text-red-400">{formatCurrency(portfolioStats?.performance_metrics?.worst_loss || 0)}</p>
-                                </div>
-                                <div className="bg-slate-800/50 rounded-lg p-4">
-                                    <p className="text-slate-400 text-xs mb-1">ROI (Shrunk)</p>
-                                    <p className="text-2xl font-bold text-emerald-400">
-                                        {scoringMetrics?.roi_shrunk ? `+${scoringMetrics.roi_shrunk.toFixed(1)}%` : '0.0%'}
+                                    <p className="text-xl font-bold text-red-400">
+                                        {formatCurrency(highestLoss)}
                                     </p>
                                 </div>
                                 <div className="bg-slate-800/50 rounded-lg p-4">
-                                    <p className="text-slate-400 text-xs mb-1">Market Concentration</p>
-                                    <p className="text-2xl font-bold text-white">
-                                        {marketDistribution.length > 0 
-                                            ? `${((marketDistribution[0]?.trades_count || 0) / (scoringMetrics?.total_trades || 1) * 100).toFixed(0)}%`
-                                            : '0%'}
+                                    <p className="text-slate-400 text-xs mb-1">Most Traded</p>
+                                    <p className="text-xl font-bold text-white truncate" title={marketDistribution.length > 0 ? marketDistribution[0].category : 'N/A'}>
+                                        {marketDistribution.length > 0 ? marketDistribution[0].category : 'N/A'}
                                     </p>
+                                </div>
+                                <div className="bg-slate-800/50 rounded-lg p-4">
+                                    <p className="text-slate-400 text-xs mb-1">Stake Wtd Win Rate</p>
+                                    <p className="text-xl font-bold text-white">
+                                        {scoringMetrics?.w_stake ? `${(scoringMetrics.w_stake * 100).toFixed(1)}%` : '0.0%'}
+                                    </p>
+                                </div>
+                                <div className="bg-slate-800/50 rounded-lg p-4">
+                                    <p className="text-slate-400 text-xs mb-1">Total Buy Stake</p>
+                                    <p className="text-xl font-bold text-white">
+                                        {formatCurrency(scoringMetrics?.total_stakes || 0)}
+                                    </p>
+                                </div>
+
+                                <div className="bg-slate-800/50 rounded-lg p-4">
+                                    <p className="text-slate-400 text-xs mb-1">Total Closed</p>
+                                    <p className="text-xl font-bold text-white">{allClosedPositions.length}</p>
+                                </div>
+                                <div className="bg-slate-800/50 rounded-lg p-4">
+                                    <p className="text-slate-400 text-xs mb-1">Max Stake</p>
+                                    <p className="text-xl font-bold text-white">{formatCurrency(scoringMetrics?.max_stake || 0)}</p>
+                                </div>
+                                <div className="bg-slate-800/50 rounded-lg p-4">
+                                    <p className="text-slate-400 text-xs mb-1">Total Winning Stake</p>
+                                    <p className="text-xl font-bold text-emerald-400">{formatCurrency(scoringMetrics?.winning_stakes || 0)}</p>
+                                </div>
+                                <div className="bg-slate-800/50 rounded-lg p-4">
+                                    <p className="text-slate-400 text-xs mb-1">Total Losing Stake</p>
+                                    <p className="text-xl font-bold text-red-400">{formatCurrency(scoringMetrics?.losing_stakes || 0)}</p>
+                                </div>
+                                <div className="bg-slate-800/50 rounded-lg p-4">
+                                    <p className="text-slate-400 text-xs mb-1">Risk Score</p>
+                                    <p className="text-xl font-bold text-white">{(Number(scoringMetrics?.score_risk || 0) * 100).toFixed(2)}%</p>
                                 </div>
                             </div>
                         )}
@@ -436,31 +459,28 @@ export function DBWalletDashboard() {
                         <div className="flex border-b border-slate-800">
                             <button
                                 onClick={() => setActiveTab('history')}
-                                className={`px-6 py-3 font-medium transition-colors ${
-                                    activeTab === 'history'
-                                        ? 'text-white border-b-2 border-purple-400'
-                                        : 'text-slate-400 hover:text-white'
-                                }`}
+                                className={`px-6 py-3 font-medium transition-colors ${activeTab === 'history'
+                                    ? 'text-white border-b-2 border-purple-400'
+                                    : 'text-slate-400 hover:text-white'
+                                    }`}
                             >
                                 Trade History
                             </button>
                             <button
                                 onClick={() => setActiveTab('performance')}
-                                className={`px-6 py-3 font-medium transition-colors ${
-                                    activeTab === 'performance'
-                                        ? 'text-white border-b-2 border-purple-400'
-                                        : 'text-slate-400 hover:text-white'
-                                }`}
+                                className={`px-6 py-3 font-medium transition-colors ${activeTab === 'performance'
+                                    ? 'text-white border-b-2 border-purple-400'
+                                    : 'text-slate-400 hover:text-white'
+                                    }`}
                             >
                                 Performance
                             </button>
                             <button
                                 onClick={() => setActiveTab('distribution')}
-                                className={`px-6 py-3 font-medium transition-colors ${
-                                    activeTab === 'distribution'
-                                        ? 'text-white border-b-2 border-purple-400'
-                                        : 'text-slate-400 hover:text-white'
-                                }`}
+                                className={`px-6 py-3 font-medium transition-colors ${activeTab === 'distribution'
+                                    ? 'text-white border-b-2 border-purple-400'
+                                    : 'text-slate-400 hover:text-white'
+                                    }`}
                             >
                                 Market Distribution
                             </button>
@@ -493,11 +513,10 @@ export function DBWalletDashboard() {
                                                     <td className="py-3 px-4 text-white">{formatCurrency(activity.price || 0)}</td>
                                                     <td className="py-3 px-4">
                                                         {activity.side && (
-                                                            <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                                                activity.side === 'BUY'
-                                                                    ? 'bg-emerald-500/20 text-emerald-400'
-                                                                    : 'bg-red-500/20 text-red-400'
-                                                            }`}>
+                                                            <span className={`px-2 py-1 rounded text-xs font-medium ${activity.side === 'BUY'
+                                                                ? 'bg-emerald-500/20 text-emerald-400'
+                                                                : 'bg-red-500/20 text-red-400'
+                                                                }`}>
                                                                 {activity.side}
                                                             </span>
                                                         )}

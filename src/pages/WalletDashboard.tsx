@@ -65,9 +65,11 @@ export function WalletDashboard() {
   const [userLeaderboardData, setUserLeaderboardData] = useState<UserLeaderboardData | null>(null);
   const [tradeHistory, setTradeHistory] = useState<TradeHistoryResponse | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity'>('history');
+  const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('history');
   const [distributionMetric, setDistributionMetric] = useState<'roi' | 'win_rate' | 'risk'>('roi');
   const [historyPage, setHistoryPage] = useState(1);
+  const [activePositionsPage, setActivePositionsPage] = useState(1);
+  const [closedPositionsPage, setClosedPositionsPage] = useState(1);
   const [activityPage, setActivityPage] = useState(1);
   const itemsPerPage = 20;
 
@@ -459,6 +461,10 @@ export function WalletDashboard() {
       total_trades: tradeHistory?.overall_metrics?.total_trades || profileStats?.trades || allClosedPositions.length || 0,
       score_risk: (tradeHistory?.overall_metrics as any)?.risk_score || 0,
       roi_shrunk: (tradeHistory?.overall_metrics as any)?.roi_shrunk || 0,
+      confidence_score: (tradeHistory?.overall_metrics as any)?.confidence_score || 0,
+      stake_volatility: (tradeHistory?.overall_metrics as any)?.stake_volatility || 0,
+      max_drawdown: (tradeHistory?.overall_metrics as any)?.max_drawdown || 0,
+      worst_loss: (tradeHistory?.overall_metrics as any)?.worst_loss || 0,
     };
   }, [tradeHistory, portfolioStats, userLeaderboardData, profileStats, allClosedPositions]);
 
@@ -643,12 +649,12 @@ export function WalletDashboard() {
           <div className="grid grid-cols-5 gap-4">
             <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
               <p className="text-sm text-slate-400">ROI %</p>
-              <p className="text-xl font-bold text-emerald-400">{scoringMetrics?.roi >= 0 ? '+' : ''}{(scoringMetrics?.roi || 0).toFixed(2)}%</p>
+              <p className="text-xl font-bold text-emerald-400">{scoringMetrics?.roi >= 0 ? '+' : ''}{Number(scoringMetrics?.roi || 0).toFixed(2)}%</p>
               <p className="text-xs text-slate-500">All-time</p>
             </div>
             <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
               <p className="text-sm text-slate-400">Win Rate</p>
-              <p className="text-xl font-bold text-emerald-400">{(scoringMetrics?.win_rate_percent || 0).toFixed(0)}%</p>
+              <p className="text-xl font-bold text-emerald-400">{Number(scoringMetrics?.win_rate_percent || 0).toFixed(0)}%</p>
               <p className="text-xs text-slate-500">{streaks.total_wins} of {streaks.total_wins + streaks.total_losses} trades</p>
             </div>
             <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
@@ -689,15 +695,15 @@ export function WalletDashboard() {
             <div className="grid grid-cols-5 gap-4">
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
                 <p className="text-sm text-slate-400">Risk Score</p>
-                <p className="text-lg font-semibold text-emerald-400">{(scoringMetrics?.score_risk || 0).toFixed(2)}</p>
+                <p className="text-lg font-semibold text-emerald-400">{(Number(scoringMetrics?.score_risk || 0) * 100).toFixed(2)}%</p>
               </div>
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
                 <p className="text-sm text-slate-400">Max Drawdown</p>
-                <p className="text-lg font-semibold text-emerald-400">{highestLoss ? `${highestLoss.toFixed(1)}%` : '0.0%'}</p>
+                <p className="text-lg font-semibold text-emerald-400">{scoringMetrics?.max_drawdown ? `${Number(scoringMetrics.max_drawdown).toFixed(2)}` : '0.00'}</p>
               </div>
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
                 <p className="text-sm text-slate-400">Worst Loss</p>
-                <p className="text-lg font-semibold text-emerald-400">{formatCurrency(highestLoss)}</p>
+                <p className="text-lg font-semibold text-emerald-400">{formatCurrency(scoringMetrics?.worst_loss || 0)}</p>
               </div>
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
                 <p className="text-sm text-slate-400">Avg Stake</p>
@@ -705,7 +711,7 @@ export function WalletDashboard() {
               </div>
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
                 <p className="text-sm text-slate-400">Stake Volatility</p>
-                <p className="text-lg font-semibold text-emerald-400">0.31</p>
+                <p className="text-lg font-semibold text-emerald-400">{Number(scoringMetrics?.stake_volatility || 0).toFixed(2)}</p>
               </div>
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
                 <p className="text-sm text-slate-400">Consistency</p>
@@ -713,11 +719,11 @@ export function WalletDashboard() {
               </div>
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
                 <p className="text-sm text-slate-400">ROI (Shrunk)</p>
-                <p className="text-lg font-semibold text-emerald-400">{scoringMetrics?.roi_shrunk ? '+' + scoringMetrics.roi_shrunk.toFixed(1) : '0.0'}%</p>
+                <p className="text-lg font-semibold text-emerald-400">{scoringMetrics?.roi_shrunk ? '+' + Number(scoringMetrics.roi_shrunk).toFixed(1) : '0.0'}%</p>
               </div>
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
                 <p className="text-sm text-slate-400">Trade Frequency</p>
-                <p className="text-lg font-semibold text-emerald-400">{((scoringMetrics?.total_trades || 0) / 30).toFixed(1)} / day</p>
+                <p className="text-lg font-semibold text-emerald-400">{Number((scoringMetrics?.total_trades || 0) / 30).toFixed(1)} / day</p>
               </div>
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
                 <p className="text-sm text-slate-400">Market Concentration</p>
@@ -725,7 +731,7 @@ export function WalletDashboard() {
               </div>
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
                 <p className="text-sm text-slate-400">Confidence Score</p>
-                <p className="text-lg font-semibold text-emerald-400">{(scoringMetrics?.final_score / 10 || 0).toFixed(1)} / 10</p>
+                <p className="text-lg font-semibold text-emerald-400">{Number(scoringMetrics?.confidence_score || 0).toFixed(2)} / 1.0</p>
               </div>
             </div>
           )}
@@ -740,6 +746,24 @@ export function WalletDashboard() {
               className={`px-6 py-2 rounded-md transition ${activeTab === 'history' ? 'bg-white text-black' : 'text-slate-400 hover:text-white'}`}
             >
               Trade History
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('active_positions');
+                setActivePositionsPage(1);
+              }}
+              className={`px-6 py-2 rounded-md transition ${activeTab === 'active_positions' ? 'bg-white text-black' : 'text-slate-400 hover:text-white'}`}
+            >
+              Active Positions
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('closed_positions');
+                setClosedPositionsPage(1);
+              }}
+              className={`px-6 py-2 rounded-md transition ${activeTab === 'closed_positions' ? 'bg-white text-black' : 'text-slate-400 hover:text-white'}`}
+            >
+              Closed Positions
             </button>
             <button
               onClick={() => setActiveTab('performance')}
@@ -828,6 +852,132 @@ export function WalletDashboard() {
                           ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed'
                           : 'bg-slate-700 hover:bg-slate-600 text-white'
                           }`}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {activeTab === 'active_positions' && (
+                <div>
+                  <div className="overflow-x-auto mb-4">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-slate-800">
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Market</th>
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Outcome</th>
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Size</th>
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Avg Price</th>
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Cur Price</th>
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">PnL</th>
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">PnL %</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {activePositions
+                          .slice((activePositionsPage - 1) * itemsPerPage, activePositionsPage * itemsPerPage)
+                          .map((position, idx) => (
+                            <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                              <td className="py-3 px-4 text-white font-medium">
+                                {position.title || position.slug || 'Market'}
+                              </td>
+                              <td className="py-3 px-4 text-slate-300 text-sm">{position.outcome || 'N/A'}</td>
+                              <td className="py-3 px-4 text-white">{formatSize(position.size)}</td>
+                              <td className="py-3 px-4 text-white">{formatCurrency(position.avg_price || 0)}</td>
+                              <td className="py-3 px-4 text-white">{formatCurrency(position.cur_price || 0)}</td>
+                              <td className={`py-3 px-4 font-medium ${(position.cash_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {formatCurrency(position.cash_pnl || 0)}
+                              </td>
+                              <td className={`py-3 px-4 font-medium ${(position.percent_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {Number(position.percent_pnl || 0).toFixed(2)}%
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* Active Positions Pagination */}
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="text-slate-400 text-sm">
+                      Showing {(activePositionsPage - 1) * itemsPerPage + 1} to {Math.min(activePositionsPage * itemsPerPage, activePositions.length)} of {activePositions.length} positions
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setActivePositionsPage(prev => Math.max(1, prev - 1))}
+                        disabled={activePositionsPage === 1}
+                        className={`px-4 py-2 rounded text-sm font-medium transition ${activePositionsPage === 1 ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}
+                      >
+                        Previous
+                      </button>
+                      <span className="px-4 py-2 text-slate-300 text-sm">
+                        Page {activePositionsPage} of {Math.ceil(activePositions.length / itemsPerPage) || 1}
+                      </span>
+                      <button
+                        onClick={() => setActivePositionsPage(prev => Math.min(Math.ceil(activePositions.length / itemsPerPage), prev + 1))}
+                        disabled={activePositionsPage >= Math.ceil(activePositions.length / itemsPerPage)}
+                        className={`px-4 py-2 rounded text-sm font-medium transition ${activePositionsPage >= Math.ceil(activePositions.length / itemsPerPage) ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {activeTab === 'closed_positions' && (
+                <div>
+                  <div className="overflow-x-auto mb-4">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-slate-800">
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Market</th>
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Outcome</th>
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Size</th>
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Avg Price</th>
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Exit Price</th>
+                          <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Realized PnL</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allClosedPositions
+                          .slice((closedPositionsPage - 1) * itemsPerPage, closedPositionsPage * itemsPerPage)
+                          .map((position, idx) => (
+                            <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                              <td className="py-3 px-4 text-white font-medium">
+                                {position.title || position.slug || 'Market'}
+                              </td>
+                              <td className="py-3 px-4 text-slate-300 text-sm">{position.outcome || 'N/A'}</td>
+                              <td className="py-3 px-4 text-white">{formatSize(position.size)}</td>
+                              <td className="py-3 px-4 text-white">{formatCurrency(position.avg_price || 0)}</td>
+                              <td className="py-3 px-4 text-white">{formatCurrency(position.cur_price || 0)}</td>
+                              <td className={`py-3 px-4 font-medium ${(position.realized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {formatCurrency(position.realized_pnl || 0)}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* Closed Positions Pagination */}
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="text-slate-400 text-sm">
+                      Showing {(closedPositionsPage - 1) * itemsPerPage + 1} to {Math.min(closedPositionsPage * itemsPerPage, allClosedPositions.length)} of {allClosedPositions.length} positions
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setClosedPositionsPage(prev => Math.max(1, prev - 1))}
+                        disabled={closedPositionsPage === 1}
+                        className={`px-4 py-2 rounded text-sm font-medium transition ${closedPositionsPage === 1 ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}
+                      >
+                        Previous
+                      </button>
+                      <span className="px-4 py-2 text-slate-300 text-sm">
+                        Page {closedPositionsPage} of {Math.ceil(allClosedPositions.length / itemsPerPage) || 1}
+                      </span>
+                      <button
+                        onClick={() => setClosedPositionsPage(prev => Math.min(Math.ceil(allClosedPositions.length / itemsPerPage), prev + 1))}
+                        disabled={closedPositionsPage >= Math.ceil(allClosedPositions.length / itemsPerPage)}
+                        className={`px-4 py-2 rounded text-sm font-medium transition ${closedPositionsPage >= Math.ceil(allClosedPositions.length / itemsPerPage) ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}
                       >
                         Next
                       </button>
