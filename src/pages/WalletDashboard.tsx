@@ -4,10 +4,11 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import {
-  syncTradesForWallet,
+  syncDBDashboard,
   fetchDBDashboard,
 } from '../services/api';
-import type { Position, ClosedPosition, Activity, ProfileStatsResponse, UserLeaderboardData, TradeHistoryResponse } from '../types/api';
+import { calculateLiveMetrics } from '../utils/scoring';
+import type { Position, ClosedPosition, Activity, TradeHistoryResponse } from '../types/api';
 
 // Helper function to format currency
 const formatCurrency = (value: number | string | undefined): string => {
@@ -50,12 +51,10 @@ export function WalletDashboard() {
   const [error, setError] = useState<string | null>(null);
 
   // Data states
-  const [profileStats, setProfileStats] = useState<ProfileStatsResponse | null>(null);
   const [activePositions, setActivePositions] = useState<Position[]>([]);
   const [allClosedPositions, setAllClosedPositions] = useState<ClosedPosition[]>([]);
   const [allActivities, setAllActivities] = useState<Activity[]>([]);
   const [portfolioStats, setPortfolioStats] = useState<any>(null);
-  const [userLeaderboardData, setUserLeaderboardData] = useState<UserLeaderboardData | null>(null);
   const [tradeHistory, setTradeHistory] = useState<TradeHistoryResponse | null>(null);
   const [backendScoringMetrics, setBackendScoringMetrics] = useState<any>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -77,7 +76,7 @@ export function WalletDashboard() {
     try {
       // First sync trades to ensure fresh data
       try {
-        await syncTradesForWallet(walletAddress);
+        await syncDBDashboard(walletAddress, false);
       } catch (e) {
         console.warn("Auto-sync failed, proceeding with existing data", e);
       }
@@ -87,14 +86,15 @@ export function WalletDashboard() {
       const dashboardResult = await fetchDBDashboard(walletAddress);
 
       if (dashboardResult) {
-        setProfileStats(dashboardResult.profile);
         setActivePositions(dashboardResult.positions || []);
         setAllClosedPositions(dashboardResult.closed_positions || []);
         setAllActivities(dashboardResult.activities || []);
         setPortfolioStats(dashboardResult.portfolio);
-        setUserLeaderboardData(dashboardResult.leaderboard);
         setTradeHistory(dashboardResult.trade_history);
-        setBackendScoringMetrics(dashboardResult.scoring_metrics);
+        setBackendScoringMetrics({
+          ...dashboardResult.scoring_metrics,
+          streaks: dashboardResult.streaks,
+        });
 
         // If the dashboard endpoint returned successfully, we are mostly done
         setLoading(false);
@@ -113,7 +113,6 @@ export function WalletDashboard() {
       setIsValidWallet(isValid);
       if (isValid && walletAddress) {
         fetchWalletData();
-        setUserLeaderboardData(null);
         setTradeHistory(null);
       }
     } else {
@@ -129,83 +128,39 @@ export function WalletDashboard() {
     }
   };
 
-  // Calculate highest loss
-  const highestLoss = portfolioStats?.performance_metrics?.worst_loss !== undefined
-    ? portfolioStats.performance_metrics.worst_loss
-    : (allClosedPositions.length > 0
-      ? Math.min(...allClosedPositions.map(pos => pos.realized_pnl || 0).filter(pnl => pnl < 0), 0)
-      : 0);
+  // Unified Scoring Engine Integration
+  const scoringMetrics = useMemo(() => {
+    // Generate live metrics from our current state
+    const live = calculateLiveMetrics(activePositions, allClosedPositions, allActivities);
 
-  // Calculate streaks, wins, losses, rewards, and market distribution
-  const streaks = useMemo(() => {
-    if (!allClosedPositions || allClosedPositions.length === 0) {
-      return { longest_streak: 0, current_streak: 0, total_wins: 0, total_losses: 0 };
-    }
-
-    // Sort by created_at or timestamp (oldest first)
-    const sorted = [...allClosedPositions].sort((a, b) => {
-      const timeA = (a as any).timestamp || (a.created_at ? new Date(a.created_at).getTime() : 0);
-      const timeB = (b as any).timestamp || (b.created_at ? new Date(b.created_at).getTime() : 0);
-      return timeA - timeB;
-    });
-
-    let longestStreak = 0;
-    let currentStreak = 0;
-    let maxStreak = 0;
-    let totalWins = 0;
-    let totalLosses = 0;
-
-    for (const pos of sorted) {
-      const pnl = pos.realized_pnl || 0;
-      if (pnl > 0) {
-        totalWins++;
-        currentStreak++;
-        maxStreak = Math.max(maxStreak, currentStreak);
-      } else if (pnl < 0) {
-        totalLosses++;
-        longestStreak = Math.max(longestStreak, maxStreak);
-        currentStreak = 0;
-        maxStreak = 0;
-      }
-    }
-
-    longestStreak = Math.max(longestStreak, maxStreak);
-
-    return {
-      longest_streak: longestStreak,
-      current_streak: currentStreak,
-      total_wins: totalWins,
-      total_losses: totalLosses,
+    // Provide aliases for backward compatibility with UI
+    const metricsWithAliases = {
+      ...live,
+      win_rate_percent: live.win_rate,
+      score_risk: live.risk_score,
+      roi_shrunk: live.roi, // Fallback
     };
-  }, [allClosedPositions]);
 
-  // Calculate rewards earned
-  const rewardsEarned = useMemo(() => {
-    return allActivities
-      .filter(activity => activity.type === 'REWARD')
-      .reduce((sum, activity) => sum + (parseFloat(String(activity.usdc_size || 0))), 0);
-  }, [allActivities]);
+    // If we have backend metrics, merge them (backend takes precedence for rank/final_score if sync is complete)
+    if (backendScoringMetrics && Object.keys(backendScoringMetrics).length > 0) {
+      return {
+        ...metricsWithAliases,
+        ...backendScoringMetrics,
+        // Ensure streaks and raw counts from live are kept if backend is partial
+        streaks: backendScoringMetrics.streaks || live.streaks,
+      };
+    }
 
-  // Calculate total volume
-  const totalVolume = useMemo(() => {
-    let volume = 0;
-    // From closed positions
-    allClosedPositions.forEach(pos => {
-      const stake = (parseFloat(String((pos as any).total_bought || pos.size || 0)) * parseFloat(String(pos.avg_price || 0)));
-      volume += stake;
-    });
-    // From active positions
-    activePositions.forEach(pos => {
-      volume += parseFloat(String(pos.initial_value || 0));
-    });
-    // From activities
-    allActivities.forEach(activity => {
-      if (activity.usdc_size) {
-        volume += parseFloat(String(activity.usdc_size));
-      }
-    });
-    return volume || userLeaderboardData?.vol || portfolioStats?.performance_metrics?.total_investment || 0;
-  }, [allClosedPositions, activePositions, allActivities, userLeaderboardData, portfolioStats]);
+    return metricsWithAliases;
+  }, [backendScoringMetrics, activePositions, allClosedPositions, allActivities]);
+
+  // Derived values for UI from unified scoring object
+  const streaks = scoringMetrics.streaks;
+  const rewardsEarned = allActivities
+    .filter(activity => activity.type === 'REWARD')
+    .reduce((sum, activity) => sum + (parseFloat(String(activity.usdc_size || 0))), 0);
+  const totalVolume = scoringMetrics.total_volume;
+  const highestLoss = scoringMetrics.worst_loss;
 
   // Helper function to categorize market
   const categorizeMarket = useMemo(() => {
@@ -388,29 +343,6 @@ export function WalletDashboard() {
     });
   }, [allClosedPositions]);
 
-  // Get scoring metrics from trade history or calculate from portfolio
-  const scoringMetrics = useMemo(() => {
-    if (backendScoringMetrics) return backendScoringMetrics;
-
-    const finalScore = (tradeHistory?.overall_metrics as any)?.final_score ||
-      (tradeHistory?.overall_metrics as any)?.score ||
-      (userLeaderboardData?.rank ? (100 - Number(userLeaderboardData.rank)) : 0);
-
-    return {
-      final_score: finalScore,
-      total_pnl: portfolioStats?.pnl_metrics?.total_pnl || portfolioStats?.performance_metrics?.total_pnl || 0,
-      roi: portfolioStats?.performance_metrics?.roi || tradeHistory?.overall_metrics?.roi || 0,
-      win_rate: tradeHistory?.overall_metrics?.win_rate || portfolioStats?.performance_metrics?.win_rate || 0,
-      win_rate_percent: tradeHistory?.overall_metrics?.win_rate || portfolioStats?.performance_metrics?.win_rate || 0,
-      total_trades: tradeHistory?.overall_metrics?.total_trades || profileStats?.trades || allClosedPositions.length || 0,
-      score_risk: (tradeHistory?.overall_metrics as any)?.risk_score || 0,
-      roi_shrunk: (tradeHistory?.overall_metrics as any)?.roi_shrunk || 0,
-      confidence_score: (tradeHistory?.overall_metrics as any)?.confidence_score || 0,
-      stake_volatility: (tradeHistory?.overall_metrics as any)?.stake_volatility || 0,
-      max_drawdown: (tradeHistory?.overall_metrics as any)?.max_drawdown || 0,
-      worst_loss: (tradeHistory?.overall_metrics as any)?.worst_loss || 0,
-    };
-  }, [tradeHistory, portfolioStats, userLeaderboardData, profileStats, allClosedPositions]);
 
   // Process trade data for performance graph (last 10 trades)
   // Use closed positions if trade history is not available
@@ -599,7 +531,7 @@ export function WalletDashboard() {
             <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
               <p className="text-sm text-slate-400">Win Rate</p>
               <p className="text-xl font-bold text-emerald-400">{Number(scoringMetrics?.win_rate_percent || 0).toFixed(0)}%</p>
-              <p className="text-xs text-slate-500">{streaks.total_wins} of {streaks.total_wins + streaks.total_losses} trades</p>
+              <p className="text-xs text-slate-500">{streaks.total_wins} of {scoringMetrics?.total_trades_with_pnl || (streaks.total_wins + streaks.total_losses)} trades</p>
             </div>
             <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
               <p className="text-sm text-slate-400">Total Volume</p>

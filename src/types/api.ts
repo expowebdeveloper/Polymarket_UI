@@ -219,6 +219,19 @@ export interface EnhancedProfileStatsResponse {
     winRate: number;
 }
 
+export interface UserPnL {
+    t: number;
+    p: number;
+}
+
+export interface UserPnLResponse {
+    user_address: string;
+    interval: string;
+    fidelity: string;
+    count: number;
+    data: UserPnL[];
+}
+
 // API Error Type
 export interface ApiError {
     message: string;

@@ -543,9 +543,10 @@ export async function fetchDBDashboard(walletAddress: string): Promise<any> {
 /**
  * Trigger a full sync of wallet data from server to local database
  * @param walletAddress - Wallet address
+ * @param background - Whether to run in background (default: true)
  */
-export async function syncDBDashboard(walletAddress: string): Promise<any> {
-    return fetchApi<any>(`/dashboard/sync/${walletAddress}`, 120000, 'POST');
+export async function syncDBDashboard(walletAddress: string, background: boolean = true): Promise<any> {
+    return fetchApi<any>(`/dashboard/sync/${walletAddress}?background=${background}`, 120000, 'POST');
 }
 
 /**
@@ -691,4 +692,12 @@ export async function login(data: LoginRequest): Promise<AuthResponse> {
             status: error instanceof Response ? error.status : undefined,
         } as ApiError;
     }
+}
+
+/**
+ * Fetch PnL history for a specific wallet address
+ * @param walletAddress - Wallet address
+ */
+export async function fetchUserPnL(walletAddress: string): Promise<any> {
+    return fetchApi<any>(`/pnl?user_address=${walletAddress}`, 30000);
 }

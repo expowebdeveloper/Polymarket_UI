@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, TrendingUp, TrendingDown, Activity as ActivityIcon, BarChart3, Database, User, Trophy, Fish, Flame, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, TrendingUp, TrendingDown, Activity as ActivityIcon, BarChart3, Database, Trophy, Fish, Flame, ChevronDown, ChevronUp } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { TradePerformanceGraph } from '../components/TradePerformanceGraph';
 import { fetchDBDashboard, syncDBDashboard } from '../services/api';
-import type { Position, ClosedPosition, Activity, ProfileStatsResponse, UserLeaderboardData, TradeHistoryResponse } from '../types/api';
+import { calculateLiveMetrics } from '../utils/scoring';
+import type { Position, ClosedPosition, Activity, TradeHistoryResponse } from '../types/api';
 
 // Helper function to format currency
 const formatCurrency = (value: number | string | undefined): string => {
@@ -47,18 +48,13 @@ export function DBWalletDashboard() {
     const [error, setError] = useState<string | null>(null);
 
     // Data states
-    const [profileStats, setProfileStats] = useState<ProfileStatsResponse | null>(null);
     const [activePositions, setActivePositions] = useState<Position[]>([]);
     const [allClosedPositions, setAllClosedPositions] = useState<ClosedPosition[]>([]);
     const [allActivities, setAllActivities] = useState<Activity[]>([]);
     const [portfolioStats, setPortfolioStats] = useState<any>(null);
-    const [userLeaderboardData, setUserLeaderboardData] = useState<UserLeaderboardData | null>(null);
     const [tradeHistory, setTradeHistory] = useState<TradeHistoryResponse | null>(null);
-    const [scoringMetrics, setScoringMetrics] = useState<any>(null);
-    const [streaks, setStreaks] = useState<any>(null);
-    const [rewardsEarned, setRewardsEarned] = useState<number>(0);
-    const [totalVolume, setTotalVolume] = useState<number>(0);
     const [marketDistribution, setMarketDistribution] = useState<any[]>([]);
+    const [backendScoringMetrics, setBackendScoringMetrics] = useState<any>(null);
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution'>('history');
 
@@ -86,17 +82,15 @@ export function DBWalletDashboard() {
             const data = await fetchDBDashboard(walletAddress);
 
             if (data) {
-                setProfileStats(data.profile);
-                setUserLeaderboardData(data.leaderboard);
                 setPortfolioStats(data.portfolio);
                 setActivePositions(data.positions || []);
                 setAllClosedPositions(data.closed_positions || []);
                 setAllActivities(data.activities || []);
                 setTradeHistory(data.trade_history);
-                setScoringMetrics(data.scoring_metrics || {});
-                setStreaks(data.streaks || { longest_streak: 0, current_streak: 0, total_wins: 0, total_losses: 0 });
-                setRewardsEarned(data.rewards_earned || 0);
-                setTotalVolume(data.total_volume || 0);
+                setBackendScoringMetrics({
+                    ...data.scoring_metrics,
+                    streaks: data.streaks,
+                });
                 setMarketDistribution(data.market_distribution || []);
             }
 
@@ -115,7 +109,6 @@ export function DBWalletDashboard() {
                 fetchWalletData();
                 setClosedPositionsPage(1);
                 setActivitiesPage(1);
-                setUserLeaderboardData(null);
                 setTradeHistory(null);
             }
         } else {
@@ -131,18 +124,40 @@ export function DBWalletDashboard() {
         }
     };
 
-    // Calculate largest win and highest loss
-    const highestLoss = portfolioStats?.performance_metrics?.worst_loss !== undefined
-        ? portfolioStats.performance_metrics.worst_loss
-        : (allClosedPositions.length > 0
-            ? Math.min(...allClosedPositions.map(pos => pos.realized_pnl || 0).filter(pnl => pnl < 0), 0)
-            : 0);
+    // Unified Scoring Engine Integration
+    const scoringMetrics = useMemo(() => {
+        // Generate live metrics from our current state
+        const live = calculateLiveMetrics(activePositions, allClosedPositions, allActivities);
 
-    const largestWin = profileStats?.largestWin
-        ? parseFloat(String(profileStats.largestWin))
-        : (allClosedPositions.length > 0
-            ? Math.max(...allClosedPositions.map(pos => pos.realized_pnl || 0).filter(pnl => pnl > 0), 0)
-            : 0);
+        // Provide aliases for backward compatibility with UI
+        const metricsWithAliases = {
+            ...live,
+            win_rate_percent: live.win_rate,
+            score_risk: live.risk_score,
+            roi_shrunk: live.roi, // Fallback
+        };
+
+        // If we have backend metrics, merge them (backend takes precedence for rank/final_score if sync is complete)
+        if (backendScoringMetrics && Object.keys(backendScoringMetrics).length > 0) {
+            return {
+                ...metricsWithAliases,
+                ...backendScoringMetrics,
+                // Ensure streaks and raw counts from live are kept if backend is partial
+                streaks: backendScoringMetrics.streaks || live.streaks,
+            };
+        }
+
+        return metricsWithAliases;
+    }, [backendScoringMetrics, activePositions, allClosedPositions, allActivities]);
+
+    // Derived values for UI from unified scoring object
+    const streaks = scoringMetrics.streaks;
+    const rewardsEarned = allActivities
+        .filter(activity => activity.type === 'REWARD')
+        .reduce((sum, activity) => sum + (parseFloat(String(activity.usdc_size || 0))), 0);
+    const totalVolume = scoringMetrics.total_volume;
+    const highestLoss = scoringMetrics.worst_loss;
+    const largestWin = scoringMetrics.largest_win;
 
     // Process trade data for performance graph (last 10 trades)
     const performanceGraphData = useMemo(() => {

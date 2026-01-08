@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trophy, Fish, Flame, TrendingUp, Info, DollarSign, RefreshCw, BarChart3, PieChart } from 'lucide-react';
-import { fetchTraderDetails, fetchUserLeaderboardData, fetchTradeHistory } from '../services/api';
+import { fetchTraderDetails, fetchUserLeaderboardData, fetchTradeHistory, fetchPositionsForWallet, fetchActivityForWallet, fetchClosedPositionsForWallet } from '../services/api';
+import { calculateLiveMetrics, ScoredMetrics } from '../utils/scoring';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { useTheme } from '../contexts/ThemeContext';
@@ -59,6 +60,10 @@ export function TraderProfile() {
   const [traderDetails, setTraderDetails] = useState<TraderDetails | null>(null);
   const [leaderboardData, setLeaderboardData] = useState<UserLeaderboardData | null>(null);
   const [tradeHistory, setTradeHistory] = useState<TradeHistoryResponse | null>(null);
+  const [activePositions, setActivePositions] = useState<any[]>([]);
+  const [closedPositions, setClosedPositions] = useState<any[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [liveMetrics, setLiveMetrics] = useState<ScoredMetrics | null>(null);
   const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution'>('history');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -76,10 +81,13 @@ export function TraderProfile() {
     setError(null);
 
     try {
-      const [details, leaderboard, history] = await Promise.allSettled([
+      const [details, leaderboard, history, posRes, activityRes, closedRes] = await Promise.allSettled([
         fetchTraderDetails(wallet),
         fetchUserLeaderboardData(wallet, 'overall'),
         fetchTradeHistory(wallet),
+        fetchPositionsForWallet(wallet),
+        fetchActivityForWallet(wallet),
+        fetchClosedPositionsForWallet(wallet),
       ]);
 
       if (details.status === 'fulfilled') {
@@ -94,11 +102,28 @@ export function TraderProfile() {
         setTradeHistory(history.value);
       }
 
+      const currentPositions = posRes.status === 'fulfilled' ? posRes.value.positions : [];
+      const currentActivities = activityRes.status === 'fulfilled' ? activityRes.value.activities : [];
+      const currentClosedPositions = closedRes.status === 'fulfilled' ? closedRes.value : [];
+
+      setActivePositions(currentPositions);
+      setActivities(currentActivities);
+      setClosedPositions(currentClosedPositions);
+
+      // Perform unified scoring
+      const metrics = calculateLiveMetrics(
+        currentPositions,
+        currentClosedPositions,
+        currentActivities
+      );
+      setLiveMetrics(metrics);
+
       // Check if all failed
       if (details.status === 'rejected' && leaderboard.status === 'rejected' && history.status === 'rejected') {
         setError('Failed to load trader data');
       }
     } catch (err) {
+      console.error('Error loading trader data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load trader data');
     } finally {
       setLoading(false);
@@ -114,14 +139,14 @@ export function TraderProfile() {
   }
 
   // Calculate metrics
-  const finalScore = traderDetails?.final_score || 0;
+  const finalScore = liveMetrics?.final_score ?? traderDetails?.final_score ?? 0;
   const topPercent = finalScore >= 90 ? 1 : finalScore >= 75 ? 5 : finalScore >= 50 ? 10 : finalScore >= 25 ? 25 : 50;
-  const roi = tradeHistory?.overall_metrics?.roi || leaderboardData?.pnl || 0;
-  const winRate = tradeHistory?.overall_metrics?.win_rate || traderDetails?.win_rate_percent || 0;
-  const totalVolume = tradeHistory?.overall_metrics?.total_volume || leaderboardData?.vol || 0;
-  const totalTrades = tradeHistory?.overall_metrics?.total_trades || traderDetails?.total_trades || 0;
-  const wins = tradeHistory?.overall_metrics?.winning_trades || 0;
-  const losses = tradeHistory?.overall_metrics?.losing_trades || 0;
+  const roi = liveMetrics?.roi ?? tradeHistory?.overall_metrics?.roi ?? leaderboardData?.pnl ?? 0;
+  const winRate = liveMetrics?.win_rate ?? tradeHistory?.overall_metrics?.win_rate ?? traderDetails?.win_rate_percent ?? 0;
+  const totalVolume = liveMetrics?.total_volume ?? tradeHistory?.overall_metrics?.total_volume ?? leaderboardData?.vol ?? 0;
+  const totalTrades = liveMetrics?.total_trades ?? tradeHistory?.overall_metrics?.total_trades ?? traderDetails?.total_trades ?? 0;
+  const wins = liveMetrics?.winning_trades ?? tradeHistory?.overall_metrics?.winning_trades ?? 0;
+  const losses = liveMetrics?.losing_trades ?? tradeHistory?.overall_metrics?.losing_trades ?? 0;
 
   // Get recent trades (last 7 days sentiment)
   const recentTrades = tradeHistory?.trades
@@ -141,12 +166,12 @@ export function TraderProfile() {
   const tradeConfidence = recentTrades.length > 0 ? (recentWins / recentTrades.length) * 100 : 0;
 
   // Get closed positions for trade history
-  const closedPositions = tradeHistory?.closed_positions || [];
-  const paginatedTrades = closedPositions.slice(
+  const displayClosedPositions = closedPositions.length > 0 ? closedPositions : (tradeHistory?.closed_positions || []);
+  const paginatedTrades = displayClosedPositions.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize
   );
-  const totalPages = Math.ceil(closedPositions.length / pageSize);
+  const totalPages = Math.ceil(displayClosedPositions.length / pageSize);
 
   // Determine badges
   const badges = [];
@@ -191,13 +216,12 @@ export function TraderProfile() {
             {badges.map((badge, idx) => (
               <div
                 key={idx}
-                className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
-                  badge.color === 'yellow'
-                    ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                    : badge.color === 'blue'
+                className={`px-4 py-2 rounded-lg flex items-center gap-2 ${badge.color === 'yellow'
+                  ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                  : badge.color === 'blue'
                     ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
                     : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                }`}
+                  }`}
               >
                 <badge.icon className="w-4 h-4" />
                 <span className="text-sm font-medium">{badge.label}</span>
@@ -265,31 +289,28 @@ export function TraderProfile() {
         <div className={`flex gap-6 mb-6 border-b ${theme === 'dark' ? 'border-slate-800' : 'border-slate-200'}`}>
           <button
             onClick={() => setActiveTab('history')}
-            className={`pb-3 px-2 font-medium transition ${
-              activeTab === 'history'
-                ? 'text-emerald-400 border-b-2 border-emerald-400'
-                : `${textSecondaryClass} ${theme === 'dark' ? 'hover:text-white' : 'hover:text-slate-900'}`
-            }`}
+            className={`pb-3 px-2 font-medium transition ${activeTab === 'history'
+              ? 'text-emerald-400 border-b-2 border-emerald-400'
+              : `${textSecondaryClass} ${theme === 'dark' ? 'hover:text-white' : 'hover:text-slate-900'}`
+              }`}
           >
             Trade History
           </button>
           <button
             onClick={() => setActiveTab('performance')}
-            className={`pb-3 px-2 font-medium transition ${
-              activeTab === 'performance'
-                ? 'text-emerald-400 border-b-2 border-emerald-400'
-                : `${textSecondaryClass} ${theme === 'dark' ? 'hover:text-white' : 'hover:text-slate-900'}`
-            }`}
+            className={`pb-3 px-2 font-medium transition ${activeTab === 'performance'
+              ? 'text-emerald-400 border-b-2 border-emerald-400'
+              : `${textSecondaryClass} ${theme === 'dark' ? 'hover:text-white' : 'hover:text-slate-900'}`
+              }`}
           >
             Performance Graph
           </button>
           <button
             onClick={() => setActiveTab('distribution')}
-            className={`pb-3 px-2 font-medium transition ${
-              activeTab === 'distribution'
-                ? 'text-emerald-400 border-b-2 border-emerald-400'
-                : `${textSecondaryClass} ${theme === 'dark' ? 'hover:text-white' : 'hover:text-slate-900'}`
-            }`}
+            className={`pb-3 px-2 font-medium transition ${activeTab === 'distribution'
+              ? 'text-emerald-400 border-b-2 border-emerald-400'
+              : `${textSecondaryClass} ${theme === 'dark' ? 'hover:text-white' : 'hover:text-slate-900'}`
+              }`}
           >
             Market Distribution
           </button>
@@ -324,11 +345,10 @@ export function TraderProfile() {
                         </td>
                         <td className="py-3 px-4">
                           <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              (position.realized_pnl || 0) >= 0
-                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                            }`}
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${(position.realized_pnl || 0) >= 0
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                              : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                              }`}
                           >
                             {position.outcome || 'N/A'}
                           </span>
@@ -337,9 +357,8 @@ export function TraderProfile() {
                           {position.cur_price ? formatCurrency(position.cur_price) : 'N/A'}
                         </td>
                         <td
-                          className={`py-3 px-4 font-medium ${
-                            (position.realized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'
-                          }`}
+                          className={`py-3 px-4 font-medium ${(position.realized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'
+                            }`}
                         >
                           {(position.realized_pnl || 0) >= 0 ? '+' : ''}
                           {formatCurrency(position.realized_pnl || 0)}
@@ -360,11 +379,10 @@ export function TraderProfile() {
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                    currentPage > 1
-                      ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                      : 'bg-slate-800/50 text-slate-500 cursor-not-allowed'
-                  }`}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${currentPage > 1
+                    ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    : 'bg-slate-800/50 text-slate-500 cursor-not-allowed'
+                    }`}
                 >
                   &lt;
                 </button>
@@ -374,11 +392,10 @@ export function TraderProfile() {
                 <button
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage >= totalPages}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                    currentPage < totalPages
-                      ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                      : 'bg-slate-800/50 text-slate-500 cursor-not-allowed'
-                  }`}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${currentPage < totalPages
+                    ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    : 'bg-slate-800/50 text-slate-500 cursor-not-allowed'
+                    }`}
                 >
                   &gt;
                 </button>
