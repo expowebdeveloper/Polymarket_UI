@@ -4,15 +4,8 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import {
-  fetchPositionsForWallet,
-  fetchClosedPositionsForWallet,
-  fetchActivityForWallet,
-  fetchProfileStats,
-  fetchPortfolioStats,
-  fetchTraderDetails,
-  fetchUserLeaderboardData,
-  fetchTradeHistory,
   syncTradesForWallet,
+  fetchDBDashboard,
 } from '../services/api';
 import type { Position, ClosedPosition, Activity, ProfileStatsResponse, UserLeaderboardData, TradeHistoryResponse } from '../types/api';
 
@@ -64,6 +57,7 @@ export function WalletDashboard() {
   const [portfolioStats, setPortfolioStats] = useState<any>(null);
   const [userLeaderboardData, setUserLeaderboardData] = useState<UserLeaderboardData | null>(null);
   const [tradeHistory, setTradeHistory] = useState<TradeHistoryResponse | null>(null);
+  const [backendScoringMetrics, setBackendScoringMetrics] = useState<any>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('history');
   const [distributionMetric, setDistributionMetric] = useState<'roi' | 'win_rate' | 'risk'>('roi');
@@ -89,74 +83,22 @@ export function WalletDashboard() {
       }
 
       // Fetch all data in parallel
-      const [
-        profileData,
-        positionsData,
-        closedPositionsData,
-        activitiesData,
-        portfolioData,
-        traderData,
-        leaderboardData,
-        tradeHistoryData,
-      ] = await Promise.allSettled([
-        fetchProfileStats(walletAddress),
-        fetchPositionsForWallet(walletAddress),
-        fetchClosedPositionsForWallet(walletAddress),
-        fetchActivityForWallet(walletAddress, undefined, 1000),
-        fetchPortfolioStats(walletAddress),
-        fetchTraderDetails(walletAddress),
-        fetchUserLeaderboardData(walletAddress, 'overall'),
-        fetchTradeHistory(walletAddress),
-      ]);
+      // Fetch comprehensive dashboard data from DB (Unified Source of Truth)
+      const dashboardResult = await fetchDBDashboard(walletAddress);
 
-      if (profileData.status === 'fulfilled') {
-        setProfileStats(profileData.value);
-      }
-      if (positionsData.status === 'fulfilled') {
-        setActivePositions(positionsData.value?.positions || []);
-      } else if (positionsData.status === 'rejected') {
-        console.warn('Failed to fetch positions:', positionsData.reason);
-        setActivePositions([]); // Set empty array on error
-      }
-      if (closedPositionsData.status === 'fulfilled') {
-        const closedList = closedPositionsData.value || [];
-        setAllClosedPositions(closedList);
-      }
-      if (activitiesData.status === 'fulfilled') {
-        const activitiesList = activitiesData.value.activities || [];
-        setAllActivities(activitiesList);
-      }
-      if (portfolioData.status === 'fulfilled') {
-        setPortfolioStats(portfolioData.value);
-      }
-      // Trader details fetched but not used in UI (kept for future use)
-      // if (traderData.status === 'fulfilled') {
-      //   setTraderDetails(traderData.value);
-      // }
-      if (leaderboardData.status === 'fulfilled') {
-        setUserLeaderboardData(leaderboardData.value);
-      } else if (leaderboardData.status === 'rejected') {
-        console.warn('Failed to fetch leaderboard data:', leaderboardData.reason);
-      }
-      if (tradeHistoryData.status === 'fulfilled') {
-        setTradeHistory(tradeHistoryData.value);
-      } else if (tradeHistoryData.status === 'rejected') {
-        console.warn('Failed to fetch trade history:', tradeHistoryData.reason);
-      }
+      if (dashboardResult) {
+        setProfileStats(dashboardResult.profile);
+        setActivePositions(dashboardResult.positions || []);
+        setAllClosedPositions(dashboardResult.closed_positions || []);
+        setAllActivities(dashboardResult.activities || []);
+        setPortfolioStats(dashboardResult.portfolio);
+        setUserLeaderboardData(dashboardResult.leaderboard);
+        setTradeHistory(dashboardResult.trade_history);
+        setBackendScoringMetrics(dashboardResult.scoring_metrics);
 
-      const errors = [
-        profileData.status === 'rejected' ? 'Profile stats' : null,
-        positionsData.status === 'rejected' ? 'Positions' : null,
-        closedPositionsData.status === 'rejected' ? 'Closed positions' : null,
-        activitiesData.status === 'rejected' ? 'Activities' : null,
-        portfolioData.status === 'rejected' ? 'Portfolio stats' : null,
-        traderData.status === 'rejected' ? 'Trader details' : null,
-        leaderboardData.status === 'rejected' ? 'Leaderboard data' : null,
-        tradeHistoryData.status === 'rejected' ? 'Trade history' : null,
-      ].filter(Boolean);
-
-      if (errors.length > 0 && errors.length === 8) {
-        setError(`Failed to load wallet data: ${errors.join(', ')}`);
+        // If the dashboard endpoint returned successfully, we are mostly done
+        setLoading(false);
+        return;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load wallet data');
@@ -448,6 +390,8 @@ export function WalletDashboard() {
 
   // Get scoring metrics from trade history or calculate from portfolio
   const scoringMetrics = useMemo(() => {
+    if (backendScoringMetrics) return backendScoringMetrics;
+
     const finalScore = (tradeHistory?.overall_metrics as any)?.final_score ||
       (tradeHistory?.overall_metrics as any)?.score ||
       (userLeaderboardData?.rank ? (100 - Number(userLeaderboardData.rank)) : 0);
