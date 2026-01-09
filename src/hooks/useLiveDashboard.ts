@@ -1,11 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-    fetchPositionsForWallet,
-    fetchClosedPositionsForWallet,
-    fetchActivityForWallet,
-    fetchUserPnL
+    fetchLiveDashboardData
 } from '../services/api';
-import { calculateLiveMetrics, ScoredMetrics } from '../utils/scoring';
+import { ScoredMetrics } from '../utils/scoring';
 import { Position, ClosedPosition, Activity, UserPnL } from '../types/api';
 
 export interface LiveDashboardState {
@@ -35,32 +32,28 @@ export function useLiveDashboard(walletAddress: string) {
         setState(prev => ({ ...prev, loading: true, error: null }));
 
         try {
-            const [
-                posRes,
-                closedRes,
-                activityRes,
-                pnlRes
-            ] = await Promise.all([
-                fetchPositionsForWallet(walletAddress),
-                fetchClosedPositionsForWallet(walletAddress),
-                fetchActivityForWallet(walletAddress),
-                fetchUserPnL(walletAddress)
-            ]);
+            const data = await fetchLiveDashboardData(walletAddress);
 
-            const metrics = calculateLiveMetrics(
-                posRes.positions,
-                closedRes,
-                activityRes.activities
-            );
+            // Use backend pre-calculated metrics directly (Single Source of Truth)
+            const backendMetrics = data.scoring_metrics;
+            const metrics: ScoredMetrics = {
+                ...backendMetrics,
+                // Ensure field naming compatibility between backend and frontend
+                risk_score: backendMetrics.score_risk || 0,
+                win_score: backendMetrics.score_win_rate || 0,
+                roi_score: backendMetrics.score_roi || 0,
+                pnl_score: backendMetrics.score_pnl || 0,
+                final_score: backendMetrics.final_score || 0,
+            };
 
             setState({
                 loading: false,
                 error: null,
                 metrics,
-                positions: posRes.positions,
-                closedPositions: closedRes,
-                activities: activityRes.activities,
-                userPnL: pnlRes.data || [],
+                positions: data.positions || [],
+                closedPositions: data.closed_positions || [],
+                activities: data.activities || [],
+                userPnL: data.trade_history?.trades || [],
             });
         } catch (err: any) {
             console.error('Error fetching live dashboard data:', err);

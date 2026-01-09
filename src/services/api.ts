@@ -15,7 +15,6 @@ import type {
     MarketOrdersResponse,
     AllLeaderboardsResponse,
     TradeHistoryResponse,
-    LeaderboardTrader,
     LeaderboardTradersResponse,
     RewardsMarketResponse,
     ApiError,
@@ -527,9 +526,10 @@ export async function fetchMarketOrders(
 /**
  * Fetch comprehensive trade history for a wallet address
  * @param walletAddress - Wallet address to fetch trade history for
+ * @param limit - Optional limit (default: 1000)
  */
-export async function fetchTradeHistory(walletAddress: string): Promise<TradeHistoryResponse> {
-    return fetchApi<TradeHistoryResponse>(`/trade-history?user=${walletAddress}`, 60000);
+export async function fetchTradeHistory(walletAddress: string, limit: number = 1000): Promise<TradeHistoryResponse> {
+    return fetchApi<TradeHistoryResponse>(`/trade-history?user=${walletAddress}&limit=${limit}`, 60000);
 }
 
 /**
@@ -538,6 +538,14 @@ export async function fetchTradeHistory(walletAddress: string): Promise<TradeHis
  */
 export async function fetchDBDashboard(walletAddress: string): Promise<any> {
     return fetchApi<any>(`/dashboard/db/${walletAddress}`, 30000);
+}
+
+/**
+ * Fetch comprehensive dashboard data directly from live APIs (via backend aggregation)
+ * @param walletAddress - Wallet address
+ */
+export async function fetchLiveDashboardData(walletAddress: string): Promise<any> {
+    return fetchApi<any>(`/dashboard/live/${walletAddress}`, 120000);
 }
 
 /**

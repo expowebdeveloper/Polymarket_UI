@@ -582,32 +582,32 @@ export function WalletDashboard() {
                 <p className="text-lg font-semibold text-emerald-400">{formatCurrency(scoringMetrics?.worst_loss || 0)}</p>
               </div>
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+                <p className="text-sm text-slate-400">Largest Win</p>
+                <p className="text-lg font-semibold text-emerald-400">{formatCurrency(scoringMetrics?.largest_win || 0)}</p>
+              </div>
+              <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
                 <p className="text-sm text-slate-400">Avg Stake</p>
-                <p className="text-lg font-semibold text-emerald-400">{formatCurrency(totalVolume / (scoringMetrics?.total_trades || 1))}</p>
+                <p className="text-lg font-semibold text-emerald-400">{formatCurrency((scoringMetrics?.total_stakes || 0) / (scoringMetrics?.total_trades || 1))}</p>
               </div>
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
                 <p className="text-sm text-slate-400">Stake Volatility</p>
                 <p className="text-lg font-semibold text-emerald-400">{Number(scoringMetrics?.stake_volatility || 0).toFixed(2)}</p>
               </div>
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+                <p className="text-sm text-slate-400">Buy Volume</p>
+                <p className="text-lg font-semibold text-emerald-400">{formatCurrency(scoringMetrics?.buy_volume || 0)}</p>
+              </div>
+              <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+                <p className="text-sm text-slate-400">Sell Volume</p>
+                <p className="text-lg font-semibold text-emerald-400">{formatCurrency(scoringMetrics?.sell_volume || 0)}</p>
+              </div>
+              <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
+                <p className="text-sm text-slate-400">Confidence</p>
+                <p className="text-lg font-semibold text-emerald-400">{Number(scoringMetrics?.confidence_score || 0).toFixed(2)}</p>
+              </div>
+              <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
                 <p className="text-sm text-slate-400">Consistency</p>
                 <p className="text-lg font-semibold text-emerald-400">{((streaks.total_wins / (streaks.total_wins + streaks.total_losses || 1)) * 100).toFixed(0)}%</p>
-              </div>
-              <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
-                <p className="text-sm text-slate-400">ROI (Shrunk)</p>
-                <p className="text-lg font-semibold text-emerald-400">{scoringMetrics?.roi_shrunk ? '+' + Number(scoringMetrics.roi_shrunk).toFixed(1) : '0.0'}%</p>
-              </div>
-              <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
-                <p className="text-sm text-slate-400">Trade Frequency</p>
-                <p className="text-lg font-semibold text-emerald-400">{Number((scoringMetrics?.total_trades || 0) / 30).toFixed(1)} / day</p>
-              </div>
-              <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
-                <p className="text-sm text-slate-400">Market Concentration</p>
-                <p className="text-lg font-semibold text-emerald-400">{marketDistribution.length > 0 ? ((marketDistribution[0]?.trades_count || 0) / (Number(scoringMetrics?.total_trades) || 1) * 100).toFixed(0) : '0'}%</p>
-              </div>
-              <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
-                <p className="text-sm text-slate-400">Confidence Score</p>
-                <p className="text-lg font-semibold text-emerald-400">{Number(scoringMetrics?.confidence_score || 0).toFixed(2)} / 1.0</p>
               </div>
             </div>
           )}

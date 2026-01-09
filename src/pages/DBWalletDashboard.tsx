@@ -327,15 +327,15 @@ export function DBWalletDashboard() {
                                 <div className="flex items-center gap-2">
                                     <Flame className="w-5 h-5 text-orange-400" />
                                     <div>
-                                        <p className="text-slate-400 text-xs">LONGEST STREAK</p>
-                                        <p className="text-white font-bold text-lg">{streaks?.longest_streak || 0}</p>
+                                        <p className="text-slate-400 text-xs">CURRENT STREAK</p>
+                                        <p className="text-white font-bold text-lg">{streaks?.current_streak || 0}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <TrendingUp className="w-5 h-5 text-blue-400" />
+                                    <Trophy className="w-5 h-5 text-yellow-400" />
                                     <div>
-                                        <p className="text-slate-400 text-xs">CURRENT STREAK</p>
-                                        <p className="text-white font-bold text-lg">{streaks?.current_streak || 0}</p>
+                                        <p className="text-slate-400 text-xs">LONGEST STREAK</p>
+                                        <p className="text-white font-bold text-lg">{streaks?.longest_streak || 0}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -353,7 +353,7 @@ export function DBWalletDashboard() {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <Trophy className="w-5 h-5 text-yellow-400" />
+                                    <Database className="w-5 h-5 text-purple-400" />
                                     <div>
                                         <p className="text-slate-400 text-xs">REWARD EARNED</p>
                                         <p className="text-white font-bold text-lg">{formatCurrency(rewardsEarned)}</p>
@@ -438,9 +438,15 @@ export function DBWalletDashboard() {
                                     </p>
                                 </div>
                                 <div className="bg-slate-800/50 rounded-lg p-4">
-                                    <p className="text-slate-400 text-xs mb-1">Total Buy Stake</p>
-                                    <p className="text-xl font-bold text-white">
-                                        {formatCurrency(scoringMetrics?.total_stakes || 0)}
+                                    <p className="text-slate-400 text-xs mb-1">Buy Volume</p>
+                                    <p className="text-xl font-bold text-emerald-400">
+                                        {formatCurrency(scoringMetrics?.buy_volume || 0)}
+                                    </p>
+                                </div>
+                                <div className="bg-slate-800/50 rounded-lg p-4">
+                                    <p className="text-slate-400 text-xs mb-1">Sell Volume</p>
+                                    <p className="text-xl font-bold text-emerald-400">
+                                        {formatCurrency(scoringMetrics?.sell_volume || 0)}
                                     </p>
                                 </div>
 

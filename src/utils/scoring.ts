@@ -10,15 +10,18 @@ export interface ScoredMetrics {
     total_trades_with_pnl: number;
     total_stakes: number;
     worst_loss: number;
+    largest_win: number;
     max_drawdown: number;
     stake_volatility: number;
+    total_volume: number;
+    buy_volume: number;
+    sell_volume: number;
     final_score: number;
     risk_score: number;
     win_score: number;
     confidence_score: number;
     roi_score: number;
     pnl_score: number;
-    total_volume: number;
     streaks: {
         longest_streak: number;
         current_streak: number;
@@ -154,7 +157,8 @@ export function calculateLiveMetrics(
     let totalRealizedPnl = 0;
     let totalUnrealizedPnl = 0;
     let totalRewards = 0;
-    let totalVolume = 0;
+    let buyVolume = 0;
+    let sellVolume = 0;
 
     // Trades/Wins Metrics
     let totalStakes = 0;
@@ -163,6 +167,7 @@ export function calculateLiveMetrics(
     let stakesOfWins = 0;
     let sumSqStakes = 0;
     let worstLoss = 0;
+    let largestWin = 0;
     const allLosses: number[] = [];
     const stakesList: number[] = [];
 
@@ -182,10 +187,20 @@ export function calculateLiveMetrics(
     let runningPnl = 0;
     const equityCurve: number[] = [0];
 
-    // Process activities for rewards
+    // Process activities for rewards and buy/sell volume
     activities.forEach(a => {
-        if (a.type === 'REWARD') totalRewards += Number(a.usdc_size || 0);
-        totalVolume += Number(a.usdc_size || 0);
+        const size = Number(a.usdc_size || 0);
+        if (a.type === 'REWARD') totalRewards += size;
+
+        if (a.side === 'BUY') {
+            buyVolume += size;
+        } else if (a.side === 'SELL') {
+            sellVolume += size;
+        } else {
+            // Include other activity volume if relevant, but typically we want split
+            // If it's a generic TRADE with no side, we'll just count it in buy for now? 
+            // Or just leave it as general total volume.
+        }
     });
 
     // Process Closed Positions
@@ -207,6 +222,7 @@ export function calculateLiveMetrics(
             totalWins++;
             currentStreak++;
             if (currentStreak > maxStreak) maxStreak = currentStreak;
+            if (pnl > largestWin) largestWin = pnl;
         } else if (pnl < 0) {
             totalLosses++;
             currentStreak = 0;
@@ -222,11 +238,13 @@ export function calculateLiveMetrics(
         sumSqStakes += stake ** 2;
         stakesList.push(stake);
 
-        totalUnrealizedPnl += Number(p.cash_pnl || 0) - Number(p.realized_pnl || 0);
+        totalUnrealizedPnl += Number(p.cash_pnl || 0); // Position.cash_pnl is usually the total pnl for that position
 
         if (Number(p.cash_pnl) < 0) {
             allLosses.push(Number(p.cash_pnl));
             if (Number(p.cash_pnl) < worstLoss) worstLoss = Number(p.cash_pnl);
+        } else if (Number(p.cash_pnl) > largestWin) {
+            largestWin = Number(p.cash_pnl);
         }
     });
 
@@ -268,15 +286,18 @@ export function calculateLiveMetrics(
         total_trades_with_pnl: totalTradesWithPnl,
         total_stakes: totalStakes,
         worst_loss: worstLoss,
+        largest_win: largestWin,
         max_drawdown: calculateMaxDrawdown(equityCurve),
         stake_volatility: stakeVol,
+        total_volume: buyVolume + sellVolume,
+        buy_volume: buyVolume,
+        sell_volume: sellVolume,
         final_score: pnl_score * 100,
         risk_score,
         win_score,
         confidence_score,
         roi_score,
         pnl_score,
-        total_volume: totalVolume,
         streaks: {
             longest_streak: maxStreak,
             current_streak: currentStreak,
