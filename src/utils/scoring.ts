@@ -28,6 +28,17 @@ export interface ScoredMetrics {
         total_wins: number;
         total_losses: number;
     };
+    // New Detailed Metrics
+    unrealized_pnl?: number;
+    realized_pnl?: number;
+    max_stake?: number;
+    winning_stakes?: number;
+    losing_stakes?: number;
+    w_trade?: number;
+    w_stake?: number;
+    win_score_blended?: number;
+    open_positions?: number;
+    closed_positions?: number;
 }
 
 /**
