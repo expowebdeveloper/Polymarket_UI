@@ -398,20 +398,7 @@ export function LiveDashboard() {
                     </div>
 
                     {/* PRIMARY METRICS GRID */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors group">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
-                                    <TrendingUp className="h-5 w-5" />
-                                </div>
-                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Net Profit</p>
-                            </div>
-                            <p className={`text-2xl font-bold ${metrics.total_pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                {formatCurrency(metrics.total_pnl)}
-                            </p>
-                            <p className="text-xs text-slate-500 mt-1">Realized & Unrealized PnL</p>
-                        </div>
-
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors group">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:scale-110 transition-transform">
@@ -419,8 +406,21 @@ export function LiveDashboard() {
                                 </div>
                                 <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Win Rate</p>
                             </div>
-                            <p className="text-2xl font-bold text-white">{metrics.win_rate.toFixed(1)}%</p>
-                            <p className="text-xs text-slate-500 mt-1">{metrics.streaks.total_wins} Wins / {metrics.streaks.total_losses} Losses</p>
+                            <p className="text-xl font-bold text-white">{metrics.win_rate.toFixed(1)}%</p>
+                            <p className="text-xs text-slate-500 mt-1">{metrics.streaks.total_wins}W / {metrics.streaks.total_losses}L</p>
+                        </div>
+
+                        <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors group">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
+                                    <TrendingUp className="h-5 w-5" />
+                                </div>
+                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">ROI</p>
+                            </div>
+                            <p className={`text-xl font-bold ${metrics.roi >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {metrics.roi.toFixed(1)}%
+                            </p>
+                            <p className="text-xs text-slate-500 mt-1">Return on Investment</p>
                         </div>
 
                         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors group">
@@ -428,10 +428,10 @@ export function LiveDashboard() {
                                 <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400 group-hover:scale-110 transition-transform">
                                     <ActivityIcon className="h-5 w-5" />
                                 </div>
-                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">ROI Score</p>
+                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Open Pos.</p>
                             </div>
-                            <p className="text-2xl font-bold text-white">{metrics.roi_score.toFixed(1)}</p>
-                            <p className="text-xs text-slate-500 mt-1">Weighted ROI performance</p>
+                            <p className="text-xl font-bold text-white">{metrics.open_positions || positions.length}</p>
+                            <p className="text-xs text-slate-500 mt-1">Active Markets</p>
                         </div>
 
                         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors group">
@@ -439,10 +439,25 @@ export function LiveDashboard() {
                                 <div className="p-2 rounded-lg bg-orange-500/10 text-orange-400 group-hover:scale-110 transition-transform">
                                     <Fish className="h-5 w-5" />
                                 </div>
-                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Risk Score</p>
+                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Unrealized</p>
                             </div>
-                            <p className="text-2xl font-bold text-white">{(metrics.risk_score * 10).toFixed(1)}</p>
-                            <p className="text-xs text-slate-500 mt-1">Downside risk assessment</p>
+                            <p className={`text-xl font-bold ${(metrics.unrealized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {formatCurrency(metrics.unrealized_pnl)}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-1">Paper PnL</p>
+                        </div>
+
+                        <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors group">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 rounded-lg bg-teal-500/10 text-teal-400 group-hover:scale-110 transition-transform">
+                                    <Wallet className="h-5 w-5" />
+                                </div>
+                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Realized</p>
+                            </div>
+                            <p className={`text-xl font-bold ${(metrics.realized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {formatCurrency(metrics.realized_pnl)}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-1">Banked PnL</p>
                         </div>
                     </div>
 
@@ -460,28 +475,47 @@ export function LiveDashboard() {
                         </button>
 
                         {showAdvanced && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
                                 <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
-                                    <p className="text-xs text-slate-400 uppercase mb-1">PnL Score</p>
-                                    <p className="text-xl font-bold text-white">{metrics.pnl_score.toFixed(1)}</p>
-                                    <div className="w-full bg-slate-800 h-1 mt-2 rounded-full overflow-hidden">
-                                        <div className="bg-emerald-500 h-full" style={{ width: `${Math.min(metrics.pnl_score, 100)}%` }}></div>
-                                    </div>
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Biggest Win</p>
+                                    <p className="text-lg font-bold text-emerald-400">{formatCurrency(metrics.largest_win)}</p>
                                 </div>
                                 <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
-                                    <p className="text-xs text-slate-400 uppercase mb-1">Conf. Score</p>
-                                    <p className="text-xl font-bold text-white">{metrics.confidence_score.toFixed(1)}</p>
-                                    <div className="w-full bg-slate-800 h-1 mt-2 rounded-full overflow-hidden">
-                                        <div className="bg-blue-500 h-full" style={{ width: `${Math.min(metrics.confidence_score, 100)}%` }}></div>
-                                    </div>
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Worst Loss</p>
+                                    <p className="text-lg font-bold text-red-400">{formatCurrency(metrics.worst_loss || 0)}</p>
                                 </div>
                                 <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
-                                    <p className="text-xs text-slate-400 uppercase mb-1">Avg Win</p>
-                                    <p className="text-xl font-bold text-emerald-400">{formatCurrency(metrics.total_pnl / (metrics.streaks.total_wins || 1))}</p>
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Top Category</p>
+                                    <p className="text-lg font-bold text-white truncate">{marketDistribution[0]?.category || 'N/A'}</p>
                                 </div>
                                 <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
-                                    <p className="text-xs text-slate-400 uppercase mb-1">Active Stakes</p>
-                                    <p className="text-xl font-bold text-white">{positions.length} Positions</p>
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Stake DW Win%</p>
+                                    <p className="text-lg font-bold text-emerald-400">{((metrics.w_stake || 0) * 100).toFixed(1)}%</p>
+                                </div>
+                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Total Buy Stake</p>
+                                    <p className="text-lg font-bold text-white">{formatCurrency(metrics.buy_volume)}</p>
+                                </div>
+
+                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Total Open</p>
+                                    <p className="text-lg font-bold text-white">{metrics.open_positions || 0}</p>
+                                </div>
+                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Total Closed</p>
+                                    <p className="text-lg font-bold text-white">{metrics.closed_positions || 0}</p>
+                                </div>
+                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Max Stake</p>
+                                    <p className="text-lg font-bold text-white">{formatCurrency(metrics.max_stake)}</p>
+                                </div>
+                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Winning Stake</p>
+                                    <p className="text-lg font-bold text-emerald-400">{formatCurrency(metrics.winning_stakes)}</p>
+                                </div>
+                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Losing Stake</p>
+                                    <p className="text-lg font-bold text-red-400">{formatCurrency(metrics.losing_stakes)}</p>
                                 </div>
                             </div>
                         )}
