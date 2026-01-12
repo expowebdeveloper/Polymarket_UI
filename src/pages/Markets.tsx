@@ -30,13 +30,13 @@ const getMarketTitle = (market: Market): string => {
 
 
 
-export function Markets() {
+export function Markets({ defaultStatus = 'active' }: { defaultStatus?: string }) {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [markets, setMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [marketStatus, setMarketStatus] = useState('active');
+  const [marketStatus, setMarketStatus] = useState(defaultStatus);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -52,7 +52,25 @@ export function Markets() {
       setLoading(true);
       setError(null);
       const offset = (page - 1) * pageSize;
-      const response = await fetchMarkets(marketStatus, pageSize, offset);
+
+      let response;
+      if (marketStatus === 'live') {
+        const { fetchLiveMarkets } = await import('../services/api');
+        const liveData = await fetchLiveMarkets();
+        response = {
+          count: liveData.count,
+          markets: liveData.markets,
+          pagination: {
+            limit: pageSize,
+            offset: 0,
+            total: liveData.count,
+            has_more: false
+          }
+        };
+      } else {
+        response = await fetchMarkets(marketStatus, pageSize, offset);
+      }
+
       setMarkets(response.markets || []);
       setPagination(response.pagination || null);
       setCurrentPage(page);
@@ -131,6 +149,7 @@ export function Markets() {
               className="w-full h-full px-3 py-2.5 bg-[#2C3F5E] text-slate-200 text-sm rounded-lg appearance-none cursor-pointer border-none outline-none focus:ring-1 focus:ring-slate-600"
             >
               <option value="active">Active</option>
+              <option value="live">Live Trending</option>
               <option value="resolved">Resolved</option>
               <option value="closed">Closed</option>
             </select>

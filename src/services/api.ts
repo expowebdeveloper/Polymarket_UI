@@ -383,6 +383,13 @@ export async function fetchMarkets(
 }
 
 /**
+ * Fetch live trending markets directly from the backend /markets/live endpoint
+ */
+export async function fetchLiveMarkets(): Promise<{ count: number, markets: any[] }> {
+    return fetchApi<{ count: number, markets: any[] }>('/markets/live', 60000);
+}
+
+/**
  * Fetch portfolio stats for a wallet address
  * @param walletAddress - Wallet address to fetch portfolio stats for
  */

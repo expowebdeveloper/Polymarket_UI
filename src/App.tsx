@@ -84,6 +84,15 @@ function App() {
             }
           />
           <Route
+            path="/markets/live"
+            element={
+              <>
+                <TradingHeader title="Live Markets" />
+                <Markets defaultStatus="live" />
+              </>
+            }
+          />
+          <Route
             path="/markets/:marketSlug"
             element={
               <>

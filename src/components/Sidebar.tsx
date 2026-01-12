@@ -27,6 +27,7 @@ const navItems = [
     { name: "All Leaderboards", href: "/leaderboard/all", icon: Trophy },
     { name: "View All Leaderboards", href: "/leaderboard/view-all", icon: Trophy },
     { name: "Markets", href: "/markets", icon: LineChart },
+    { name: "Live Markets", href: "/markets/live", icon: ScatterChart },
     { name: "Traders", href: "/traders", icon: User },
     { name: "Wallet Dashboard", href: "/wallet-dashboard", icon: Search },
     { name: "Live Dashboard (API)", href: "/live-dashboard", icon: LayoutDashboard },

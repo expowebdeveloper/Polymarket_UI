@@ -938,9 +938,9 @@ export function LiveDashboard() {
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <p className="text-sm font-bold text-white">{formatCurrency(act.usdc_size)}</p>
+                                                        <p className="text-sm font-bold text-white">{formatCurrency(act.usdcSize || act.usdc_size)}</p>
                                                         <p className="text-[10px] text-slate-600 font-mono flex items-center gap-1 justify-end">
-                                                            {shortenAddress(act.transaction_hash)}
+                                                            {shortenAddress(act.transactionHash || act.transaction_hash)}
                                                             <ChevronRight className="h-3 w-3" />
                                                         </p>
                                                     </div>
