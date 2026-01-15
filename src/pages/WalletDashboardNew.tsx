@@ -566,8 +566,8 @@ export function WalletDashboard() {
             <button
               onClick={() => setActiveTab('history')}
               className={`px-6 py-2 rounded-md transition ${activeTab === 'history'
-                  ? 'bg-white text-black'
-                  : 'text-slate-400 hover:text-white'
+                ? 'bg-white text-black'
+                : 'text-slate-400 hover:text-white'
                 }`}
             >
               Trade History
@@ -575,8 +575,8 @@ export function WalletDashboard() {
             <button
               onClick={() => setActiveTab('performance')}
               className={`px-6 py-2 rounded-md transition ${activeTab === 'performance'
-                  ? 'bg-white text-black'
-                  : 'text-slate-400 hover:text-white'
+                ? 'bg-white text-black'
+                : 'text-slate-400 hover:text-white'
                 }`}
             >
               Performance
@@ -584,8 +584,8 @@ export function WalletDashboard() {
             <button
               onClick={() => setActiveTab('distribution')}
               className={`px-6 py-2 rounded-md transition ${activeTab === 'distribution'
-                  ? 'bg-white text-black'
-                  : 'text-slate-400 hover:text-white'
+                ? 'bg-white text-black'
+                : 'text-slate-400 hover:text-white'
                 }`}
             >
               Market Distribution

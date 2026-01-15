@@ -282,8 +282,8 @@ export function Activity() {
                                                 <button
                                                     onClick={() => setCurrentPage(page)}
                                                     className={`px-3 py-2 rounded-lg transition font-medium ${page === currentPage
-                                                            ? 'bg-emerald-500 text-white'
-                                                            : 'bg-slate-800 hover:bg-slate-700 text-white'
+                                                        ? 'bg-emerald-500 text-white'
+                                                        : 'bg-slate-800 hover:bg-slate-700 text-white'
                                                         }`}
                                                 >
                                                     {page}
