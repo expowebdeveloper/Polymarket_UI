@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, Bell, Settings, User, Wallet, TrendingUp, TrendingDown, Trophy, Fish, Flame, ChevronDown, ChevronUp, ChevronRight, Activity as ActivityIcon, RefreshCw } from 'lucide-react';
+import { Search, Bell, Settings, User, Wallet, TrendingUp, TrendingDown, Trophy, Fish, Flame, ChevronDown, ChevronUp, Activity as ActivityIcon, RefreshCw } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { BarChart, Bar, Cell, PieChart, Pie, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
@@ -46,7 +46,7 @@ export function LiveDashboard() {
     const [historyPage, setHistoryPage] = useState(1);
     const [activePositionsPage, setActivePositionsPage] = useState(1);
     const [closedPositionsPage, setClosedPositionsPage] = useState(1);
-    const [activityPage, setActivityPage] = useState(1);
+
     const itemsPerPage = 20;
 
     const {
@@ -68,7 +68,7 @@ export function LiveDashboard() {
             setHistoryPage(1);
             setActivePositionsPage(1);
             setClosedPositionsPage(1);
-            setActivityPage(1);
+
         }
     };
 
@@ -614,8 +614,7 @@ export function LiveDashboard() {
                                 { id: 'active_positions', label: 'Active Positions' },
                                 { id: 'closed_positions', label: 'Closed Positions' },
                                 { id: 'performance', label: 'Performance' },
-                                { id: 'distribution', label: 'Distribution' },
-                                { id: 'activity', label: 'Activity' }
+                                { id: 'distribution', label: 'Distribution' }
                             ].map((tab) => (
                                 <button
                                     key={tab.id}
@@ -921,60 +920,7 @@ export function LiveDashboard() {
                                 </div>
                             )}
 
-                            {activeTab === 'activity' && (
-                                <div className="space-y-4">
-                                    <div className="space-y-3">
-                                        {activities
-                                            .slice((activityPage - 1) * itemsPerPage, activityPage * itemsPerPage)
-                                            .map((act, i) => (
-                                                <div key={i} className="flex items-center justify-between p-4 bg-slate-800/30 rounded-2xl hover:bg-slate-800/50 transition-all border border-slate-700/50 group">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={`p-2 rounded-xl ${act.type === 'TRADE' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-purple-500/10 text-purple-400'} group-hover:scale-110 transition-transform`}>
-                                                            {act.type === 'TRADE' ? <ActivityIcon className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-sm font-semibold text-white">{act.title || (act.type === 'TRADE' ? 'Polymarket Trade' : 'Wallet Activity')}</p>
-                                                            <p className="text-xs text-slate-500">{formatDate(act.timestamp)} • <span className="uppercase">{act.type}</span></p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className="text-sm font-bold text-white">{formatCurrency(act.usdcSize || act.usdc_size)}</p>
-                                                        <p className="text-[10px] text-slate-600 font-mono flex items-center gap-1 justify-end">
-                                                            {shortenAddress(act.transactionHash || act.transaction_hash)}
-                                                            <ChevronRight className="h-3 w-3" />
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                    </div>
 
-                                    {/* Activity Pagination */}
-                                    <div className="flex items-center justify-between mt-6">
-                                        <div className="text-slate-400 text-sm">
-                                            Showing {(activityPage - 1) * itemsPerPage + 1} to {Math.min(activityPage * itemsPerPage, activities.length)} of {activities.length} events
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => setActivityPage(prev => Math.max(1, prev - 1))}
-                                                disabled={activityPage === 1}
-                                                className={`px-4 py-2 rounded-xl text-sm font-medium transition ${activityPage === 1 ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600 text-white shadow-lg'}`}
-                                            >
-                                                Previous
-                                            </button>
-                                            <span className="px-4 py-2 text-slate-300 text-sm font-medium">
-                                                Page {activityPage} of {Math.ceil(activities.length / itemsPerPage) || 1}
-                                            </span>
-                                            <button
-                                                onClick={() => setActivityPage(prev => Math.min(Math.ceil(activities.length / itemsPerPage), prev + 1))}
-                                                disabled={activityPage >= Math.ceil(activities.length / itemsPerPage)}
-                                                className={`px-4 py-2 rounded-xl text-sm font-medium transition ${activityPage >= Math.ceil(activities.length / itemsPerPage) ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600 text-white shadow-lg'}`}
-                                            >
-                                                Next
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
