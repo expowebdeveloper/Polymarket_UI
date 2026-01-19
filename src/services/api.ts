@@ -565,9 +565,19 @@ export async function syncDBDashboard(walletAddress: string, background: boolean
 }
 
 /**
- * Fetch rewards market data from Polymarket CLOB API
- * @param conditionId - Condition ID of the market
+ * Resolve a search query to a wallet address (search by username/address)
+ * @param query - Search query (username or wallet address)
  */
+export async function resolveWalletOrUser(query: string): Promise<{ wallet_address: string, type: 'address' | 'username', name?: string, pseudonym?: string, profile_image?: string }> {
+    return fetchApi<{ wallet_address: string, type: 'address' | 'username', name?: string, pseudonym?: string, profile_image?: string }>(`/dashboard/search/${encodeURIComponent(query)}`, 30000);
+
+
+}
+
+/**
+ * Fetch rewards market data from Polymarket CLOB API
+     * @param conditionId - Condition ID of the market
+     */
 export async function fetchRewardsMarket(conditionId: string): Promise<RewardsMarketResponse> {
     // Call Polymarket CLOB API directly
     const url = `https://clob.polymarket.com/rewards/markets/${conditionId}`;

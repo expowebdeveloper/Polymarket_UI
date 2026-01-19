@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trophy, Fish, Flame, TrendingUp, Info, DollarSign, RefreshCw, BarChart3, PieChart } from 'lucide-react';
+import { ArrowLeft, Trophy, Flame, TrendingUp, Info, DollarSign, RefreshCw, BarChart3, PieChart } from 'lucide-react';
 import { fetchTraderDetails, fetchUserLeaderboardData, fetchTradeHistory, fetchPositionsForWallet, fetchActivityForWallet, fetchClosedPositionsForWallet } from '../services/api';
 import { calculateLiveMetrics, ScoredMetrics } from '../utils/scoring';
+import { getVolumeRank } from '../utils/rankUtils';
+import { getStreakBadge } from '../utils/streakUtils';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { useTheme } from '../contexts/ThemeContext';
@@ -176,8 +178,22 @@ export function TraderProfile() {
   // Determine badges
   const badges = [];
   if (finalScore >= 90) badges.push({ label: 'Top 10', icon: Trophy, color: 'yellow' });
-  if (totalVolume >= 100000) badges.push({ label: 'Whale', icon: Fish, color: 'blue' });
-  if (recentWins >= 5 && recentLosses <= 2) badges.push({ label: 'Hot Streak', icon: Flame, color: 'purple' });
+
+  const rank = getVolumeRank(totalVolume);
+  badges.push({
+    label: `${rank.emoji} ${rank.title}`,
+    icon: null,
+    customClass: rank.className
+  });
+
+  const streakBadge = getStreakBadge(liveMetrics?.streaks?.current_streak || 0);
+  if (streakBadge) {
+    badges.push({
+      label: `${streakBadge.emoji} ${streakBadge.title}`,
+      icon: null,
+      customClass: streakBadge.className
+    });
+  }
 
   const bgClass = theme === 'dark' ? 'bg-slate-900' : 'bg-white';
   const borderClass = theme === 'dark' ? 'border-slate-800' : 'border-slate-200';
@@ -196,9 +212,22 @@ export function TraderProfile() {
         >
           <ArrowLeft className={`w-5 h-5 ${textSecondaryClass}`} />
         </button>
-        <div>
-          <h1 className={`text-2xl font-bold ${textClass}`}>{formatWallet(wallet || '')}</h1>
-          <p className={`${textSecondaryClass} text-sm`}>Trader Profile</p>
+        <div className="flex items-center gap-4">
+          {leaderboardData?.profileImage && (
+            <img
+              src={leaderboardData.profileImage}
+              alt={leaderboardData.userName || wallet}
+              className="w-12 h-12 rounded-full object-cover border-2 border-slate-700"
+            />
+          )}
+          <div>
+            <h1 className={`text-2xl font-bold ${textClass}`}>
+              {leaderboardData?.userName || formatWallet(wallet || '')}
+            </h1>
+            <p className={`${textSecondaryClass} text-sm`}>
+              {leaderboardData?.userName ? formatWallet(wallet || '') : 'Trader Profile'}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -216,15 +245,17 @@ export function TraderProfile() {
             {badges.map((badge, idx) => (
               <div
                 key={idx}
-                className={`px-4 py-2 rounded-lg flex items-center gap-2 ${badge.color === 'yellow'
-                  ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                  : badge.color === 'blue'
-                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                    : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                className={`px-4 py-2 rounded-lg border flex items-center gap-2 ${badge.customClass
+                  ? badge.customClass
+                  : badge.color === 'yellow'
+                    ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                    : badge.color === 'blue'
+                      ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                      : 'bg-purple-500/20 text-purple-400 border-purple-500/30'
                   }`}
               >
-                <badge.icon className="w-4 h-4" />
-                <span className="text-sm font-medium">{badge.label}</span>
+                {badge.icon && <badge.icon className="w-4 h-4" />}
+                <span className="text-sm font-bold">{badge.label}</span>
               </div>
             ))}
           </div>

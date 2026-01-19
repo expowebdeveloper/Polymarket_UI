@@ -13,7 +13,10 @@ import {
   fetchUserLeaderboardData,
   fetchTradeHistory,
   syncTradesForWallet,
+  resolveWalletOrUser,
 } from '../services/api';
+import { getVolumeRank } from '../utils/rankUtils';
+import { getStreakBadge } from '../utils/streakUtils';
 import type { Position, ClosedPosition, Activity, ProfileStatsResponse, UserLeaderboardData, TradeHistoryResponse } from '../types/api';
 
 // Helper function to format currency
@@ -58,7 +61,6 @@ const shortenAddress = (address: string): string => {
 
 export function WalletDashboard() {
   const [walletAddress, setWalletAddress] = useState('');
-  const [isValidWallet, setIsValidWallet] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -75,20 +77,38 @@ export function WalletDashboard() {
   const [tradeHistory, setTradeHistory] = useState<TradeHistoryResponse | null>(null);
 
   const fetchWalletData = async () => {
-    if (!validateWallet(walletAddress)) return;
+    // Basic local validation (just checks if empty)
+    if (!walletAddress.trim()) return;
 
     setLoading(true);
     setError(null);
 
+    let resolvedAddress = walletAddress;
+
     try {
+      // 1. Resolve Wallet/User
+      try {
+        const resolution = await resolveWalletOrUser(walletAddress);
+        resolvedAddress = resolution.wallet_address;
+
+        // If the user typed a username, update the input to show the address (optional, or keep username)
+        // For now, let's keep the input as is, but use resolvedAddress for fetching.
+        // Actually, for better UX, maybe we should update the state if it was a username, 
+        // BUT that might be confusing. Let's just use resolvedAddress for fetching data.
+
+      } catch (e) {
+        // If resolution fails (404), stop here
+        throw new Error("User or wallet not found");
+      }
+
       // First sync trades to ensure fresh data
       try {
-        await syncTradesForWallet(walletAddress);
+        await syncTradesForWallet(resolvedAddress);
       } catch (e) {
         console.warn("Auto-sync failed, proceeding with existing data", e);
       }
 
-      // Fetch all data in parallel
+      // Fetch all data in parallel using RESOLVED ADDRESS
       const [
         profileData,
         positionsData,
@@ -99,14 +119,14 @@ export function WalletDashboard() {
         leaderboardData,
         tradeHistoryData,
       ] = await Promise.allSettled([
-        fetchProfileStats(walletAddress),
-        fetchPositionsForWallet(walletAddress),
-        fetchClosedPositionsForWallet(walletAddress),
-        fetchActivityForWallet(walletAddress, undefined, 1000),
-        fetchPortfolioStats(walletAddress),
-        fetchTraderDetails(walletAddress),
-        fetchUserLeaderboardData(walletAddress, 'overall'),
-        fetchTradeHistory(walletAddress),
+        fetchProfileStats(resolvedAddress),
+        fetchPositionsForWallet(resolvedAddress),
+        fetchClosedPositionsForWallet(resolvedAddress),
+        fetchActivityForWallet(resolvedAddress, undefined, 1000),
+        fetchPortfolioStats(resolvedAddress),
+        fetchTraderDetails(resolvedAddress),
+        fetchUserLeaderboardData(resolvedAddress, 'overall'),
+        fetchTradeHistory(resolvedAddress),
       ]);
 
       if (profileData.status === 'fulfilled') {
@@ -162,17 +182,21 @@ export function WalletDashboard() {
   };
 
   useEffect(() => {
-    if (walletAddress.length === 42) {
-      const isValid = validateWallet(walletAddress);
-      setIsValidWallet(isValid);
-      if (isValid && walletAddress) {
-        fetchWalletData();
-      }
-    } else {
-      setIsValidWallet(false);
+    // Only auto-trigger if it looks like a full wallet address
+    // Usernames will require pressing enter or manual action (implemented later/default behavior)
+    // But actually, we want the search box to be the primary driver.
+    // The previous logic auto-fetched on 42 chars.
+
+    // Let's rely on the user typing + Enter or paste.
+    // BUT the previous logic was:
+    if (walletAddress.length === 42 && validateWallet(walletAddress)) {
+      // Auto-fetch for pasted addresses
+      fetchWalletData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walletAddress]);
+
+  // We should add an onKeyDown handler for the input to trigger search on Enter
 
   // Calculate highest loss
   const highestLoss = portfolioStats?.performance_metrics?.worst_loss !== undefined
@@ -456,9 +480,14 @@ export function WalletDashboard() {
               <Search className="h-4 w-4 text-emerald-400" />
               <input
                 className="w-full bg-transparent outline-none text-sm placeholder:text-slate-500"
-                placeholder="Enter wallet address (0x...)"
+                placeholder="Search by wallet (0x...) or username"
                 value={walletAddress}
                 onChange={(e) => setWalletAddress(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    fetchWalletData();
+                  }
+                }}
               />
             </div>
           </div>
@@ -481,7 +510,7 @@ export function WalletDashboard() {
       {error && <div className="p-8"><ErrorMessage message={error} onRetry={fetchWalletData} /></div>}
 
       {/* CONTENT */}
-      {!loading && isValidWallet && walletAddress && (
+      {!loading && !error && (scoringMetrics?.total_trades > 0 || walletAddress) && (
         <div className="px-8 py-6 space-y-6">
           {/* FINAL RATING */}
           <div className="bg-slate-900/70 border border-emerald-500/40 rounded-3xl shadow-[0_0_60px_rgba(16,185,129,0.35)] p-6">
@@ -493,8 +522,17 @@ export function WalletDashboard() {
               <div className="flex gap-3 pb-2">
                 {scoringMetrics?.final_score >= 95 && <Badge text="👑 Prediction King" glow="strong" />}
                 {scoringMetrics?.total_trades > 100 && <Badge text="🏅 Polymarket Badge Holder" glow="strong" />}
-                {totalVolume >= 100000 && <Badge text="🐋 Whale" glow="strong" />}
-                {streaks.current_streak >= 5 && <Badge text="🔥 Hot Streak" glow="fire" />}
+                {(() => {
+                  const rank = getVolumeRank(totalVolume);
+                  return <Badge text={`${rank.emoji} ${rank.title}`} glow="strong" />;
+                })()}
+                {(() => {
+                  const streakBadge = getStreakBadge(streaks.current_streak);
+                  if (streakBadge) {
+                    return <Badge text={`${streakBadge.emoji} ${streakBadge.title}`} glow="fire" />;
+                  }
+                  return null;
+                })()}
               </div>
             </div>
 

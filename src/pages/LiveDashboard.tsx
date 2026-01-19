@@ -1,9 +1,13 @@
-import { useState, useMemo } from 'react';
-import { Search, Bell, Settings, User, Wallet, TrendingUp, TrendingDown, Trophy, Fish, Flame, ChevronDown, ChevronUp, Activity as ActivityIcon, RefreshCw } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Search, Wallet, TrendingUp, TrendingDown, Trophy, Fish, Flame, ChevronDown, ChevronUp, Activity as ActivityIcon, RefreshCw } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { BarChart, Bar, Cell, PieChart, Pie, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useLiveDashboard } from '../hooks/useLiveDashboard';
+import { resolveWalletOrUser, fetchUserLeaderboardData } from '../services/api';
+import { getVolumeRank } from '../utils/rankUtils';
+import { getStreakBadge } from '../utils/streakUtils';
+import type { UserLeaderboardData } from '../types/api';
 
 // Helper function to format currency
 const formatCurrency = (value: number | string | undefined): string => {
@@ -34,10 +38,57 @@ const formatSize = (size: number | string | undefined): string => {
     return num.toFixed(4);
 };
 
+// Helper function to get badge info based on score
+const getBadgeInfo = (score: number) => {
+    const clampedScore = Math.min(100, Math.max(0, score));
+
+    if (clampedScore >= 95) return {
+        title: "👑⚡ Prediction God",
+        style: "bg-amber-500/10 text-amber-300 border-amber-500/50 shadow-[0_0_30px_rgba(245,158,11,0.5)]"
+    };
+    if (clampedScore >= 90) return {
+        title: "👑🔥 Prediction King",
+        style: "bg-emerald-500/10 text-emerald-300 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.5)]"
+    };
+    if (clampedScore >= 80) return {
+        title: "🚀🧠 Pro Predictor",
+        style: "bg-blue-500/10 text-blue-300 border-blue-500/50 shadow-[0_0_30px_rgba(59,130,246,0.5)]"
+    };
+    if (clampedScore >= 70) return {
+        title: "🎯📈 Skilled Predictor",
+        style: "bg-teal-500/10 text-teal-300 border-teal-500/50 shadow-[0_0_20px_rgba(20,184,166,0.4)]"
+    };
+    if (clampedScore >= 60) return {
+        title: "🌱🚀 Rising Predictor",
+        style: "bg-lime-500/10 text-lime-300 border-lime-500/50 shadow-[0_0_20px_rgba(132,204,22,0.4)]"
+    };
+    if (clampedScore >= 50) return {
+        title: "⚖️🙂 Average Predictor",
+        style: "bg-yellow-500/10 text-yellow-300 border-yellow-500/50 shadow-[0_0_20px_rgba(234,179,8,0.4)]"
+    };
+    if (clampedScore >= 40) return {
+        title: "🔄📉 Inconsistent Predictor",
+        style: "bg-orange-500/10 text-orange-300 border-orange-500/50 shadow-[0_0_20px_rgba(249,115,22,0.4)]"
+    };
+    if (clampedScore >= 30) return {
+        title: "🤔📊 Low-Confidence Predictor",
+        style: "bg-orange-800/20 text-orange-400 border-orange-700/50"
+    };
+    if (clampedScore >= 20) return {
+        title: "🧪📉 Experimental Predictor",
+        style: "bg-red-500/10 text-red-300 border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.4)]"
+    };
+    return {
+        title: "⚠️🔥 Extreme-Risk Predictor",
+        style: "bg-red-900/20 text-red-500 border-red-700/50 animate-pulse"
+    };
+};
+
 export function LiveDashboard() {
     const [walletInput, setWalletInput] = useState('');
     const [activeWallet, setActiveWallet] = useState('');
-    const [theme, setTheme] = useState<"dark" | "light">("dark");
+    const [userProfile, setUserProfile] = useState<UserLeaderboardData | null>(null);
+    const [theme] = useState<"dark" | "light">("dark"); // Default to dark, removed toggle
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('history');
     const [distributionMetric, setDistributionMetric] = useState<'count' | 'capital'>('count');
@@ -60,40 +111,44 @@ export function LiveDashboard() {
         refresh
     } = useLiveDashboard(activeWallet);
 
-    const handleWalletSubmit = (e: React.FormEvent) => {
+    // Fetch user profile data when wallet changes
+    useEffect(() => {
+        if (activeWallet) {
+            fetchUserLeaderboardData(activeWallet, 'overall')
+                .then(data => setUserProfile(data))
+                .catch(err => console.error('Failed to fetch user profile:', err));
+        }
+    }, [activeWallet]);
+
+    const handleWalletSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (/^0x[a-fA-F0-9]{40}$/.test(walletInput)) {
-            setActiveWallet(walletInput);
+
+        // Basic local validation (just checks if empty)
+        if (!walletInput.trim()) return;
+
+        try {
+            // Resolve Wallet/User
+            const resolution = await resolveWalletOrUser(walletInput);
+            const resolvedAddress = resolution.wallet_address;
+
+            setActiveWallet(resolvedAddress);
             // Reset pages when changing wallet
             setHistoryPage(1);
             setActivePositionsPage(1);
             setClosedPositionsPage(1);
 
+            // If it was a username, we could update the input, but keeping the username might be nicer for the user?
+            // Actually, showing the resolved address clarifies what's happening.
+            // But let's stick to setting the active wallet which drives the dashboard.
+
+        } catch (e) {
+            // Handle error (user not found)
+            console.error("User or wallet not found");
+            // Ideally show a toast or error message here
+            // For now, let's just not set the active wallet if it fails
+            // You might want to add a local error state to show in the UI
         }
     };
-
-    // Helper function to categorize market (re-using logic from WalletDashboard)
-    const categorizeMarket = useMemo(() => {
-        return (title: string, slug: string): string => {
-            const titleLower = (title || "").toLowerCase();
-            const slugLower = (slug || "").toLowerCase();
-            const combined = `${titleLower} ${slugLower}`;
-
-            if (['president', 'election', 'politics', 'trump', 'biden', 'senate', 'congress', 'vote', 'poll', 'democrat', 'republican', 'political'].some(k => combined.includes(k))) {
-                return "Politics";
-            }
-            if (['bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'cryptocurrency', 'blockchain', 'defi', 'nft', 'token', 'coin'].some(k => combined.includes(k))) {
-                return "Crypto";
-            }
-            if (['nfl', 'nba', 'mlb', 'soccer', 'football', 'basketball', 'baseball', 'hockey', 'sports', 'game', 'match', 'championship', 'super bowl', 'world cup'].some(k => combined.includes(k))) {
-                return "Sports";
-            }
-            if (['fed', 'federal reserve', 'interest rate', 'inflation', 'gdp', 'unemployment', 'macro', 'rates', 'treasury', 'bond', 'economic'].some(k => combined.includes(k))) {
-                return "Macro / Rates";
-            }
-            return "Other";
-        };
-    }, []);
 
     // Calculate detailed market distribution with ROI and Win Rate
     const marketDistribution = useMemo(() => {
@@ -108,9 +163,9 @@ export function LiveDashboard() {
 
         // Process closed positions
         closedPositions.forEach(pos => {
-            const title = pos.title || "Unknown";
-            const slug = pos.slug || "Unknown";
-            const category = categorizeMarket(title, slug);
+            const title = pos.title || pos.slug || "Unknown Market";
+            // Use the actual category field from the API
+            const category = (pos as any).category || "Uncategorized";
 
             const stake = parseFloat(String((pos as any).total_bought || pos.size || 0)) * parseFloat(String(pos.avg_price || 0));
             const pnl = parseFloat(String(pos.realized_pnl || 0));
@@ -130,7 +185,7 @@ export function LiveDashboard() {
             stats.capital += stake;
             stats.totalPnl += pnl;
             stats.trades += 1;
-            stats.markets.add(slug);
+            stats.markets.add(pos.slug || title);
 
             if (pnl > 0) {
                 stats.wins += 1;
@@ -141,9 +196,8 @@ export function LiveDashboard() {
 
         // Process active positions for capital
         positions.forEach(pos => {
-            const title = pos.title || "Unknown";
-            const slug = pos.slug || "Unknown";
-            const category = categorizeMarket(title, slug);
+            const title = pos.title || pos.slug || "Unknown Market";
+            const category = (pos as any).category || "Uncategorized";
 
             const capital = parseFloat(String(pos.initial_value || 0));
 
@@ -159,7 +213,7 @@ export function LiveDashboard() {
             }
 
             categoryStats.get(category)!.capital += capital;
-            categoryStats.get(category)!.markets.add(slug);
+            categoryStats.get(category)!.markets.add(pos.slug || title);
         });
 
         // Calculate totals and percentages
@@ -187,8 +241,20 @@ export function LiveDashboard() {
             };
         });
 
-        return distribution.sort((a, b) => b.capital - a.capital);
-    }, [closedPositions, positions, categorizeMarket]);
+        // Filter out Uncategorized and Other, then sort based on selected metric and take top 10
+        return distribution
+            .filter(item => {
+                const cat = item.category.toLowerCase();
+                return cat !== 'uncategorized' && cat !== 'other';
+            })
+            .sort((a, b) => {
+                if (distributionMetric === 'count') {
+                    return b.trades_count - a.trades_count;
+                }
+                return b.capital - a.capital;
+            })
+            .slice(0, 10);
+    }, [closedPositions, positions, distributionMetric]);
 
     // Calculate primary edge
     const primaryEdge = useMemo(() => {
@@ -266,51 +332,79 @@ export function LiveDashboard() {
             }));
     }, [userPnL]);
 
-    const shortenAddress = (address: string): string => {
-        if (!address || address.length < 10) return address;
-        return `${address.slice(0, 6)}…${address.slice(-4)}`;
-    };
+
+
+    // Calculate badge info safely
+    const badgeInfo = metrics ? getBadgeInfo(metrics.final_score) : null;
+
+    const [showCopied, setShowCopied] = useState(false);
 
     return (
         <div className={theme === "dark" ? "min-h-screen bg-gradient-to-b from-black via-slate-950 to-black text-white" : "min-h-screen bg-gradient-to-b from-slate-100 via-white to-slate-200 text-slate-900"}>
             {/* TOP NAV */}
             <div className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur border-b border-slate-800">
-                <div className="flex items-center justify-between px-6 py-4">
-                    <div className="flex items-center gap-3">
-                        <div>
-                            <p className="text-sm text-slate-400">{activeWallet ? shortenAddress(activeWallet) : 'No wallet connected'}</p>
-                            <p className="text-xs text-slate-500">Live API Profile</p>
-                        </div>
-                        {activeWallet && <span className="px-2 py-0.5 rounded text-[10px] bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse font-bold">LIVE</span>}
-                    </div>
+                <div className="flex items-center justify-center px-6 py-6">
+                    <div className="w-full max-w-7xl">
+                        <form onSubmit={handleWalletSubmit} className="flex items-center gap-6 bg-slate-900/70 border border-emerald-500/30 rounded-3xl px-8 py-5 shadow-[0_0_35px_rgba(16,185,129,0.2)] transition-all duration-300 hover:shadow-[0_0_45px_rgba(16,185,129,0.25)] hover:border-emerald-500/40">
+                            {/* Profile Picture */}
+                            {activeWallet && userProfile?.profileImage && (
+                                <img
+                                    src={userProfile.profileImage}
+                                    alt={userProfile.userName || activeWallet}
+                                    className="w-12 h-12 rounded-full object-cover border-2 border-emerald-500/50 cursor-pointer hover:scale-105 transition-transform"
+                                    onClick={() => window.open(userProfile.profileImage, '_blank')}
+                                    title="Click to view full image"
+                                />
+                            )}
 
-                    <div className="flex-1 px-10">
-                        <form onSubmit={handleWalletSubmit} className="flex items-center gap-3 bg-slate-900/70 border border-emerald-500/30 rounded-full px-5 py-2 shadow-[0_0_25px_rgba(16,185,129,0.15)]">
-                            <Search className="h-4 w-4 text-emerald-400" />
-                            <input
-                                className="w-full bg-transparent outline-none text-sm placeholder:text-slate-500"
-                                placeholder="Enter wallet address (0x...)"
-                                value={walletInput}
-                                onChange={(e) => setWalletInput(e.target.value)}
-                            />
+                            {/* Username and Wallet Address */}
                             {activeWallet && (
-                                <button type="button" onClick={() => refresh()} disabled={loading} className="p-1 hover:text-emerald-400 disabled:opacity-50">
+                                <div className="flex flex-col min-w-0">
+                                    {userProfile?.userName && (
+                                        <span className="text-lg font-bold text-white truncate">
+                                            {userProfile.userName}
+                                        </span>
+                                    )}
+                                    <div className="relative group">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(activeWallet);
+                                                setShowCopied(true);
+                                                setTimeout(() => setShowCopied(false), 2000);
+                                            }}
+                                            className="text-sm text-slate-400 hover:text-emerald-400 transition text-left truncate flex items-center gap-1"
+                                            title="Click to copy wallet address"
+                                        >
+                                            {activeWallet.slice(0, 6)}...{activeWallet.slice(-4)}
+                                        </button>
+
+                                        {/* Copied Tooltip */}
+                                        <div className={`absolute top-full mt-1 left-0 bg-emerald-500 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded shadow-lg transition-all duration-200 ${showCopied ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1 pointer-events-none'}`}>
+                                            Copied!
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Search Icon and Input */}
+                            <div className="flex items-center gap-3 flex-1">
+                                <Search className="h-4 w-4 text-emerald-400" />
+                                <input
+                                    className="w-full bg-transparent outline-none text-sm placeholder:text-slate-500"
+                                    placeholder="Search by wallet (0x...) or username"
+                                    value={walletInput}
+                                    onChange={(e) => setWalletInput(e.target.value)}
+                                />
+                            </div>
+
+                            {/* Refresh Button */}
+                            {activeWallet && (
+                                <button type="button" onClick={() => refresh()} disabled={loading} className="p-1 hover:text-emerald-400 disabled:opacity-50 flex-shrink-0">
                                     <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                                 </button>
                             )}
                         </form>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        <button
-                            className={`px-3 py-1 rounded ${theme === "dark" ? "text-emerald-400" : "text-emerald-700"}`}
-                            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                        >
-                            {theme === "dark" ? "🌙 Dark" : "☀️ Light"}
-                        </button>
-                        <Bell className="h-5 w-5 text-slate-400 cursor-pointer" />
-                        <Settings className="h-5 w-5 text-slate-400 cursor-pointer" />
-                        <User className="h-5 w-5 text-slate-400 cursor-pointer" />
                     </div>
                 </div>
             </div>
@@ -319,7 +413,7 @@ export function LiveDashboard() {
                 <div className="flex flex-col items-center justify-center p-20 text-center">
                     <Wallet className="h-20 w-20 text-emerald-500/20 mb-4" />
                     <h2 className="text-2xl font-bold mb-2">Live API Dashboard</h2>
-                    <p className="text-slate-400 max-w-md">Enter a wallet address above to calculate real-time metrics directly from Polymarket APIs.</p>
+                    <p className="text-slate-400 max-w-md">Enter a wallet address or username above to calculate real-time metrics directly from Polymarket APIs.</p>
                 </div>
             )}
 
@@ -334,21 +428,36 @@ export function LiveDashboard() {
                         <p className="text-sm uppercase tracking-widest text-emerald-300/80">Final Rating (Live)</p>
                         <div className="flex items-end gap-6">
                             <p className="text-[60px] leading-none font-extrabold bg-gradient-to-r from-emerald-300 to-emerald-500 bg-clip-text text-transparent">
-                                {metrics.final_score.toFixed(1)}
+                                {Math.min(100, Math.max(0, metrics.final_score)).toFixed(1)}
                             </p>
                             <div className="flex gap-3 pb-2">
-                                {metrics.final_score >= 95 && (
-                                    <span className="px-6 py-2 rounded-full text-sm bg-slate-800/70 border text-emerald-300 shadow-[0_0_30px_rgba(34,197,94,0.6)] border-emerald-400">👑 Prediction King</span>
+                                {badgeInfo && (
+                                    <span className={`px-6 py-2 rounded-full text-sm border font-bold ${badgeInfo.style}`}>
+                                        {badgeInfo.title}
+                                    </span>
                                 )}
                                 {metrics.total_trades > 100 && (
                                     <span className="px-6 py-2 rounded-full text-sm bg-slate-800/70 border text-emerald-300 shadow-[0_0_30px_rgba(34,197,94,0.6)] border-emerald-400">🏅 High Volume</span>
                                 )}
-                                {metrics.total_volume >= 100000 && (
-                                    <span className="px-6 py-2 rounded-full text-sm bg-slate-800/70 border text-emerald-300 shadow-[0_0_30px_rgba(34,197,94,0.6)] border-emerald-400">🐋 Whale</span>
-                                )}
-                                {metrics.streaks.current_streak >= 5 && (
-                                    <span className="px-6 py-2 rounded-full text-sm bg-slate-800/70 border text-orange-300 shadow-[0_0_35px_rgba(251,146,60,0.7)] border-orange-400">🔥 Hot Streak</span>
-                                )}
+                                {(() => {
+                                    const rank = getVolumeRank(metrics.total_volume);
+                                    return (
+                                        <span className={`px-6 py-2 rounded-full text-sm border font-bold ${rank.className}`}>
+                                            {rank.emoji} {rank.title}
+                                        </span>
+                                    );
+                                })()}
+                                {(() => {
+                                    const streakBadge = getStreakBadge(metrics.streaks.current_streak);
+                                    if (streakBadge) {
+                                        return (
+                                            <span className={`px-6 py-2 rounded-full text-sm border font-bold ${streakBadge.className}`}>
+                                                {streakBadge.emoji} {streakBadge.title}
+                                            </span>
+                                        );
+                                    }
+                                    return null;
+                                })()}
                             </div>
                         </div>
 
@@ -371,27 +480,46 @@ export function LiveDashboard() {
                             </div>
                         </div>
 
-                        <div className="mt-6 rounded-2xl border border-emerald-400/60 bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-950 p-6 shadow-[0_0_70px_rgba(34,197,94,0.45)]">
-                            <div className="flex items-center justify-between text-center">
-                                <div className="flex-1">
-                                    <p className="text-sm font-medium text-emerald-200">🔥 Longest streak</p>
-                                    <p className="text-3xl font-extrabold text-emerald-300">{metrics.streaks.longest_streak}</p>
+                        <div className="mt-6 rounded-2xl border border-emerald-500/30 bg-slate-950/80 p-6 shadow-[0_0_50px_rgba(16,185,129,0.15)] backdrop-blur-sm">
+                            <div className="flex items-center justify-between text-center divide-x divide-slate-800">
+                                <div className="flex-1 px-4">
+                                    <p className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-center gap-1">
+                                        <span className="text-orange-500">🔥</span> Longest Win Streak
+                                    </p>
+                                    <p className="text-3xl font-black text-white tracking-tight">{metrics.streaks.longest_streak}</p>
                                 </div>
-                                <div className="flex-1">
-                                    <p className="text-sm font-medium text-emerald-200">👀 Current streak</p>
-                                    <p className="text-3xl font-extrabold text-emerald-300">{metrics.streaks.current_streak}</p>
+                                <div className="flex-1 px-4">
+                                    <p className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-center gap-1">
+                                        <span className="text-purple-400">⚡</span> Current Win Streak
+                                    </p>
+                                    <p className="text-3xl font-black text-white tracking-tight">{metrics.streaks.current_streak}</p>
                                 </div>
-                                <div className="flex-1">
-                                    <p className="text-sm font-medium text-emerald-200">👍 Total wins</p>
-                                    <p className="text-3xl font-extrabold text-emerald-300">{metrics.streaks.total_wins}</p>
+                                <div className="flex-1 px-4">
+                                    <p className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-center gap-1">
+                                        <span className="text-yellow-400">👍</span> Winning Trades
+                                    </p>
+                                    <p className="text-3xl font-black text-emerald-400 tracking-tight">{metrics.streaks.total_wins}</p>
                                 </div>
-                                <div className="flex-1">
-                                    <p className="text-sm font-medium text-emerald-200">👎 Total losses</p>
-                                    <p className="text-3xl font-extrabold text-emerald-300">{metrics.streaks.total_losses}</p>
+                                <div className="flex-1 px-4">
+                                    <p className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-center gap-1">
+                                        <span className="text-red-400">👎</span> Losing Trades
+                                    </p>
+                                    <p className="text-3xl font-black text-slate-300 tracking-tight">{metrics.streaks.total_losses}</p>
                                 </div>
-                                <div className="flex-1">
-                                    <p className="text-sm font-medium text-emerald-200">🏆 Largest Win</p>
-                                    <p className="text-3xl font-extrabold text-emerald-300">{formatCurrency(metrics.largest_win)}</p>
+                                <div className="flex-1 px-4">
+                                    <p className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-center gap-1">
+                                        <span className="text-amber-400">🏆</span> Top Category
+                                    </p>
+                                    <p className="text-2xl font-black text-emerald-400 tracking-tight leading-none" title={marketDistribution[0]?.category}>
+                                        {(() => {
+                                            // Find first category that's not Uncategorized or Other
+                                            const topCategory = marketDistribution.find(item => {
+                                                const cat = item.category.toLowerCase();
+                                                return cat !== 'uncategorized' && cat !== 'other';
+                                            });
+                                            return topCategory?.category || 'N/A';
+                                        })()}
+                                    </p>
                                 </div>
                             </div>
                         </div>

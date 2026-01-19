@@ -186,7 +186,6 @@ function App() {
             path="/live-dashboard"
             element={
               <>
-                <TradingHeader title="Live Dashboard" />
                 <LiveDashboard />
               </>
             }

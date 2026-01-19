@@ -4,6 +4,8 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { TradePerformanceGraph } from '../components/TradePerformanceGraph';
 import { fetchDBDashboard, syncDBDashboard } from '../services/api';
+import { getVolumeRank } from '../utils/rankUtils';
+import { getStreakBadge } from '../utils/streakUtils';
 import { calculateLiveMetrics } from '../utils/scoring';
 import type { Position, ClosedPosition, Activity, TradeHistoryResponse } from '../types/api';
 
@@ -300,18 +302,25 @@ export function DBWalletDashboard() {
                                             Top 10
                                         </span>
                                     )}
-                                    {totalVolume >= 100000 && (
-                                        <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs font-medium flex items-center gap-1">
-                                            <Fish className="w-3 h-3" />
-                                            Whale
-                                        </span>
-                                    )}
-                                    {streaks?.current_streak >= 5 && (
-                                        <span className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-xs font-medium flex items-center gap-1">
-                                            <Flame className="w-3 h-3" />
-                                            Hot Streak
-                                        </span>
-                                    )}
+                                    {(() => {
+                                        const rank = getVolumeRank(totalVolume);
+                                        return (
+                                            <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${rank.className}`}>
+                                                {rank.emoji} {rank.title}
+                                            </span>
+                                        );
+                                    })()}
+                                    {(() => {
+                                        const streakBadge = getStreakBadge(streaks?.current_streak || 0);
+                                        if (streakBadge) {
+                                            return (
+                                                <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${streakBadge.className}`}>
+                                                    {streakBadge.emoji} {streakBadge.title}
+                                                </span>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
                                 </div>
                                 {scoringMetrics?.final_score >= 90 && (
                                     <span className="ml-auto px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs font-medium">
