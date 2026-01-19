@@ -16,15 +16,34 @@ type MarketDatum = {
   pnl: number;
 };
 
-const CATEGORY_ORDER = ["politics", "crypto", "sports", "finance", "technology", "macro / rates"] as const;
+const CATEGORY_ORDER = [
+  "politics",
+  "sports",
+  "crypto",
+  "finance",
+  "geopolitics",
+  "earnings",
+  "tech",
+  "culture",
+  "world",
+  "economy",
+  "climate & science",
+  "elections"
+] as const;
 
 const COLORS: Record<string, string> = {
   politics: "#3B82F6", // blue
-  crypto: "#22C55E", // green
   sports: "#F97316", // orange
+  crypto: "#22C55E", // green
   finance: "#8B5CF6", // purple
-  technology: "#F59E0B", // yellow
-  "macro / rates": "#EC4899", // pink
+  geopolitics: "#6366F1", // indigo
+  earnings: "#10B981", // emerald
+  tech: "#F59E0B", // yellow/amber
+  culture: "#EC4899", // pink
+  world: "#06B6D4", // cyan
+  economy: "#84CC16", // lime
+  "climate & science": "#14B8A6", // teal
+  elections: "#EF4444", // red
   other: "#94A3B8", // gray
 };
 
@@ -35,19 +54,126 @@ function colorForKey(key: string) {
 
 function normalizeCategory(category: string): string {
   const lower = category.toLowerCase();
-  if (lower.includes("politics") || lower.includes("political")) return "politics";
-  if (lower.includes("crypto") || lower.includes("bitcoin") || lower.includes("ethereum")) return "crypto";
-  if (lower.includes("sports") || lower.includes("nfl") || lower.includes("nba")) return "sports";
-  if (lower.includes("finance") || lower.includes("economic")) return "finance";
-  if (lower.includes("technology") || lower.includes("tech")) return "technology";
-  if (lower.includes("macro") || lower.includes("rates") || lower.includes("fed")) return "macro / rates";
+  const combined = lower;
+  
+  // Elections (check first as it's more specific)
+  if (combined.includes("election") || combined.includes("electoral") || combined.includes("vote") || combined.includes("voting") || combined.includes("ballot")) {
+    return "elections";
+  }
+  
+  // Politics (check before geopolitics)
+  if (combined.includes("politics") || combined.includes("political") || combined.includes("president") || 
+      combined.includes("trump") || combined.includes("biden") || combined.includes("senate") || 
+      combined.includes("congress") || combined.includes("democrat") || combined.includes("republican") ||
+      combined.includes("party") || combined.includes("campaign")) {
+    return "politics";
+  }
+  
+  // Geopolitics
+  if (combined.includes("geopolitics") || combined.includes("geopolitical") || combined.includes("war") ||
+      combined.includes("conflict") || combined.includes("military") || combined.includes("nato") ||
+      combined.includes("alliance") || combined.includes("diplomacy") || combined.includes("sanctions")) {
+    return "geopolitics";
+  }
+  
+  // Sports
+  if (combined.includes("sports") || combined.includes("sport") || combined.includes("nfl") || 
+      combined.includes("nba") || combined.includes("mlb") || combined.includes("soccer") || 
+      combined.includes("football") || combined.includes("basketball") || combined.includes("baseball") ||
+      combined.includes("hockey") || combined.includes("tennis") || combined.includes("golf") ||
+      combined.includes("game") || combined.includes("match") || combined.includes("championship") ||
+      combined.includes("super bowl") || combined.includes("world cup") || combined.includes("olympics") ||
+      combined.includes("tournament") || combined.includes("league")) {
+    return "sports";
+  }
+  
+  // Crypto
+  if (combined.includes("crypto") || combined.includes("cryptocurrency") || combined.includes("bitcoin") ||
+      combined.includes("btc") || combined.includes("ethereum") || combined.includes("eth") ||
+      combined.includes("blockchain") || combined.includes("defi") || combined.includes("nft") ||
+      combined.includes("token") || combined.includes("coin") || combined.includes("altcoin") ||
+      combined.includes("dogecoin") || combined.includes("solana") || combined.includes("cardano")) {
+    return "crypto";
+  }
+  
+  // Tech
+  if (combined.includes("tech") || combined.includes("technology") || combined.includes("ai") ||
+      combined.includes("artificial intelligence") || combined.includes("software") || combined.includes("hardware") ||
+      combined.includes("startup") || combined.includes("silicon valley") || combined.includes("apple") ||
+      combined.includes("google") || combined.includes("microsoft") || combined.includes("meta") ||
+      combined.includes("amazon") || combined.includes("tesla") || combined.includes("nvidia") ||
+      combined.includes("chip") || combined.includes("semiconductor")) {
+    return "tech";
+  }
+  
+  // Finance
+  if (combined.includes("finance") || combined.includes("financial") || combined.includes("bank") ||
+      combined.includes("banking") || combined.includes("investment") || combined.includes("trading") ||
+      combined.includes("stock") || combined.includes("market") || combined.includes("hedge fund") ||
+      combined.includes("private equity") || combined.includes("venture capital")) {
+    return "finance";
+  }
+  
+  // Economy
+  if (combined.includes("economy") || combined.includes("economic") || combined.includes("gdp") ||
+      combined.includes("unemployment") || combined.includes("inflation") || combined.includes("recession") ||
+      combined.includes("growth") || combined.includes("productivity") || combined.includes("trade") ||
+      combined.includes("commerce") || combined.includes("business cycle")) {
+    return "economy";
+  }
+  
+  // Earnings
+  if (combined.includes("earnings") || combined.includes("revenue") || combined.includes("profit") ||
+      combined.includes("quarterly") || combined.includes("q1") || combined.includes("q2") ||
+      combined.includes("q3") || combined.includes("q4") || combined.includes("eps") ||
+      combined.includes("guidance") || combined.includes("beat") || combined.includes("miss")) {
+    return "earnings";
+  }
+  
+  // Climate & Science
+  if (combined.includes("climate") || combined.includes("environment") || combined.includes("environmental") ||
+      combined.includes("science") || combined.includes("scientific") || combined.includes("research") ||
+      combined.includes("global warming") || combined.includes("carbon") || combined.includes("emissions") ||
+      combined.includes("renewable") || combined.includes("solar") || combined.includes("wind") ||
+      combined.includes("energy") || combined.includes("green") || combined.includes("sustainability")) {
+    return "climate & science";
+  }
+  
+  // Culture
+  if (combined.includes("culture") || combined.includes("cultural") || combined.includes("entertainment") ||
+      combined.includes("movie") || combined.includes("film") || combined.includes("music") ||
+      combined.includes("celebrity") || combined.includes("tv") || combined.includes("television") ||
+      combined.includes("award") || combined.includes("oscar") || combined.includes("grammy") ||
+      combined.includes("fashion") || combined.includes("art") || combined.includes("media")) {
+    return "culture";
+  }
+  
+  // World
+  if (combined.includes("world") || combined.includes("global") || combined.includes("international") ||
+      combined.includes("country") || combined.includes("nation") || combined.includes("united nations") ||
+      combined.includes("un") || combined.includes("eu") || combined.includes("european union")) {
+    return "world";
+  }
+  
   return "other";
 }
 
 function formatCategoryLabel(category: string): string {
   const normalized = normalizeCategory(category);
-  if (normalized === "macro / rates") return "Macro / Rates";
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  const labelMap: Record<string, string> = {
+    "climate & science": "Climate & Science",
+    "macro / rates": "Macro / Rates",
+  };
+  
+  if (labelMap[normalized]) {
+    return labelMap[normalized];
+  }
+  
+  // Capitalize first letter of each word
+  return normalized
+    .split(" ")
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 interface MarketDistributionPanelProps {

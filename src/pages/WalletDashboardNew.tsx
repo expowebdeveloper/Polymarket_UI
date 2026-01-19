@@ -279,18 +279,66 @@ export function WalletDashboard() {
       const slugLower = (slug || "").toLowerCase();
       const combined = `${titleLower} ${slugLower}`;
 
-      if (['president', 'election', 'politics', 'trump', 'biden', 'senate', 'congress', 'vote', 'poll', 'democrat', 'republican', 'political'].some(k => combined.includes(k))) {
+      // Elections (check first as it's more specific)
+      if (['election', 'electoral', 'vote', 'voting', 'ballot'].some(k => combined.includes(k))) {
+        return "Elections";
+      }
+      
+      // Politics (check before geopolitics)
+      if (['politics', 'political', 'president', 'trump', 'biden', 'senate', 'congress', 'democrat', 'republican', 'party', 'campaign'].some(k => combined.includes(k))) {
         return "Politics";
       }
-      if (['bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'cryptocurrency', 'blockchain', 'defi', 'nft', 'token', 'coin'].some(k => combined.includes(k))) {
-        return "Crypto";
+      
+      // Geopolitics
+      if (['geopolitics', 'geopolitical', 'war', 'conflict', 'military', 'nato', 'alliance', 'diplomacy', 'sanctions'].some(k => combined.includes(k))) {
+        return "Geopolitics";
       }
-      if (['nfl', 'nba', 'mlb', 'soccer', 'football', 'basketball', 'baseball', 'hockey', 'sports', 'game', 'match', 'championship', 'super bowl', 'world cup'].some(k => combined.includes(k))) {
+      
+      // Sports
+      if (['sports', 'sport', 'nfl', 'nba', 'mlb', 'soccer', 'football', 'basketball', 'baseball', 'hockey', 'tennis', 'golf', 'game', 'match', 'championship', 'super bowl', 'world cup', 'olympics', 'tournament', 'league'].some(k => combined.includes(k))) {
         return "Sports";
       }
-      if (['fed', 'federal reserve', 'interest rate', 'inflation', 'gdp', 'unemployment', 'macro', 'rates', 'treasury', 'bond', 'economic'].some(k => combined.includes(k))) {
-        return "Macro / Rates";
+      
+      // Crypto
+      if (['crypto', 'cryptocurrency', 'bitcoin', 'btc', 'ethereum', 'eth', 'blockchain', 'defi', 'nft', 'token', 'coin', 'altcoin', 'dogecoin', 'solana', 'cardano'].some(k => combined.includes(k))) {
+        return "Crypto";
       }
+      
+      // Tech
+      if (['tech', 'technology', 'ai', 'artificial intelligence', 'software', 'hardware', 'startup', 'silicon valley', 'apple', 'google', 'microsoft', 'meta', 'amazon', 'tesla', 'nvidia', 'chip', 'semiconductor'].some(k => combined.includes(k))) {
+        return "Tech";
+      }
+      
+      // Finance
+      if (['finance', 'financial', 'bank', 'banking', 'investment', 'trading', 'stock', 'market', 'hedge fund', 'private equity', 'venture capital'].some(k => combined.includes(k))) {
+        return "Finance";
+      }
+      
+      // Economy
+      if (['economy', 'economic', 'gdp', 'unemployment', 'inflation', 'recession', 'growth', 'productivity', 'trade', 'commerce', 'business cycle'].some(k => combined.includes(k))) {
+        return "Economy";
+      }
+      
+      // Earnings
+      if (['earnings', 'revenue', 'profit', 'quarterly', 'q1', 'q2', 'q3', 'q4', 'eps', 'guidance', 'beat', 'miss'].some(k => combined.includes(k))) {
+        return "Earnings";
+      }
+      
+      // Climate & Science
+      if (['climate', 'environment', 'environmental', 'science', 'scientific', 'research', 'global warming', 'carbon', 'emissions', 'renewable', 'solar', 'wind', 'energy', 'green', 'sustainability'].some(k => combined.includes(k))) {
+        return "Climate & Science";
+      }
+      
+      // Culture
+      if (['culture', 'cultural', 'entertainment', 'movie', 'film', 'music', 'celebrity', 'tv', 'television', 'award', 'oscar', 'grammy', 'fashion', 'art', 'media'].some(k => combined.includes(k))) {
+        return "Culture";
+      }
+      
+      // World
+      if (['world', 'global', 'international', 'country', 'nation', 'united nations', 'un', 'eu', 'european union'].some(k => combined.includes(k))) {
+        return "World";
+      }
+      
       return "Other";
     };
   }, []);

@@ -163,11 +163,119 @@ export function LiveDashboard() {
             markets: Set<string>;
         }>();
 
+        // Helper function to normalize category
+        const normalizeCategory = (category: string, title: string, slug: string): string => {
+            const lower = (category || title || slug || "").toLowerCase();
+            const combined = `${lower} ${(title || "").toLowerCase()} ${(slug || "").toLowerCase()}`;
+            
+            // Elections (check first as it's more specific)
+            if (combined.includes("election") || combined.includes("electoral") || combined.includes("vote") || combined.includes("voting") || combined.includes("ballot")) {
+                return "Elections";
+            }
+            
+            // Politics (check before geopolitics)
+            if (combined.includes("politics") || combined.includes("political") || combined.includes("president") || 
+                combined.includes("trump") || combined.includes("biden") || combined.includes("senate") || 
+                combined.includes("congress") || combined.includes("democrat") || combined.includes("republican") ||
+                combined.includes("party") || combined.includes("campaign")) {
+                return "Politics";
+            }
+            
+            // Geopolitics
+            if (combined.includes("geopolitics") || combined.includes("geopolitical") || combined.includes("war") ||
+                combined.includes("conflict") || combined.includes("military") || combined.includes("nato") ||
+                combined.includes("alliance") || combined.includes("diplomacy") || combined.includes("sanctions")) {
+                return "Geopolitics";
+            }
+            
+            // Sports
+            if (combined.includes("sports") || combined.includes("sport") || combined.includes("nfl") || 
+                combined.includes("nba") || combined.includes("mlb") || combined.includes("soccer") || 
+                combined.includes("football") || combined.includes("basketball") || combined.includes("baseball") ||
+                combined.includes("hockey") || combined.includes("tennis") || combined.includes("golf") ||
+                combined.includes("game") || combined.includes("match") || combined.includes("championship") ||
+                combined.includes("super bowl") || combined.includes("world cup") || combined.includes("olympics") ||
+                combined.includes("tournament") || combined.includes("league")) {
+                return "Sports";
+            }
+            
+            // Crypto
+            if (combined.includes("crypto") || combined.includes("cryptocurrency") || combined.includes("bitcoin") ||
+                combined.includes("btc") || combined.includes("ethereum") || combined.includes("eth") ||
+                combined.includes("blockchain") || combined.includes("defi") || combined.includes("nft") ||
+                combined.includes("token") || combined.includes("coin") || combined.includes("altcoin") ||
+                combined.includes("dogecoin") || combined.includes("solana") || combined.includes("cardano")) {
+                return "Crypto";
+            }
+            
+            // Tech
+            if (combined.includes("tech") || combined.includes("technology") || combined.includes("ai") ||
+                combined.includes("artificial intelligence") || combined.includes("software") || combined.includes("hardware") ||
+                combined.includes("startup") || combined.includes("silicon valley") || combined.includes("apple") ||
+                combined.includes("google") || combined.includes("microsoft") || combined.includes("meta") ||
+                combined.includes("amazon") || combined.includes("tesla") || combined.includes("nvidia") ||
+                combined.includes("chip") || combined.includes("semiconductor")) {
+                return "Tech";
+            }
+            
+            // Finance
+            if (combined.includes("finance") || combined.includes("financial") || combined.includes("bank") ||
+                combined.includes("banking") || combined.includes("investment") || combined.includes("trading") ||
+                combined.includes("stock") || combined.includes("market") || combined.includes("hedge fund") ||
+                combined.includes("private equity") || combined.includes("venture capital")) {
+                return "Finance";
+            }
+            
+            // Economy
+            if (combined.includes("economy") || combined.includes("economic") || combined.includes("gdp") ||
+                combined.includes("unemployment") || combined.includes("inflation") || combined.includes("recession") ||
+                combined.includes("growth") || combined.includes("productivity") || combined.includes("trade") ||
+                combined.includes("commerce") || combined.includes("business cycle")) {
+                return "Economy";
+            }
+            
+            // Earnings
+            if (combined.includes("earnings") || combined.includes("revenue") || combined.includes("profit") ||
+                combined.includes("quarterly") || combined.includes("q1") || combined.includes("q2") ||
+                combined.includes("q3") || combined.includes("q4") || combined.includes("eps") ||
+                combined.includes("guidance") || combined.includes("beat") || combined.includes("miss")) {
+                return "Earnings";
+            }
+            
+            // Climate & Science
+            if (combined.includes("climate") || combined.includes("environment") || combined.includes("environmental") ||
+                combined.includes("science") || combined.includes("scientific") || combined.includes("research") ||
+                combined.includes("global warming") || combined.includes("carbon") || combined.includes("emissions") ||
+                combined.includes("renewable") || combined.includes("solar") || combined.includes("wind") ||
+                combined.includes("energy") || combined.includes("green") || combined.includes("sustainability")) {
+                return "Climate & Science";
+            }
+            
+            // Culture
+            if (combined.includes("culture") || combined.includes("cultural") || combined.includes("entertainment") ||
+                combined.includes("movie") || combined.includes("film") || combined.includes("music") ||
+                combined.includes("celebrity") || combined.includes("tv") || combined.includes("television") ||
+                combined.includes("award") || combined.includes("oscar") || combined.includes("grammy") ||
+                combined.includes("fashion") || combined.includes("art") || combined.includes("media")) {
+                return "Culture";
+            }
+            
+            // World
+            if (combined.includes("world") || combined.includes("global") || combined.includes("international") ||
+                combined.includes("country") || combined.includes("nation") || combined.includes("united nations") ||
+                combined.includes("un") || combined.includes("eu") || combined.includes("european union")) {
+                return "World";
+            }
+            
+            // Use original category if it exists, otherwise "Other"
+            return category || "Other";
+        };
+
         // Process closed positions
         closedPositions.forEach(pos => {
             const title = pos.title || pos.slug || "Unknown Market";
-            // Use the actual category field from the API
-            const category = (pos as any).category || "Uncategorized";
+            const originalCategory = (pos as any).category || "";
+            const category = normalizeCategory(originalCategory, title, pos.slug || "");
 
             const stake = parseFloat(String((pos as any).total_bought || pos.size || 0)) * parseFloat(String(pos.avg_price || 0));
             const pnl = parseFloat(String(pos.realized_pnl || 0));
@@ -199,7 +307,8 @@ export function LiveDashboard() {
         // Process active positions for capital
         positions.forEach(pos => {
             const title = pos.title || pos.slug || "Unknown Market";
-            const category = (pos as any).category || "Uncategorized";
+            const originalCategory = (pos as any).category || "";
+            const category = normalizeCategory(originalCategory, title, pos.slug || "");
 
             const capital = parseFloat(String(pos.initial_value || 0));
 
@@ -479,9 +588,6 @@ export function LiveDashboard() {
                                     <span className={`px-6 py-2 rounded-full text-sm border font-bold ${badgeInfo.style}`}>
                                         {badgeInfo.title}
                                     </span>
-                                )}
-                                {metrics.total_trades > 100 && (
-                                    <span className="px-6 py-2 rounded-full text-sm bg-slate-800/70 border text-emerald-300 shadow-[0_0_30px_rgba(34,197,94,0.6)] border-emerald-400">🏅 High Volume</span>
                                 )}
                                 {(() => {
                                     const rank = getVolumeRank(metrics.total_volume);
