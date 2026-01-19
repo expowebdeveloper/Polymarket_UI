@@ -13,6 +13,7 @@ export interface LiveDashboardState {
     closedPositions: ClosedPosition[];
     activities: Activity[];
     userPnL: UserPnL[];
+    portfolioValue?: number;
 }
 
 export function useLiveDashboard(walletAddress: string) {
@@ -24,6 +25,7 @@ export function useLiveDashboard(walletAddress: string) {
         closedPositions: [],
         activities: [],
         userPnL: [],
+        portfolioValue: undefined,
     });
 
     const fetchData = useCallback(async () => {
@@ -54,6 +56,7 @@ export function useLiveDashboard(walletAddress: string) {
                 closedPositions: data.closed_positions || [],
                 activities: data.activities || [],
                 userPnL: data.trade_history?.trades || [],
+                portfolioValue: data.portfolio_value,
             });
         } catch (err: any) {
             console.error('Error fetching live dashboard data:', err);

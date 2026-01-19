@@ -8,6 +8,7 @@ import { resolveWalletOrUser, fetchUserLeaderboardData } from '../services/api';
 import { getVolumeRank } from '../utils/rankUtils';
 import { getStreakBadge } from '../utils/streakUtils';
 import type { UserLeaderboardData } from '../types/api';
+import { MarketDistributionPanel } from '../components/MarketDistributionPanel';
 
 // Helper function to format currency
 const formatCurrency = (value: number | string | undefined): string => {
@@ -108,6 +109,7 @@ export function LiveDashboard() {
         closedPositions,
         activities,
         userPnL,
+        portfolioValue,
         refresh
     } = useLiveDashboard(activeWallet);
 
@@ -337,6 +339,48 @@ export function LiveDashboard() {
     // Calculate badge info safely
     const badgeInfo = metrics ? getBadgeInfo(metrics.final_score) : null;
 
+    // Calculate active positions value
+    const activePositionsValue = useMemo(() => {
+        return positions.reduce((sum, pos) => {
+            return sum + (parseFloat(String(pos.initial_value || 0)));
+        }, 0);
+    }, [positions]);
+
+    // Calculate Total Gains (sum of all positive realized PnL from closed positions)
+    const totalGains = useMemo(() => {
+        return closedPositions.reduce((sum, pos) => {
+            const pnl = parseFloat(String(pos.realized_pnl || 0));
+            return sum + (pnl > 0 ? pnl : 0);
+        }, 0);
+    }, [closedPositions]);
+
+    // Calculate Total Losses (sum of all negative realized PnL from closed positions, displayed as positive)
+    const totalLosses = useMemo(() => {
+        return Math.abs(closedPositions.reduce((sum, pos) => {
+            const pnl = parseFloat(String(pos.realized_pnl || 0));
+            return sum + (pnl < 0 ? pnl : 0);
+        }, 0));
+    }, [closedPositions]);
+
+    // Calculate Balance (Active positions current value + Cash)
+    // Balance = portfolio_value (which includes both active positions value and cash)
+    // If portfolio_value is not available, fall back to sum of current_value from active positions
+    const balance = useMemo(() => {
+        if (portfolioValue !== undefined && portfolioValue !== null) {
+            return portfolioValue;
+        }
+        
+        // Fallback: sum of current_value from active positions
+        return positions.reduce((sum, pos) => {
+            return sum + (parseFloat(String(pos.current_value || 0)));
+        }, 0);
+    }, [positions, portfolioValue]);
+
+    // Calculate total predictions (unique positions/markets)
+    const totalPredictions = useMemo(() => {
+        return closedPositions.length + positions.length;
+    }, [closedPositions.length, positions.length]);
+
     const [showCopied, setShowCopied] = useState(false);
 
     return (
@@ -461,22 +505,34 @@ export function LiveDashboard() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-4 gap-4 mt-6 max-w-xl">
-                            <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-3 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 mt-6">
+                            <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
+                                <p className="text-xs text-slate-300 mb-0.5">Active Positions Value</p>
+                                <p className="text-base font-bold text-emerald-300">{formatCurrency(activePositionsValue)}</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
+                                <p className="text-xs text-slate-300 mb-0.5">Total PNL</p>
+                                <p className={`text-base font-bold ${metrics.total_pnl >= 0 ? 'text-emerald-300' : 'text-red-400'}`}>{formatCurrency(metrics.total_pnl)}</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
+                                <p className="text-xs text-slate-300 mb-0.5">Volume Traded</p>
+                                <p className="text-base font-bold text-emerald-300">{formatCurrency(metrics.total_volume)}</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
                                 <p className="text-xs text-slate-300 mb-0.5">Predictions</p>
-                                <p className="text-lg font-bold text-emerald-300">{metrics.total_trades}</p>
+                                <p className="text-base font-bold text-emerald-300">{totalPredictions}</p>
                             </div>
-                            <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-3 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
-                                <p className="text-xs text-slate-300 mb-0.5">Total Volume</p>
-                                <p className="text-lg font-bold text-emerald-300">{formatCurrency(metrics.total_volume)}</p>
+                            <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
+                                <p className="text-xs text-slate-300 mb-0.5">Total Trades</p>
+                                <p className="text-base font-bold text-emerald-300">{metrics.total_trades}</p>
                             </div>
-                            <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-3 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
-                                <p className="text-xs text-slate-300 mb-0.5">Win Rate</p>
-                                <p className="text-lg font-bold text-emerald-300">{metrics.win_rate.toFixed(1)}%</p>
+                            <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
+                                <p className="text-xs text-slate-300 mb-0.5">Biggest Win</p>
+                                <p className="text-base font-bold text-emerald-300">{formatCurrency(metrics.largest_win)}</p>
                             </div>
-                            <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-3 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
-                                <p className="text-xs text-slate-300 mb-0.5">Total PnL</p>
-                                <p className="text-lg font-bold text-emerald-300">{formatCurrency(metrics.total_pnl)}</p>
+                            <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
+                                <p className="text-xs text-slate-300 mb-0.5">Worst Loss</p>
+                                <p className="text-base font-bold text-red-400">{formatCurrency(metrics.worst_loss || 0)}</p>
                             </div>
                         </div>
 
@@ -543,12 +599,12 @@ export function LiveDashboard() {
                                 <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
                                     <TrendingUp className="h-5 w-5" />
                                 </div>
-                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">ROI</p>
+                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Stake yield</p>
                             </div>
                             <p className={`text-xl font-bold ${metrics.roi >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                {metrics.roi.toFixed(1)}%
+                                {metrics.roi >= 0 ? '+' : ''}{metrics.roi.toFixed(2)}%
                             </p>
-                            <p className="text-xs text-slate-500 mt-1">Return on Investment</p>
+                            <p className="text-xs text-slate-500 mt-1">All-time</p>
                         </div>
 
                         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors group">
@@ -556,10 +612,12 @@ export function LiveDashboard() {
                                 <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400 group-hover:scale-110 transition-transform">
                                     <ActivityIcon className="h-5 w-5" />
                                 </div>
-                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Open Pos.</p>
+                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Stake-Weighted Win Rate</p>
                             </div>
-                            <p className="text-xl font-bold text-white">{metrics.open_positions || positions.length}</p>
-                            <p className="text-xs text-slate-500 mt-1">Active Markets</p>
+                            <p className="text-xl font-bold text-white">
+                                {((metrics.stake_weighted_win_rate || metrics.w_stake * 100) || 0).toFixed(1)}%
+                            </p>
+                            <p className="text-xs text-slate-500 mt-1">Weighted by stake size</p>
                         </div>
 
                         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors group">
@@ -605,33 +663,32 @@ export function LiveDashboard() {
                         {showAdvanced && (
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
                                 <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
-                                    <p className="text-xs text-slate-400 uppercase mb-1">Biggest Win</p>
-                                    <p className="text-lg font-bold text-emerald-400">{formatCurrency(metrics.largest_win)}</p>
-                                </div>
-                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
-                                    <p className="text-xs text-slate-400 uppercase mb-1">Worst Loss</p>
-                                    <p className="text-lg font-bold text-red-400">{formatCurrency(metrics.worst_loss || 0)}</p>
-                                </div>
-                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
-                                    <p className="text-xs text-slate-400 uppercase mb-1">Top Category</p>
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Most Traded Category</p>
                                     <p className="text-lg font-bold text-white truncate">{marketDistribution[0]?.category || 'N/A'}</p>
                                 </div>
                                 <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
-                                    <p className="text-xs text-slate-400 uppercase mb-1">Stake DW Win%</p>
-                                    <p className="text-lg font-bold text-emerald-400">{((metrics.w_stake || 0) * 100).toFixed(1)}%</p>
-                                </div>
-                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
-                                    <p className="text-xs text-slate-400 uppercase mb-1">Total Buy Stake</p>
-                                    <p className="text-lg font-bold text-white">{formatCurrency(metrics.buy_volume)}</p>
-                                </div>
-
-                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
-                                    <p className="text-xs text-slate-400 uppercase mb-1">Total Open</p>
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Active Positions</p>
                                     <p className="text-lg font-bold text-white">{metrics.open_positions || 0}</p>
                                 </div>
                                 <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
-                                    <p className="text-xs text-slate-400 uppercase mb-1">Total Closed</p>
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Closed Positions</p>
                                     <p className="text-lg font-bold text-white">{metrics.closed_positions || 0}</p>
+                                </div>
+                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Confidence Score</p>
+                                    <p className="text-lg font-bold text-emerald-400">
+                                        {metrics.confidence_score ? 
+                                          (metrics.confidence_score <= 1 ? `${(metrics.confidence_score * 100).toFixed(1)}%` : `${metrics.confidence_score.toFixed(1)}%`) 
+                                          : 'N/A'}
+                                    </p>
+                                </div>
+                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Risk Score</p>
+                                    <p className="text-lg font-bold text-white">{(metrics.score_risk || metrics.risk_score || 0).toFixed(2)}</p>
+                                </div>
+                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Total Buy Stake</p>
+                                    <p className="text-lg font-bold text-white">{formatCurrency(metrics.total_stakes || metrics.buy_volume || 0)}</p>
                                 </div>
                                 <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
                                     <p className="text-xs text-slate-400 uppercase mb-1">Max Stake</p>
@@ -644,6 +701,12 @@ export function LiveDashboard() {
                                 <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
                                     <p className="text-xs text-slate-400 uppercase mb-1">Losing Stake</p>
                                     <p className="text-lg font-bold text-red-400">{formatCurrency(metrics.losing_stakes)}</p>
+                                </div>
+                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Average Stake</p>
+                                    <p className="text-lg font-bold text-white">
+                                        {formatCurrency((metrics.total_stakes || 0) / (metrics.total_trades || 1))}
+                                    </p>
                                 </div>
                             </div>
                         )}
@@ -711,24 +774,25 @@ export function LiveDashboard() {
                             <div className="space-y-4">
                                 <div className="p-4 rounded-2xl bg-slate-800/50 border border-slate-700/50">
                                     <div className="flex items-center justify-between mb-1">
-                                        <p className="text-sm text-slate-400">Largest Profit</p>
-                                        <Flame className="h-4 w-4 text-orange-400" />
-                                    </div>
-                                    <p className="text-xl font-bold text-emerald-400">{formatCurrency(metrics.largest_win)}</p>
-                                </div>
-                                <div className="p-4 rounded-2xl bg-slate-800/50 border border-slate-700/50">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <p className="text-sm text-slate-400">Buy Volume</p>
+                                        <p className="text-sm text-slate-400">Total Gains</p>
                                         <TrendingUp className="h-4 w-4 text-emerald-400" />
                                     </div>
-                                    <p className="text-xl font-bold text-white">{formatCurrency(metrics.buy_volume)}</p>
+                                    <p className="text-xl font-bold text-emerald-400">{formatCurrency(totalGains)}</p>
                                 </div>
                                 <div className="p-4 rounded-2xl bg-slate-800/50 border border-slate-700/50">
                                     <div className="flex items-center justify-between mb-1">
-                                        <p className="text-sm text-slate-400">Sell Volume</p>
+                                        <p className="text-sm text-slate-400">Total Losses</p>
                                         <TrendingDown className="h-4 w-4 text-red-400" />
                                     </div>
-                                    <p className="text-xl font-bold text-white">{formatCurrency(metrics.sell_volume)}</p>
+                                    <p className="text-xl font-bold text-red-400">{formatCurrency(totalLosses)}</p>
+                                </div>
+                                <div className="p-4 rounded-2xl bg-slate-800/50 border border-slate-700/50">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="text-sm text-slate-400">Balance</p>
+                                        <Wallet className="h-4 w-4 text-blue-400" />
+                                    </div>
+                                    <p className="text-xl font-bold text-white">{formatCurrency(balance)}</p>
+                                    <p className="text-xs text-slate-500 mt-1">Active positions value + Cash</p>
                                 </div>
                             </div>
                         </div>
@@ -988,64 +1052,12 @@ export function LiveDashboard() {
                             )}
 
                             {activeTab === 'distribution' && (
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-                                    <div className="h-[300px]">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie
-                                                    data={marketDistribution}
-                                                    innerRadius={80}
-                                                    outerRadius={100}
-                                                    paddingAngle={5}
-                                                    dataKey={distributionMetric === 'count' ? 'trades_count' : 'capital'}
-                                                >
-                                                    {marketDistribution.map((_, index) => (
-                                                        <Cell key={`cell-${index}`} fill={['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b'][index % 4]} />
-                                                    ))}
-                                                </Pie>
-                                                <Tooltip
-                                                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
-                                                />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                    <div className="space-y-6">
-                                        <div className="flex gap-2 mb-6">
-                                            <button
-                                                onClick={() => setDistributionMetric('count')}
-                                                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${distributionMetric === 'count' ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-400'}`}
-                                            >
-                                                BY TRADE COUNT
-                                            </button>
-                                            <button
-                                                onClick={() => setDistributionMetric('capital')}
-                                                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${distributionMetric === 'capital' ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-400'}`}
-                                            >
-                                                BY CAPITAL
-                                            </button>
-                                        </div>
-                                        {marketDistribution.map((item, idx) => (
-                                            <div key={idx} className="space-y-2">
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-slate-300 flex items-center gap-2">
-                                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b'][idx % 4] }}></div>
-                                                        {item.category}
-                                                    </span>
-                                                    <span className="text-white font-medium">{distributionMetric === 'count' ? `${item.trades_count} trades` : formatCurrency(item.capital)}</span>
-                                                </div>
-                                                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full rounded-full transition-all duration-1000"
-                                                        style={{
-                                                            width: `${(distributionMetric === 'count' ? (item.trades_count / metrics.total_trades) * 100 : (item.capital / metrics.total_volume) * 100)}%`,
-                                                            backgroundColor: ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b'][idx % 4]
-                                                        }}
-                                                    ></div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
+                                <MarketDistributionPanel 
+                                    marketDistribution={marketDistribution}
+                                    activities={activities}
+                                    positions={positions}
+                                    closedPositions={closedPositions}
+                                />
                             )}
 
 

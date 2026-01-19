@@ -384,6 +384,92 @@ export function WalletDashboard() {
     return distribution.sort((a, b) => b.capital - a.capital);
   }, [allClosedPositions, activePositions, categorizeMarket]);
 
+  // Calculate total buy stake (real stake value, not volume)
+  const totalBuyStake = useMemo(() => {
+    let stake = 0;
+    // From closed positions
+    allClosedPositions.forEach(pos => {
+      const size = parseFloat(String((pos as any).total_bought || pos.size || 0));
+      const price = parseFloat(String(pos.avg_price || 0));
+      stake += size * price;
+    });
+    // From active positions
+    activePositions.forEach(pos => {
+      stake += parseFloat(String(pos.initial_value || 0));
+    });
+    return stake;
+  }, [allClosedPositions, activePositions]);
+
+  // Calculate winning and losing stakes
+  const { winningStakes, losingStakes } = useMemo(() => {
+    let winning = 0;
+    let losing = 0;
+    
+    allClosedPositions.forEach(pos => {
+      const size = parseFloat(String((pos as any).total_bought || pos.size || 0));
+      const price = parseFloat(String(pos.avg_price || 0));
+      const stake = size * price;
+      const pnl = parseFloat(String(pos.realized_pnl || 0));
+      
+      if (pnl > 0) {
+        winning += stake;
+      } else if (pnl < 0) {
+        losing += stake;
+      }
+    });
+    
+    return { winningStakes: winning, losingStakes: losing };
+  }, [allClosedPositions]);
+
+  // Calculate stake-weighted win rate (use backend value if available, otherwise calculate)
+  const stakeWeightedWinRate = useMemo(() => {
+    // Try to get from backend first
+    const backendValue = (portfolioStats?.performance_metrics as any)?.stake_weighted_win_rate;
+    if (backendValue !== undefined && backendValue !== null) {
+      return backendValue;
+    }
+    // Fallback to frontend calculation
+    if (totalBuyStake > 0) {
+      return (winningStakes / totalBuyStake) * 100;
+    }
+    return 0;
+  }, [winningStakes, totalBuyStake, portfolioStats]);
+
+  // Calculate unrealized and realized PnL (use backend values if available, otherwise calculate)
+  const { unrealizedPnl, realizedPnl } = useMemo(() => {
+    // Try to get from backend first
+    const backendUnrealized = portfolioStats?.pnl_metrics?.unrealized_pnl || 
+                              portfolioStats?.performance_metrics?.unrealized_pnl;
+    const backendRealized = portfolioStats?.pnl_metrics?.realized_pnl || 
+                            portfolioStats?.performance_metrics?.realized_pnl;
+    
+    if (backendUnrealized !== undefined && backendRealized !== undefined) {
+      return { 
+        unrealizedPnl: parseFloat(String(backendUnrealized)), 
+        realizedPnl: parseFloat(String(backendRealized)) 
+      };
+    }
+    
+    // Fallback to frontend calculation
+    const unrealized = activePositions.reduce((sum, pos) => {
+      return sum + parseFloat(String(pos.cash_pnl || 0));
+    }, 0);
+    
+    const realized = allClosedPositions.reduce((sum, pos) => {
+      return sum + parseFloat(String(pos.realized_pnl || 0));
+    }, 0);
+    
+    return { unrealizedPnl: unrealized, realizedPnl: realized };
+  }, [activePositions, allClosedPositions, portfolioStats]);
+
+  // Get most traded category
+  const mostTradedCategory = useMemo(() => {
+    if (marketDistribution.length > 0) {
+      return marketDistribution[0]?.category || 'N/A';
+    }
+    return 'N/A';
+  }, [marketDistribution]);
+
   // Get scoring metrics
   const scoringMetrics = useMemo(() => {
     const finalScore = (tradeHistory?.overall_metrics as any)?.final_score ||
@@ -397,8 +483,11 @@ export function WalletDashboard() {
       win_rate: tradeHistory?.overall_metrics?.win_rate || portfolioStats?.performance_metrics?.win_rate || 0,
       win_rate_percent: tradeHistory?.overall_metrics?.win_rate || portfolioStats?.performance_metrics?.win_rate || 0,
       total_trades: tradeHistory?.overall_metrics?.total_trades || profileStats?.trades || allClosedPositions.length || 0,
-      score_risk: (tradeHistory?.overall_metrics as any)?.risk_score || 0,
+      score_risk: (tradeHistory?.overall_metrics as any)?.risk_score || (portfolioStats?.performance_metrics as any)?.risk_score || 0,
       roi_shrunk: (tradeHistory?.overall_metrics as any)?.roi_shrunk || 0,
+      confidence_score: (tradeHistory?.overall_metrics as any)?.confidence_score || 
+                        (portfolioStats?.performance_metrics as any)?.confidence_score || 0,
+      stake_weighted_win_rate: (portfolioStats?.performance_metrics as any)?.stake_weighted_win_rate || 0,
     };
   }, [tradeHistory, portfolioStats, userLeaderboardData, profileStats, allClosedPositions]);
 
@@ -439,24 +528,48 @@ export function WalletDashboard() {
   }, [allClosedPositions]);
 
   const primaryMetrics = [
-    { label: "ROI %", value: `${scoringMetrics?.roi >= 0 ? '+' : ''}${(scoringMetrics?.roi || 0).toFixed(2)}%`, sub: "All-time" },
-    { label: "Win Rate", value: `${(scoringMetrics?.win_rate_percent || 0).toFixed(0)}%`, sub: `${streaks.total_wins} of ${streaks.total_wins + streaks.total_losses} trades` },
-    { label: "Total Volume", value: formatCurrency(totalVolume), sub: `Across ${marketDistribution.length} markets` },
-    { label: "Total Trades", value: String(scoringMetrics?.total_trades || 0), sub: "Since joining" },
-    { label: "Total PnL", value: formatCurrency(scoringMetrics?.total_pnl || 0), sub: "Realized + Unrealized" },
+    { label: "Win Rate", value: `${(scoringMetrics?.win_rate_percent || 0).toFixed(1)}%`, sub: `${streaks.total_wins} of ${streaks.total_wins + streaks.total_losses} trades` },
+    { label: "Stake yield", value: `${scoringMetrics?.roi >= 0 ? '+' : ''}${(scoringMetrics?.roi || 0).toFixed(2)}%`, sub: "All-time" },
+    { label: "Stake-Weighted Win Rate", value: `${stakeWeightedWinRate.toFixed(1)}%`, sub: "Weighted by stake size" },
+    { label: "Unrealized PnL", value: formatCurrency(unrealizedPnl), sub: "Active positions" },
+    { label: "Realized PnL", value: formatCurrency(realizedPnl), sub: "Closed positions" },
   ];
 
+  // Calculate average stake
+  const averageStake = useMemo(() => {
+    const totalTrades = scoringMetrics?.total_trades || 0;
+    return totalTrades > 0 ? totalBuyStake / totalTrades : 0;
+  }, [totalBuyStake, scoringMetrics?.total_trades]);
+
+  // Calculate max stake
+  const maxStake = useMemo(() => {
+    let max = 0;
+    allClosedPositions.forEach(pos => {
+      const size = parseFloat(String((pos as any).total_bought || pos.size || 0));
+      const price = parseFloat(String(pos.avg_price || 0));
+      const stake = size * price;
+      if (stake > max) max = stake;
+    });
+    activePositions.forEach(pos => {
+      const stake = parseFloat(String(pos.initial_value || 0));
+      if (stake > max) max = stake;
+    });
+    return max;
+  }, [allClosedPositions, activePositions]);
+
   const advancedMetrics = [
+    { label: "Most Traded Category", value: mostTradedCategory },
+    { label: "Active Positions", value: String(activePositions.length) },
+    { label: "Closed Positions", value: String(allClosedPositions.length) },
+    { label: "Confidence Score", value: scoringMetrics?.confidence_score ? 
+      (scoringMetrics.confidence_score <= 1 ? `${(scoringMetrics.confidence_score * 100).toFixed(1)}%` : `${scoringMetrics.confidence_score.toFixed(1)}%`) 
+      : 'N/A' },
     { label: "Risk Score", value: (scoringMetrics?.score_risk || 0).toFixed(2) },
-    { label: "Max Drawdown", value: `${highestLoss ? highestLoss.toFixed(1) : '0.0'}%` },
-    { label: "Worst Loss", value: formatCurrency(highestLoss) },
-    { label: "Avg Stake", value: formatCurrency(totalVolume / (scoringMetrics?.total_trades || 1)) },
-    { label: "Stake Volatility", value: "0.31" },
-    { label: "Consistency", value: `${((streaks.total_wins / (streaks.total_wins + streaks.total_losses || 1)) * 100).toFixed(0)}%` },
-    { label: "ROI (Shrunk)", value: `${scoringMetrics?.roi_shrunk ? '+' + scoringMetrics.roi_shrunk.toFixed(1) : '0.0'}%` },
-    { label: "Trade Frequency", value: `${((scoringMetrics?.total_trades || 0) / 30).toFixed(1)} / day` },
-    { label: "Market Concentration", value: `${marketDistribution.length > 0 ? ((marketDistribution[0]?.trades_count || 0) / (Number(scoringMetrics?.total_trades) || 1) * 100).toFixed(0) : '0'}%` },
-    { label: "Confidence Score", value: `${(scoringMetrics?.final_score / 10 || 0).toFixed(1)} / 10` },
+    { label: "Total Buy Stake", value: formatCurrency(totalBuyStake) },
+    { label: "Winning Stake", value: formatCurrency(winningStakes) },
+    { label: "Losing Stake", value: formatCurrency(losingStakes) },
+    { label: "Average Stake", value: formatCurrency(averageStake) },
+    { label: "Max Stake", value: formatCurrency(maxStake) },
   ];
 
   return (
