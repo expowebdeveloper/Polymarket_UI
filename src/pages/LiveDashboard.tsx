@@ -978,7 +978,6 @@ export function LiveDashboard() {
                                 { id: 'history', label: 'Trade History' },
                                 { id: 'active_positions', label: 'Active Positions' },
                                 { id: 'closed_positions', label: 'Closed Positions' },
-                                { id: 'performance', label: 'Performance' },
                                 { id: 'distribution', label: 'Distribution' }
                             ].map((tab) => (
                                 <button
@@ -1005,8 +1004,8 @@ export function LiveDashboard() {
                                                 onClick={() => fetchTrades(filter)}
                                                 disabled={tradesLoading}
                                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${currentFilter === filter
-                                                        ? 'bg-emerald-500 text-white shadow-lg'
-                                                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                                    ? 'bg-emerald-500 text-white shadow-lg'
+                                                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                                                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                                             >
                                                 {filter === 'recent10' ? 'Recent 10' :
