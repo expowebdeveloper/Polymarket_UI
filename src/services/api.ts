@@ -550,9 +550,20 @@ export async function fetchDBDashboard(walletAddress: string): Promise<any> {
 /**
  * Fetch comprehensive dashboard data directly from live APIs (via backend aggregation)
  * @param walletAddress - Wallet address
+ * @param skipTrades - Skip fetching trade history for faster initial load
  */
-export async function fetchLiveDashboardData(walletAddress: string): Promise<any> {
-    return fetchApi<any>(`/dashboard/live/${walletAddress}`, 120000);
+export async function fetchLiveDashboardData(walletAddress: string, skipTrades: boolean = false): Promise<any> {
+    const url = `/dashboard/live/${walletAddress}${skipTrades ? '?skip_trades=true' : ''}`;
+    return fetchApi<any>(url, 120000);
+}
+
+/**
+ * Fetch filtered trade history for a wallet
+ * @param walletAddress - Wallet address
+ * @param filter - Filter type: "recent10", "7days", "30days", "1year", "all"
+ */
+export async function fetchFilteredTrades(walletAddress: string, filter: string = "all"): Promise<{ trades: any[], count: number, filter: string }> {
+    return fetchApi<{ trades: any[], count: number, filter: string }>(`/dashboard/live/${walletAddress}/trades?filter=${filter}`, 60000);
 }
 
 /**

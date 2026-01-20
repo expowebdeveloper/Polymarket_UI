@@ -4,6 +4,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { BarChart, Bar, Cell, PieChart, Pie, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useLiveDashboard } from '../hooks/useLiveDashboard';
+import { useTradeFilter, TradeFilter } from '../hooks/useTradeFilter';
 import { resolveWalletOrUser, fetchUserLeaderboardData } from '../services/api';
 import { getVolumeRank } from '../utils/rankUtils';
 import { getStreakBadge } from '../utils/streakUtils';
@@ -91,7 +92,7 @@ export function LiveDashboard() {
     const [userProfile, setUserProfile] = useState<UserLeaderboardData | null>(null);
     const [theme] = useState<"dark" | "light">("dark"); // Default to dark, removed toggle
     const [showAdvanced, setShowAdvanced] = useState(false);
-    const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('history');
+    const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('active_positions');
     const [distributionMetric, setDistributionMetric] = useState<'count' | 'capital'>('count');
 
     // Pagination states
@@ -112,6 +113,15 @@ export function LiveDashboard() {
         portfolioValue,
         refresh
     } = useLiveDashboard(activeWallet);
+
+    // Trade filtering with caching
+    const {
+        trades: filteredTrades,
+        loading: tradesLoading,
+        error: tradesError,
+        currentFilter,
+        fetchTrades
+    } = useTradeFilter(activeWallet);
 
     // Fetch user profile data when wallet changes
     useEffect(() => {
@@ -167,30 +177,30 @@ export function LiveDashboard() {
         const normalizeCategory = (category: string, title: string, slug: string): string => {
             const lower = (category || title || slug || "").toLowerCase();
             const combined = `${lower} ${(title || "").toLowerCase()} ${(slug || "").toLowerCase()}`;
-            
+
             // Elections (check first as it's more specific)
             if (combined.includes("election") || combined.includes("electoral") || combined.includes("vote") || combined.includes("voting") || combined.includes("ballot")) {
                 return "Elections";
             }
-            
+
             // Politics (check before geopolitics)
-            if (combined.includes("politics") || combined.includes("political") || combined.includes("president") || 
-                combined.includes("trump") || combined.includes("biden") || combined.includes("senate") || 
+            if (combined.includes("politics") || combined.includes("political") || combined.includes("president") ||
+                combined.includes("trump") || combined.includes("biden") || combined.includes("senate") ||
                 combined.includes("congress") || combined.includes("democrat") || combined.includes("republican") ||
                 combined.includes("party") || combined.includes("campaign")) {
                 return "Politics";
             }
-            
+
             // Geopolitics
             if (combined.includes("geopolitics") || combined.includes("geopolitical") || combined.includes("war") ||
                 combined.includes("conflict") || combined.includes("military") || combined.includes("nato") ||
                 combined.includes("alliance") || combined.includes("diplomacy") || combined.includes("sanctions")) {
                 return "Geopolitics";
             }
-            
+
             // Sports
-            if (combined.includes("sports") || combined.includes("sport") || combined.includes("nfl") || 
-                combined.includes("nba") || combined.includes("mlb") || combined.includes("soccer") || 
+            if (combined.includes("sports") || combined.includes("sport") || combined.includes("nfl") ||
+                combined.includes("nba") || combined.includes("mlb") || combined.includes("soccer") ||
                 combined.includes("football") || combined.includes("basketball") || combined.includes("baseball") ||
                 combined.includes("hockey") || combined.includes("tennis") || combined.includes("golf") ||
                 combined.includes("game") || combined.includes("match") || combined.includes("championship") ||
@@ -198,7 +208,7 @@ export function LiveDashboard() {
                 combined.includes("tournament") || combined.includes("league")) {
                 return "Sports";
             }
-            
+
             // Crypto
             if (combined.includes("crypto") || combined.includes("cryptocurrency") || combined.includes("bitcoin") ||
                 combined.includes("btc") || combined.includes("ethereum") || combined.includes("eth") ||
@@ -207,7 +217,7 @@ export function LiveDashboard() {
                 combined.includes("dogecoin") || combined.includes("solana") || combined.includes("cardano")) {
                 return "Crypto";
             }
-            
+
             // Tech
             if (combined.includes("tech") || combined.includes("technology") || combined.includes("ai") ||
                 combined.includes("artificial intelligence") || combined.includes("software") || combined.includes("hardware") ||
@@ -217,7 +227,7 @@ export function LiveDashboard() {
                 combined.includes("chip") || combined.includes("semiconductor")) {
                 return "Tech";
             }
-            
+
             // Finance
             if (combined.includes("finance") || combined.includes("financial") || combined.includes("bank") ||
                 combined.includes("banking") || combined.includes("investment") || combined.includes("trading") ||
@@ -225,7 +235,7 @@ export function LiveDashboard() {
                 combined.includes("private equity") || combined.includes("venture capital")) {
                 return "Finance";
             }
-            
+
             // Economy
             if (combined.includes("economy") || combined.includes("economic") || combined.includes("gdp") ||
                 combined.includes("unemployment") || combined.includes("inflation") || combined.includes("recession") ||
@@ -233,7 +243,7 @@ export function LiveDashboard() {
                 combined.includes("commerce") || combined.includes("business cycle")) {
                 return "Economy";
             }
-            
+
             // Earnings
             if (combined.includes("earnings") || combined.includes("revenue") || combined.includes("profit") ||
                 combined.includes("quarterly") || combined.includes("q1") || combined.includes("q2") ||
@@ -241,7 +251,7 @@ export function LiveDashboard() {
                 combined.includes("guidance") || combined.includes("beat") || combined.includes("miss")) {
                 return "Earnings";
             }
-            
+
             // Climate & Science
             if (combined.includes("climate") || combined.includes("environment") || combined.includes("environmental") ||
                 combined.includes("science") || combined.includes("scientific") || combined.includes("research") ||
@@ -250,7 +260,7 @@ export function LiveDashboard() {
                 combined.includes("energy") || combined.includes("green") || combined.includes("sustainability")) {
                 return "Climate & Science";
             }
-            
+
             // Culture
             if (combined.includes("culture") || combined.includes("cultural") || combined.includes("entertainment") ||
                 combined.includes("movie") || combined.includes("film") || combined.includes("music") ||
@@ -259,14 +269,14 @@ export function LiveDashboard() {
                 combined.includes("fashion") || combined.includes("art") || combined.includes("media")) {
                 return "Culture";
             }
-            
+
             // World
             if (combined.includes("world") || combined.includes("global") || combined.includes("international") ||
                 combined.includes("country") || combined.includes("nation") || combined.includes("united nations") ||
                 combined.includes("un") || combined.includes("eu") || combined.includes("european union")) {
                 return "World";
             }
-            
+
             // Use original category if it exists, otherwise "Other"
             return category || "Other";
         };
@@ -431,17 +441,19 @@ export function LiveDashboard() {
     }, [closedPositions]);
 
     const performanceGraphData = useMemo(() => {
-        if (!userPnL || userPnL.length === 0) return [];
+        // Use filtered trades if available, otherwise show empty
+        const tradesData = filteredTrades.length > 0 ? filteredTrades : [];
 
-        // Sort by timestamp and take last 20 Chronologically
-        return userPnL
+        if (!tradesData || tradesData.length === 0) return [];
+
+        // Sort by timestamp
+        return tradesData
             .sort((a, b) => a.t - b.t)
-            .slice(-20)
             .map(point => ({
                 date: new Date(point.t * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
                 cumulativePnl: point.p,
             }));
-    }, [userPnL]);
+    }, [filteredTrades]);
 
 
 
@@ -478,7 +490,7 @@ export function LiveDashboard() {
         if (portfolioValue !== undefined && portfolioValue !== null) {
             return portfolioValue;
         }
-        
+
         // Fallback: sum of current_value from active positions
         return positions.reduce((sum, pos) => {
             return sum + (parseFloat(String(pos.current_value || 0)));
@@ -489,6 +501,13 @@ export function LiveDashboard() {
     const totalPredictions = useMemo(() => {
         return closedPositions.length + positions.length;
     }, [closedPositions.length, positions.length]);
+
+    // Calculate cash from cashPnl in positions (from Polymarket API)
+    const cash = useMemo(() => {
+        return positions.reduce((sum, pos) => {
+            return sum + (parseFloat(String(pos.cash_pnl || 0)));
+        }, 0);
+    }, [positions]);
 
     const [showCopied, setShowCopied] = useState(false);
 
@@ -613,8 +632,9 @@ export function LiveDashboard() {
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 mt-6">
                             <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
-                                <p className="text-xs text-slate-300 mb-0.5">Active Positions Value</p>
-                                <p className="text-base font-bold text-emerald-300">{formatCurrency(activePositionsValue)}</p>
+                                <p className="text-xs text-slate-300 mb-0.5">Balance</p>
+                                <p className="text-base font-bold text-emerald-300">{formatCurrency(balance)}</p>
+                                <p className="text-[10px] text-slate-400 mt-0.5">Positions + Cash</p>
                             </div>
                             <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
                                 <p className="text-xs text-slate-300 mb-0.5">Total PNL</p>
@@ -783,9 +803,9 @@ export function LiveDashboard() {
                                 <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
                                     <p className="text-xs text-slate-400 uppercase mb-1">Confidence Score</p>
                                     <p className="text-lg font-bold text-emerald-400">
-                                        {metrics.confidence_score ? 
-                                          (metrics.confidence_score <= 1 ? `${(metrics.confidence_score * 100).toFixed(1)}%` : `${metrics.confidence_score.toFixed(1)}%`) 
-                                          : 'N/A'}
+                                        {metrics.confidence_score ?
+                                            (metrics.confidence_score <= 1 ? `${(metrics.confidence_score * 100).toFixed(1)}%` : `${metrics.confidence_score.toFixed(1)}%`)
+                                            : 'N/A'}
                                     </p>
                                 </div>
                                 <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
@@ -824,7 +844,9 @@ export function LiveDashboard() {
                             <div className="flex items-center justify-between mb-6">
                                 <div>
                                     <h3 className="text-lg font-bold">Portfolio Performance</h3>
-                                    <p className="text-sm text-slate-400">Cumulative PnL across last 20 activities</p>
+                                    <p className="text-sm text-slate-400">
+                                        {currentFilter ? `Showing ${currentFilter} trades` : 'Select a filter to view trades'}
+                                    </p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded">
@@ -833,45 +855,90 @@ export function LiveDashboard() {
                                     </span>
                                 </div>
                             </div>
-                            <div className="h-[300px] w-full mt-4">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={performanceGraphData}>
-                                        <defs>
-                                            <linearGradient id="colorPnl" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                                        <XAxis
-                                            dataKey="date"
-                                            stroke="#64748b"
-                                            fontSize={12}
-                                            tickLine={false}
-                                            axisLine={false}
-                                        />
-                                        <YAxis
-                                            stroke="#64748b"
-                                            fontSize={12}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            tickFormatter={(value) => `$${value}`}
-                                        />
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
-                                            itemStyle={{ color: '#10b981' }}
-                                        />
-                                        <Line
-                                            type="monotone"
-                                            dataKey="cumulativePnl"
-                                            stroke="#10b981"
-                                            strokeWidth={3}
-                                            dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#0f172a' }}
-                                            activeDot={{ r: 6, strokeWidth: 0 }}
-                                        />
-                                    </LineChart>
-                                </ResponsiveContainer>
+
+                            {/* Filter Buttons */}
+                            <div className="flex flex-wrap gap-2 mb-4">
+                                {(['recent10', '7days', '30days', '1year', 'all'] as TradeFilter[]).map((filter) => (
+                                    <button
+                                        key={filter}
+                                        onClick={() => fetchTrades(filter)}
+                                        disabled={tradesLoading}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${currentFilter === filter
+                                            ? 'bg-emerald-500 text-white shadow-lg'
+                                            : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                    >
+                                        {filter === 'recent10' ? 'Recent 10' :
+                                            filter === '7days' ? '7 Days' :
+                                                filter === '30days' ? '30 Days' :
+                                                    filter === '1year' ? '1 Year' : 'All Trades'}
+                                    </button>
+                                ))}
                             </div>
+
+                            {/* Loading State */}
+                            {tradesLoading && (
+                                <div className="h-[300px] flex items-center justify-center">
+                                    <LoadingSpinner message="Loading trades..." />
+                                </div>
+                            )}
+
+                            {/* Error State */}
+                            {tradesError && (
+                                <div className="h-[300px] flex items-center justify-center">
+                                    <p className="text-red-400">{tradesError}</p>
+                                </div>
+                            )}
+
+                            {/* Empty State */}
+                            {!tradesLoading && !tradesError && !currentFilter && (
+                                <div className="h-[300px] flex items-center justify-center">
+                                    <p className="text-slate-400">Select a filter above to view trade performance</p>
+                                </div>
+                            )}
+
+                            {/* Graph */}
+                            {!tradesLoading && !tradesError && currentFilter && performanceGraphData.length > 0 && (
+                                <div className="h-[300px] w-full mt-4">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={performanceGraphData}>
+                                            <defs>
+                                                <linearGradient id="colorPnl" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                                            <XAxis
+                                                dataKey="date"
+                                                stroke="#64748b"
+                                                fontSize={12}
+                                                tickLine={false}
+                                                axisLine={false}
+                                            />
+                                            <YAxis
+                                                stroke="#64748b"
+                                                fontSize={12}
+                                                tickLine={false}
+                                                axisLine={false}
+                                                tickFormatter={(value) => `$${value}`}
+                                            />
+                                            <Tooltip
+                                                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                                                itemStyle={{ color: '#10b981' }}
+                                            />
+                                            <Line
+                                                type="monotone"
+                                                dataKey="cumulativePnl"
+                                                stroke="#10b981"
+                                                strokeWidth={3}
+                                                dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#0f172a' }}
+                                                activeDot={{ r: 6, strokeWidth: 0 }}
+                                            />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            )}
                         </div>
 
                         {/* QUICK STATS */}
@@ -897,8 +964,8 @@ export function LiveDashboard() {
                                         <p className="text-sm text-slate-400">Balance</p>
                                         <Wallet className="h-4 w-4 text-blue-400" />
                                     </div>
-                                    <p className="text-xl font-bold text-white">{formatCurrency(balance)}</p>
-                                    <p className="text-xs text-slate-500 mt-1">Active positions value + Cash</p>
+                                    <p className="text-xl font-bold text-white">{formatCurrency(balance + cash)}</p>
+                                    <p className="text-xs text-slate-500 mt-1">Portfolio value + Cash</p>
                                 </div>
                             </div>
                         </div>
@@ -930,64 +997,114 @@ export function LiveDashboard() {
                         <div className="p-6">
                             {activeTab === 'history' && (
                                 <div>
-                                    <div className="overflow-x-auto mb-4">
-                                        <table className="w-full">
-                                            <thead>
-                                                <tr className="border-b border-slate-800 text-slate-400 text-sm">
-                                                    <th className="text-left py-3 px-4 font-medium">Market</th>
-                                                    <th className="text-left py-3 px-4 font-medium">Side</th>
-                                                    <th className="text-left py-3 px-4 font-medium">Size</th>
-                                                    <th className="text-left py-3 px-4 font-medium">Price</th>
-                                                    <th className="text-left py-3 px-4 font-medium">Date</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-800/50">
-                                                {activities
-                                                    .filter(a => a.type === 'TRADE')
-                                                    .slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage)
-                                                    .map((trade, idx) => (
-                                                        <tr key={idx} className="hover:bg-slate-800/30">
-                                                            <td className="py-3 px-4 text-white font-medium max-w-xs truncate">
-                                                                {trade.title || trade.slug || 'Market'}
-                                                            </td>
-                                                            <td className="py-3 px-4">
-                                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${trade.side === 'BUY' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                                                                    {trade.side}
-                                                                </span>
-                                                            </td>
-                                                            <td className="py-3 px-4 text-slate-300">{formatSize(trade.size)}</td>
-                                                            <td className="py-3 px-4 text-slate-300">{formatCurrency(trade.price)}</td>
-                                                            <td className="py-3 px-4 text-slate-500 text-sm">{formatDate(trade.timestamp)}</td>
+                                    {/* Filter Buttons */}
+                                    <div className="flex flex-wrap gap-2 mb-6">
+                                        {(['recent10', '7days', '30days', '1year', 'all'] as TradeFilter[]).map((filter) => (
+                                            <button
+                                                key={filter}
+                                                onClick={() => fetchTrades(filter)}
+                                                disabled={tradesLoading}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${currentFilter === filter
+                                                        ? 'bg-emerald-500 text-white shadow-lg'
+                                                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                            >
+                                                {filter === 'recent10' ? 'Recent 10' :
+                                                    filter === '7days' ? '7 Days' :
+                                                        filter === '30days' ? '30 Days' :
+                                                            filter === '1year' ? '1 Year' : 'All Trades'}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Loading State */}
+                                    {tradesLoading && (
+                                        <div className="h-[300px] flex items-center justify-center">
+                                            <LoadingSpinner message="Loading trades..." />
+                                        </div>
+                                    )}
+
+                                    {/* Error State */}
+                                    {tradesError && (
+                                        <div className="h-[300px] flex items-center justify-center">
+                                            <p className="text-red-400">{tradesError}</p>
+                                        </div>
+                                    )}
+
+                                    {/* Empty State */}
+                                    {!tradesLoading && !tradesError && !currentFilter && (
+                                        <div className="h-[300px] flex items-center justify-center">
+                                            <p className="text-slate-400">Select a filter above to view trade history</p>
+                                        </div>
+                                    )}
+
+                                    {/* Trade History Table */}
+                                    {!tradesLoading && !tradesError && currentFilter && filteredTrades.length > 0 && (
+                                        <>
+                                            <div className="overflow-x-auto mb-4">
+                                                <table className="w-full">
+                                                    <thead>
+                                                        <tr className="border-b border-slate-800 text-slate-400 text-sm">
+                                                            <th className="text-left py-3 px-4 font-medium">Date</th>
+                                                            <th className="text-left py-3 px-4 font-medium">PnL</th>
+                                                            <th className="text-left py-3 px-4 font-medium">Cumulative PnL</th>
                                                         </tr>
-                                                    ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    {/* History Pagination */}
-                                    <div className="flex items-center justify-between mt-4">
-                                        <div className="text-slate-400 text-sm">
-                                            Showing {(historyPage - 1) * itemsPerPage + 1} to {Math.min(historyPage * itemsPerPage, activities.filter(a => a.type === 'TRADE').length)} of {activities.filter(a => a.type === 'TRADE').length} trades
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => setHistoryPage(prev => Math.max(1, prev - 1))}
-                                                disabled={historyPage === 1}
-                                                className={`px-4 py-2 rounded text-sm font-medium transition ${historyPage === 1 ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}
-                                            >
-                                                Previous
-                                            </button>
-                                            <span className="px-4 py-2 text-slate-300 text-sm">
-                                                Page {historyPage} of {Math.ceil(activities.filter(a => a.type === 'TRADE').length / itemsPerPage) || 1}
-                                            </span>
-                                            <button
-                                                onClick={() => setHistoryPage(prev => Math.min(Math.ceil(activities.filter(a => a.type === 'TRADE').length / itemsPerPage), prev + 1))}
-                                                disabled={historyPage >= Math.ceil(activities.filter(a => a.type === 'TRADE').length / itemsPerPage)}
-                                                className={`px-4 py-2 rounded text-sm font-medium transition ${historyPage >= Math.ceil(activities.filter(a => a.type === 'TRADE').length / itemsPerPage) ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}
-                                            >
-                                                Next
-                                            </button>
-                                        </div>
-                                    </div>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-800/50">
+                                                        {filteredTrades
+                                                            .slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage)
+                                                            .map((trade, idx) => (
+                                                                <tr key={idx} className="hover:bg-slate-800/30">
+                                                                    <td className="py-3 px-4 text-slate-300">
+                                                                        {new Date(trade.t * 1000).toLocaleDateString('en-US', {
+                                                                            year: 'numeric',
+                                                                            month: 'short',
+                                                                            day: 'numeric',
+                                                                            hour: '2-digit',
+                                                                            minute: '2-digit'
+                                                                        })}
+                                                                    </td>
+                                                                    <td className={`py-3 px-4 font-medium ${trade.p > 0 ? 'text-emerald-400' : trade.p < 0 ? 'text-rose-400' : 'text-slate-300'
+                                                                        }`}>
+                                                                        {formatCurrency(trade.p)}
+                                                                    </td>
+                                                                    <td className="py-3 px-4 text-white font-medium">
+                                                                        {formatCurrency(trade.p)}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            {/* History Pagination */}
+                                            <div className="flex items-center justify-between mt-4">
+                                                <div className="text-slate-400 text-sm">
+                                                    Showing {(historyPage - 1) * itemsPerPage + 1} to {Math.min(historyPage * itemsPerPage, filteredTrades.length)} of {filteredTrades.length} trades
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => setHistoryPage(prev => Math.max(1, prev - 1))}
+                                                        disabled={historyPage === 1}
+                                                        className={`px-4 py-2 rounded text-sm font-medium transition ${historyPage === 1 ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600 text-white'
+                                                            }`}
+                                                    >
+                                                        Previous
+                                                    </button>
+                                                    <span className="px-4 py-2 text-slate-300 text-sm">
+                                                        Page {historyPage} of {Math.ceil(filteredTrades.length / itemsPerPage) || 1}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => setHistoryPage(prev => Math.min(Math.ceil(filteredTrades.length / itemsPerPage), prev + 1))}
+                                                        disabled={historyPage >= Math.ceil(filteredTrades.length / itemsPerPage)}
+                                                        className={`px-4 py-2 rounded text-sm font-medium transition ${historyPage >= Math.ceil(filteredTrades.length / itemsPerPage) ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600 text-white'
+                                                            }`}
+                                                    >
+                                                        Next
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             )}
 
@@ -1158,7 +1275,7 @@ export function LiveDashboard() {
                             )}
 
                             {activeTab === 'distribution' && (
-                                <MarketDistributionPanel 
+                                <MarketDistributionPanel
                                     marketDistribution={marketDistribution}
                                     activities={activities}
                                     positions={positions}

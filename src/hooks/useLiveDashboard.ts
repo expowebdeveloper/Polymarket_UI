@@ -34,7 +34,8 @@ export function useLiveDashboard(walletAddress: string) {
         setState(prev => ({ ...prev, loading: true, error: null }));
 
         try {
-            const data = await fetchLiveDashboardData(walletAddress);
+            // Skip trades on initial load for better performance
+            const data = await fetchLiveDashboardData(walletAddress, true);
 
             // Use backend pre-calculated metrics directly (Single Source of Truth)
             const backendMetrics = data.scoring_metrics;
