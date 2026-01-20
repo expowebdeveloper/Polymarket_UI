@@ -92,7 +92,7 @@ export function LiveDashboard() {
     const [userProfile, setUserProfile] = useState<UserLeaderboardData | null>(null);
     const [theme] = useState<"dark" | "light">("dark"); // Default to dark, removed toggle
     const [showAdvanced, setShowAdvanced] = useState(false);
-    const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('active_positions');
+    const [activeTab, setActiveTab] = useState<'history' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('active_positions');
     const [distributionMetric, setDistributionMetric] = useState<'count' | 'capital'>('count');
 
     // Pagination states
@@ -1226,48 +1226,6 @@ export function LiveDashboard() {
                                             >
                                                 Next
                                             </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeTab === 'performance' && (
-                                <div className="space-y-6">
-                                    <div className="bg-slate-800/30 border border-emerald-500/20 rounded-2xl p-6">
-                                        <h4 className="text-emerald-400 font-bold mb-4 flex items-center gap-2">
-                                            <TrendingUp className="h-4 w-4" />
-                                            7-Day Profit Trend
-                                        </h4>
-                                        <div className="h-[200px] w-full">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <BarChart data={profitTrend}>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                                                    <XAxis dataKey="day" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                                                    <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
-                                                    <Tooltip
-                                                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
-                                                        formatter={(value: any) => [formatCurrency(value), 'Daily PnL']}
-                                                    />
-                                                    <Bar dataKey="profit" radius={[4, 4, 0, 0]}>
-                                                        {profitTrend.map((entry, index) => (
-                                                            <Cell key={`cell-${index}`} fill={entry.profit >= 0 ? '#10b981' : '#f43f5e'} />
-                                                        ))}
-                                                    </Bar>
-                                                </BarChart>
-                                            </ResponsiveContainer>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-6">
-                                            <p className="text-sm text-slate-400 mb-1">Primary Edge</p>
-                                            <p className="text-lg font-medium text-white">{primaryEdge}</p>
-                                        </div>
-                                        <div className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-6">
-                                            <p className="text-sm text-slate-400 mb-1">Trading Efficiency</p>
-                                            <p className="text-lg font-medium text-white">
-                                                {((metrics.streaks.total_wins / (metrics.total_trades || 1)) * 100).toFixed(1)}% hit rate
-                                            </p>
                                         </div>
                                     </div>
                                 </div>
