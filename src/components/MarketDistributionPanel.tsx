@@ -55,106 +55,106 @@ function colorForKey(key: string) {
 function normalizeCategory(category: string): string {
   const lower = category.toLowerCase();
   const combined = lower;
-  
+
   // Elections (check first as it's more specific)
   if (combined.includes("election") || combined.includes("electoral") || combined.includes("vote") || combined.includes("voting") || combined.includes("ballot")) {
     return "elections";
   }
-  
+
   // Politics (check before geopolitics)
-  if (combined.includes("politics") || combined.includes("political") || combined.includes("president") || 
-      combined.includes("trump") || combined.includes("biden") || combined.includes("senate") || 
-      combined.includes("congress") || combined.includes("democrat") || combined.includes("republican") ||
-      combined.includes("party") || combined.includes("campaign")) {
+  if (combined.includes("politics") || combined.includes("political") || combined.includes("president") ||
+    combined.includes("trump") || combined.includes("biden") || combined.includes("senate") ||
+    combined.includes("congress") || combined.includes("democrat") || combined.includes("republican") ||
+    combined.includes("party") || combined.includes("campaign")) {
     return "politics";
   }
-  
+
   // Geopolitics
   if (combined.includes("geopolitics") || combined.includes("geopolitical") || combined.includes("war") ||
-      combined.includes("conflict") || combined.includes("military") || combined.includes("nato") ||
-      combined.includes("alliance") || combined.includes("diplomacy") || combined.includes("sanctions")) {
+    combined.includes("conflict") || combined.includes("military") || combined.includes("nato") ||
+    combined.includes("alliance") || combined.includes("diplomacy") || combined.includes("sanctions")) {
     return "geopolitics";
   }
-  
+
   // Sports
-  if (combined.includes("sports") || combined.includes("sport") || combined.includes("nfl") || 
-      combined.includes("nba") || combined.includes("mlb") || combined.includes("soccer") || 
-      combined.includes("football") || combined.includes("basketball") || combined.includes("baseball") ||
-      combined.includes("hockey") || combined.includes("tennis") || combined.includes("golf") ||
-      combined.includes("game") || combined.includes("match") || combined.includes("championship") ||
-      combined.includes("super bowl") || combined.includes("world cup") || combined.includes("olympics") ||
-      combined.includes("tournament") || combined.includes("league")) {
+  if (combined.includes("sports") || combined.includes("sport") || combined.includes("nfl") ||
+    combined.includes("nba") || combined.includes("mlb") || combined.includes("soccer") ||
+    combined.includes("football") || combined.includes("basketball") || combined.includes("baseball") ||
+    combined.includes("hockey") || combined.includes("tennis") || combined.includes("golf") ||
+    combined.includes("game") || combined.includes("match") || combined.includes("championship") ||
+    combined.includes("super bowl") || combined.includes("world cup") || combined.includes("olympics") ||
+    combined.includes("tournament") || combined.includes("league")) {
     return "sports";
   }
-  
+
   // Crypto
   if (combined.includes("crypto") || combined.includes("cryptocurrency") || combined.includes("bitcoin") ||
-      combined.includes("btc") || combined.includes("ethereum") || combined.includes("eth") ||
-      combined.includes("blockchain") || combined.includes("defi") || combined.includes("nft") ||
-      combined.includes("token") || combined.includes("coin") || combined.includes("altcoin") ||
-      combined.includes("dogecoin") || combined.includes("solana") || combined.includes("cardano")) {
+    combined.includes("btc") || combined.includes("ethereum") || combined.includes("eth") ||
+    combined.includes("blockchain") || combined.includes("defi") || combined.includes("nft") ||
+    combined.includes("token") || combined.includes("coin") || combined.includes("altcoin") ||
+    combined.includes("dogecoin") || combined.includes("solana") || combined.includes("cardano")) {
     return "crypto";
   }
-  
+
   // Tech
   if (combined.includes("tech") || combined.includes("technology") || combined.includes("ai") ||
-      combined.includes("artificial intelligence") || combined.includes("software") || combined.includes("hardware") ||
-      combined.includes("startup") || combined.includes("silicon valley") || combined.includes("apple") ||
-      combined.includes("google") || combined.includes("microsoft") || combined.includes("meta") ||
-      combined.includes("amazon") || combined.includes("tesla") || combined.includes("nvidia") ||
-      combined.includes("chip") || combined.includes("semiconductor")) {
+    combined.includes("artificial intelligence") || combined.includes("software") || combined.includes("hardware") ||
+    combined.includes("startup") || combined.includes("silicon valley") || combined.includes("apple") ||
+    combined.includes("google") || combined.includes("microsoft") || combined.includes("meta") ||
+    combined.includes("amazon") || combined.includes("tesla") || combined.includes("nvidia") ||
+    combined.includes("chip") || combined.includes("semiconductor")) {
     return "tech";
   }
-  
+
   // Finance
   if (combined.includes("finance") || combined.includes("financial") || combined.includes("bank") ||
-      combined.includes("banking") || combined.includes("investment") || combined.includes("trading") ||
-      combined.includes("stock") || combined.includes("market") || combined.includes("hedge fund") ||
-      combined.includes("private equity") || combined.includes("venture capital")) {
+    combined.includes("banking") || combined.includes("investment") || combined.includes("trading") ||
+    combined.includes("stock") || combined.includes("market") || combined.includes("hedge fund") ||
+    combined.includes("private equity") || combined.includes("venture capital")) {
     return "finance";
   }
-  
+
   // Economy
   if (combined.includes("economy") || combined.includes("economic") || combined.includes("gdp") ||
-      combined.includes("unemployment") || combined.includes("inflation") || combined.includes("recession") ||
-      combined.includes("growth") || combined.includes("productivity") || combined.includes("trade") ||
-      combined.includes("commerce") || combined.includes("business cycle")) {
+    combined.includes("unemployment") || combined.includes("inflation") || combined.includes("recession") ||
+    combined.includes("growth") || combined.includes("productivity") || combined.includes("trade") ||
+    combined.includes("commerce") || combined.includes("business cycle")) {
     return "economy";
   }
-  
+
   // Earnings
   if (combined.includes("earnings") || combined.includes("revenue") || combined.includes("profit") ||
-      combined.includes("quarterly") || combined.includes("q1") || combined.includes("q2") ||
-      combined.includes("q3") || combined.includes("q4") || combined.includes("eps") ||
-      combined.includes("guidance") || combined.includes("beat") || combined.includes("miss")) {
+    combined.includes("quarterly") || combined.includes("q1") || combined.includes("q2") ||
+    combined.includes("q3") || combined.includes("q4") || combined.includes("eps") ||
+    combined.includes("guidance") || combined.includes("beat") || combined.includes("miss")) {
     return "earnings";
   }
-  
+
   // Climate & Science
   if (combined.includes("climate") || combined.includes("environment") || combined.includes("environmental") ||
-      combined.includes("science") || combined.includes("scientific") || combined.includes("research") ||
-      combined.includes("global warming") || combined.includes("carbon") || combined.includes("emissions") ||
-      combined.includes("renewable") || combined.includes("solar") || combined.includes("wind") ||
-      combined.includes("energy") || combined.includes("green") || combined.includes("sustainability")) {
+    combined.includes("science") || combined.includes("scientific") || combined.includes("research") ||
+    combined.includes("global warming") || combined.includes("carbon") || combined.includes("emissions") ||
+    combined.includes("renewable") || combined.includes("solar") || combined.includes("wind") ||
+    combined.includes("energy") || combined.includes("green") || combined.includes("sustainability")) {
     return "climate & science";
   }
-  
+
   // Culture
   if (combined.includes("culture") || combined.includes("cultural") || combined.includes("entertainment") ||
-      combined.includes("movie") || combined.includes("film") || combined.includes("music") ||
-      combined.includes("celebrity") || combined.includes("tv") || combined.includes("television") ||
-      combined.includes("award") || combined.includes("oscar") || combined.includes("grammy") ||
-      combined.includes("fashion") || combined.includes("art") || combined.includes("media")) {
+    combined.includes("movie") || combined.includes("film") || combined.includes("music") ||
+    combined.includes("celebrity") || combined.includes("tv") || combined.includes("television") ||
+    combined.includes("award") || combined.includes("oscar") || combined.includes("grammy") ||
+    combined.includes("fashion") || combined.includes("art") || combined.includes("media")) {
     return "culture";
   }
-  
+
   // World
   if (combined.includes("world") || combined.includes("global") || combined.includes("international") ||
-      combined.includes("country") || combined.includes("nation") || combined.includes("united nations") ||
-      combined.includes("un") || combined.includes("eu") || combined.includes("european union")) {
+    combined.includes("country") || combined.includes("nation") || combined.includes("united nations") ||
+    combined.includes("un") || combined.includes("eu") || combined.includes("european union")) {
     return "world";
   }
-  
+
   return "other";
 }
 
@@ -164,11 +164,11 @@ function formatCategoryLabel(category: string): string {
     "climate & science": "Climate & Science",
     "macro / rates": "Macro / Rates",
   };
-  
+
   if (labelMap[normalized]) {
     return labelMap[normalized];
   }
-  
+
   // Capitalize first letter of each word
   return normalized
     .split(" ")
@@ -221,7 +221,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
   // Calculate volume per category from activities, positions, and closed positions
   const volumeByCategory = useMemo(() => {
     const volumeMap = new Map<string, number>();
-    
+
     // From activities
     activities.forEach((activity) => {
       const category = normalizeCategory((activity as any).category || activity.title || activity.slug || "other");
@@ -230,7 +230,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
         volumeMap.set(category, (volumeMap.get(category) || 0) + size);
       }
     });
-    
+
     // From active positions (initial_value is the stake/volume)
     positions.forEach((pos) => {
       const category = normalizeCategory((pos as any).category || pos.title || pos.slug || "other");
@@ -239,7 +239,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
         volumeMap.set(category, (volumeMap.get(category) || 0) + value);
       }
     });
-    
+
     // From closed positions (total_bought * avg_price is the stake/volume)
     closedPositions.forEach((pos) => {
       const category = normalizeCategory((pos as any).category || pos.title || pos.slug || "other");
@@ -250,7 +250,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
         volumeMap.set(category, (volumeMap.get(category) || 0) + value);
       }
     });
-    
+
     return volumeMap;
   }, [activities, positions, closedPositions]);
 
@@ -332,9 +332,9 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
         <span className="text-slate-500">›</span>
       </div>
 
-      {/* single row layout */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-        {/* LEFT CARD - Donut Chart */}
+      {/* two column layout */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        {/* LEFT CARD - Donut Chart + Ranked List */}
         <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6">
           <div>
             <p className="text-white font-semibold">Win Rate by Category</p>
@@ -365,33 +365,33 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
               ))}
             </div>
           </div>
-        </div>
 
-        {/* MIDDLE CARD - Ranked List */}
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6">
-          <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
-            <div>
-              <p className="text-white/95 font-semibold">Ranked by Category</p>
-              <p className="text-xs text-slate-400 mt-1">Sorted by selected metric</p>
+          {/* Ranked List - moved here from middle card */}
+          <div className="mt-8 pt-6 border-t border-slate-800">
+            <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+              <div>
+                <p className="text-white/95 font-semibold">Ranked by Category</p>
+                <p className="text-xs text-slate-400 mt-1">Sorted by selected metric</p>
+              </div>
+
+              <div className="inline-flex items-center rounded-xl bg-slate-950/50 border border-slate-800 p-1 gap-1">
+                <MetricPill active={metric === "roi"} onClick={() => setMetric("roi")}>
+                  ROI %
+                </MetricPill>
+                <MetricPill active={metric === "win"} onClick={() => setMetric("win")}>
+                  Win Rate
+                </MetricPill>
+                <MetricPill active={metric === "risk"} onClick={() => setMetric("risk")}>
+                  Risk
+                </MetricPill>
+              </div>
             </div>
 
-            <div className="inline-flex items-center rounded-xl bg-slate-950/50 border border-slate-800 p-1 gap-1">
-              <MetricPill active={metric === "roi"} onClick={() => setMetric("roi")}>
-                ROI %
-              </MetricPill>
-              <MetricPill active={metric === "win"} onClick={() => setMetric("win")}>
-                Win Rate
-              </MetricPill>
-              <MetricPill active={metric === "risk"} onClick={() => setMetric("risk")}>
-                Risk
-              </MetricPill>
+            <div className="space-y-3 max-h-[500px] overflow-y-auto">
+              {sortedRanked.map((m) => (
+                <MarketRowCompact key={m.key} market={m} metric={metric} />
+              ))}
             </div>
-          </div>
-
-          <div className="space-y-3 max-h-[500px] overflow-y-auto">
-            {sortedRanked.map((m) => (
-              <MarketRowCompact key={m.key} market={m} metric={metric} />
-            ))}
           </div>
         </div>
 
@@ -476,8 +476,8 @@ function MarketRowCompact({ market, metric }: { market: MarketDatum; metric: Met
     metric === "roi"
       ? formatSignedPct(market.roiPct)
       : metric === "win"
-      ? `${market.winRatePct.toFixed(1)}%`
-      : market.riskScore.toFixed(2);
+        ? `${market.winRatePct.toFixed(1)}%`
+        : market.riskScore.toFixed(2);
 
   const progress = useMemo(() => {
     if (metric === "roi") return clamp((market.roiPct + 10) / 70, 0, 1);
