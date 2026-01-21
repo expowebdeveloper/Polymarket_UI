@@ -7,6 +7,8 @@ import {
   syncDBDashboard,
   fetchDBDashboard,
 } from '../services/api';
+import { getVolumeRank } from '../utils/rankUtils';
+import { getStreakBadge } from '../utils/streakUtils';
 import { calculateLiveMetrics } from '../utils/scoring';
 import type { Position, ClosedPosition, Activity, TradeHistoryResponse } from '../types/api';
 
@@ -466,12 +468,25 @@ export function WalletDashboard() {
                 {scoringMetrics?.total_trades > 100 && (
                   <span className="px-6 py-2 rounded-full text-sm bg-slate-800/70 border text-emerald-300 shadow-[0_0_30px_rgba(34,197,94,0.6)] border-emerald-400">🏅 Polymarket Badge Holder</span>
                 )}
-                {totalVolume >= 100000 && (
-                  <span className="px-6 py-2 rounded-full text-sm bg-slate-800/70 border text-emerald-300 shadow-[0_0_30px_rgba(34,197,94,0.6)] border-emerald-400">🐋 Whale</span>
-                )}
-                {streaks.current_streak >= 5 && (
-                  <span className="px-6 py-2 rounded-full text-sm bg-slate-800/70 border text-orange-300 shadow-[0_0_35px_rgba(251,146,60,0.7)] border-orange-400">🔥 Hot Streak</span>
-                )}
+                {(() => {
+                  const rank = getVolumeRank(totalVolume);
+                  return (
+                    <span className={`px-6 py-2 rounded-full text-sm border font-bold ${rank.className}`}>
+                      {rank.emoji} {rank.title}
+                    </span>
+                  );
+                })()}
+                {(() => {
+                  const streakBadge = getStreakBadge(streaks.current_streak);
+                  if (streakBadge) {
+                    return (
+                      <span className={`px-6 py-2 rounded-full text-sm bg-slate-800/70 border text-orange-300 shadow-[0_0_35px_rgba(251,146,60,0.7)] border-orange-400`}>
+                        {streakBadge.emoji} {streakBadge.title}
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </div>
 

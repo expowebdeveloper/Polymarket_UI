@@ -13,7 +13,10 @@ import {
   fetchUserLeaderboardData,
   fetchTradeHistory,
   syncTradesForWallet,
+  resolveWalletOrUser,
 } from '../services/api';
+import { getVolumeRank } from '../utils/rankUtils';
+import { getStreakBadge } from '../utils/streakUtils';
 import type { Position, ClosedPosition, Activity, ProfileStatsResponse, UserLeaderboardData, TradeHistoryResponse } from '../types/api';
 
 // Helper function to format currency
@@ -58,7 +61,6 @@ const shortenAddress = (address: string): string => {
 
 export function WalletDashboard() {
   const [walletAddress, setWalletAddress] = useState('');
-  const [isValidWallet, setIsValidWallet] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -75,20 +77,38 @@ export function WalletDashboard() {
   const [tradeHistory, setTradeHistory] = useState<TradeHistoryResponse | null>(null);
 
   const fetchWalletData = async () => {
-    if (!validateWallet(walletAddress)) return;
+    // Basic local validation (just checks if empty)
+    if (!walletAddress.trim()) return;
 
     setLoading(true);
     setError(null);
 
+    let resolvedAddress = walletAddress;
+
     try {
+      // 1. Resolve Wallet/User
+      try {
+        const resolution = await resolveWalletOrUser(walletAddress);
+        resolvedAddress = resolution.wallet_address;
+
+        // If the user typed a username, update the input to show the address (optional, or keep username)
+        // For now, let's keep the input as is, but use resolvedAddress for fetching.
+        // Actually, for better UX, maybe we should update the state if it was a username, 
+        // BUT that might be confusing. Let's just use resolvedAddress for fetching data.
+
+      } catch (e) {
+        // If resolution fails (404), stop here
+        throw new Error("User or wallet not found");
+      }
+
       // First sync trades to ensure fresh data
       try {
-        await syncTradesForWallet(walletAddress);
+        await syncTradesForWallet(resolvedAddress);
       } catch (e) {
         console.warn("Auto-sync failed, proceeding with existing data", e);
       }
 
-      // Fetch all data in parallel
+      // Fetch all data in parallel using RESOLVED ADDRESS
       const [
         profileData,
         positionsData,
@@ -99,14 +119,14 @@ export function WalletDashboard() {
         leaderboardData,
         tradeHistoryData,
       ] = await Promise.allSettled([
-        fetchProfileStats(walletAddress),
-        fetchPositionsForWallet(walletAddress),
-        fetchClosedPositionsForWallet(walletAddress),
-        fetchActivityForWallet(walletAddress, undefined, 1000),
-        fetchPortfolioStats(walletAddress),
-        fetchTraderDetails(walletAddress),
-        fetchUserLeaderboardData(walletAddress, 'overall'),
-        fetchTradeHistory(walletAddress),
+        fetchProfileStats(resolvedAddress),
+        fetchPositionsForWallet(resolvedAddress),
+        fetchClosedPositionsForWallet(resolvedAddress),
+        fetchActivityForWallet(resolvedAddress, undefined, 1000),
+        fetchPortfolioStats(resolvedAddress),
+        fetchTraderDetails(resolvedAddress),
+        fetchUserLeaderboardData(resolvedAddress, 'overall'),
+        fetchTradeHistory(resolvedAddress),
       ]);
 
       if (profileData.status === 'fulfilled') {
@@ -162,17 +182,21 @@ export function WalletDashboard() {
   };
 
   useEffect(() => {
-    if (walletAddress.length === 42) {
-      const isValid = validateWallet(walletAddress);
-      setIsValidWallet(isValid);
-      if (isValid && walletAddress) {
-        fetchWalletData();
-      }
-    } else {
-      setIsValidWallet(false);
+    // Only auto-trigger if it looks like a full wallet address
+    // Usernames will require pressing enter or manual action (implemented later/default behavior)
+    // But actually, we want the search box to be the primary driver.
+    // The previous logic auto-fetched on 42 chars.
+
+    // Let's rely on the user typing + Enter or paste.
+    // BUT the previous logic was:
+    if (walletAddress.length === 42 && validateWallet(walletAddress)) {
+      // Auto-fetch for pasted addresses
+      fetchWalletData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walletAddress]);
+
+  // We should add an onKeyDown handler for the input to trigger search on Enter
 
   // Calculate highest loss
   const highestLoss = portfolioStats?.performance_metrics?.worst_loss !== undefined
@@ -255,18 +279,66 @@ export function WalletDashboard() {
       const slugLower = (slug || "").toLowerCase();
       const combined = `${titleLower} ${slugLower}`;
 
-      if (['president', 'election', 'politics', 'trump', 'biden', 'senate', 'congress', 'vote', 'poll', 'democrat', 'republican', 'political'].some(k => combined.includes(k))) {
+      // Elections (check first as it's more specific)
+      if (['election', 'electoral', 'vote', 'voting', 'ballot'].some(k => combined.includes(k))) {
+        return "Elections";
+      }
+      
+      // Politics (check before geopolitics)
+      if (['politics', 'political', 'president', 'trump', 'biden', 'senate', 'congress', 'democrat', 'republican', 'party', 'campaign'].some(k => combined.includes(k))) {
         return "Politics";
       }
-      if (['bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'cryptocurrency', 'blockchain', 'defi', 'nft', 'token', 'coin'].some(k => combined.includes(k))) {
-        return "Crypto";
+      
+      // Geopolitics
+      if (['geopolitics', 'geopolitical', 'war', 'conflict', 'military', 'nato', 'alliance', 'diplomacy', 'sanctions'].some(k => combined.includes(k))) {
+        return "Geopolitics";
       }
-      if (['nfl', 'nba', 'mlb', 'soccer', 'football', 'basketball', 'baseball', 'hockey', 'sports', 'game', 'match', 'championship', 'super bowl', 'world cup'].some(k => combined.includes(k))) {
+      
+      // Sports
+      if (['sports', 'sport', 'nfl', 'nba', 'mlb', 'soccer', 'football', 'basketball', 'baseball', 'hockey', 'tennis', 'golf', 'game', 'match', 'championship', 'super bowl', 'world cup', 'olympics', 'tournament', 'league'].some(k => combined.includes(k))) {
         return "Sports";
       }
-      if (['fed', 'federal reserve', 'interest rate', 'inflation', 'gdp', 'unemployment', 'macro', 'rates', 'treasury', 'bond', 'economic'].some(k => combined.includes(k))) {
-        return "Macro / Rates";
+      
+      // Crypto
+      if (['crypto', 'cryptocurrency', 'bitcoin', 'btc', 'ethereum', 'eth', 'blockchain', 'defi', 'nft', 'token', 'coin', 'altcoin', 'dogecoin', 'solana', 'cardano'].some(k => combined.includes(k))) {
+        return "Crypto";
       }
+      
+      // Tech
+      if (['tech', 'technology', 'ai', 'artificial intelligence', 'software', 'hardware', 'startup', 'silicon valley', 'apple', 'google', 'microsoft', 'meta', 'amazon', 'tesla', 'nvidia', 'chip', 'semiconductor'].some(k => combined.includes(k))) {
+        return "Tech";
+      }
+      
+      // Finance
+      if (['finance', 'financial', 'bank', 'banking', 'investment', 'trading', 'stock', 'market', 'hedge fund', 'private equity', 'venture capital'].some(k => combined.includes(k))) {
+        return "Finance";
+      }
+      
+      // Economy
+      if (['economy', 'economic', 'gdp', 'unemployment', 'inflation', 'recession', 'growth', 'productivity', 'trade', 'commerce', 'business cycle'].some(k => combined.includes(k))) {
+        return "Economy";
+      }
+      
+      // Earnings
+      if (['earnings', 'revenue', 'profit', 'quarterly', 'q1', 'q2', 'q3', 'q4', 'eps', 'guidance', 'beat', 'miss'].some(k => combined.includes(k))) {
+        return "Earnings";
+      }
+      
+      // Climate & Science
+      if (['climate', 'environment', 'environmental', 'science', 'scientific', 'research', 'global warming', 'carbon', 'emissions', 'renewable', 'solar', 'wind', 'energy', 'green', 'sustainability'].some(k => combined.includes(k))) {
+        return "Climate & Science";
+      }
+      
+      // Culture
+      if (['culture', 'cultural', 'entertainment', 'movie', 'film', 'music', 'celebrity', 'tv', 'television', 'award', 'oscar', 'grammy', 'fashion', 'art', 'media'].some(k => combined.includes(k))) {
+        return "Culture";
+      }
+      
+      // World
+      if (['world', 'global', 'international', 'country', 'nation', 'united nations', 'un', 'eu', 'european union'].some(k => combined.includes(k))) {
+        return "World";
+      }
+      
       return "Other";
     };
   }, []);
@@ -360,6 +432,92 @@ export function WalletDashboard() {
     return distribution.sort((a, b) => b.capital - a.capital);
   }, [allClosedPositions, activePositions, categorizeMarket]);
 
+  // Calculate total buy stake (real stake value, not volume)
+  const totalBuyStake = useMemo(() => {
+    let stake = 0;
+    // From closed positions
+    allClosedPositions.forEach(pos => {
+      const size = parseFloat(String((pos as any).total_bought || pos.size || 0));
+      const price = parseFloat(String(pos.avg_price || 0));
+      stake += size * price;
+    });
+    // From active positions
+    activePositions.forEach(pos => {
+      stake += parseFloat(String(pos.initial_value || 0));
+    });
+    return stake;
+  }, [allClosedPositions, activePositions]);
+
+  // Calculate winning and losing stakes
+  const { winningStakes, losingStakes } = useMemo(() => {
+    let winning = 0;
+    let losing = 0;
+    
+    allClosedPositions.forEach(pos => {
+      const size = parseFloat(String((pos as any).total_bought || pos.size || 0));
+      const price = parseFloat(String(pos.avg_price || 0));
+      const stake = size * price;
+      const pnl = parseFloat(String(pos.realized_pnl || 0));
+      
+      if (pnl > 0) {
+        winning += stake;
+      } else if (pnl < 0) {
+        losing += stake;
+      }
+    });
+    
+    return { winningStakes: winning, losingStakes: losing };
+  }, [allClosedPositions]);
+
+  // Calculate stake-weighted win rate (use backend value if available, otherwise calculate)
+  const stakeWeightedWinRate = useMemo(() => {
+    // Try to get from backend first
+    const backendValue = (portfolioStats?.performance_metrics as any)?.stake_weighted_win_rate;
+    if (backendValue !== undefined && backendValue !== null) {
+      return backendValue;
+    }
+    // Fallback to frontend calculation
+    if (totalBuyStake > 0) {
+      return (winningStakes / totalBuyStake) * 100;
+    }
+    return 0;
+  }, [winningStakes, totalBuyStake, portfolioStats]);
+
+  // Calculate unrealized and realized PnL (use backend values if available, otherwise calculate)
+  const { unrealizedPnl, realizedPnl } = useMemo(() => {
+    // Try to get from backend first
+    const backendUnrealized = portfolioStats?.pnl_metrics?.unrealized_pnl || 
+                              portfolioStats?.performance_metrics?.unrealized_pnl;
+    const backendRealized = portfolioStats?.pnl_metrics?.realized_pnl || 
+                            portfolioStats?.performance_metrics?.realized_pnl;
+    
+    if (backendUnrealized !== undefined && backendRealized !== undefined) {
+      return { 
+        unrealizedPnl: parseFloat(String(backendUnrealized)), 
+        realizedPnl: parseFloat(String(backendRealized)) 
+      };
+    }
+    
+    // Fallback to frontend calculation
+    const unrealized = activePositions.reduce((sum, pos) => {
+      return sum + parseFloat(String(pos.cash_pnl || 0));
+    }, 0);
+    
+    const realized = allClosedPositions.reduce((sum, pos) => {
+      return sum + parseFloat(String(pos.realized_pnl || 0));
+    }, 0);
+    
+    return { unrealizedPnl: unrealized, realizedPnl: realized };
+  }, [activePositions, allClosedPositions, portfolioStats]);
+
+  // Get most traded category
+  const mostTradedCategory = useMemo(() => {
+    if (marketDistribution.length > 0) {
+      return marketDistribution[0]?.category || 'N/A';
+    }
+    return 'N/A';
+  }, [marketDistribution]);
+
   // Get scoring metrics
   const scoringMetrics = useMemo(() => {
     const finalScore = (tradeHistory?.overall_metrics as any)?.final_score ||
@@ -373,8 +531,11 @@ export function WalletDashboard() {
       win_rate: tradeHistory?.overall_metrics?.win_rate || portfolioStats?.performance_metrics?.win_rate || 0,
       win_rate_percent: tradeHistory?.overall_metrics?.win_rate || portfolioStats?.performance_metrics?.win_rate || 0,
       total_trades: tradeHistory?.overall_metrics?.total_trades || profileStats?.trades || allClosedPositions.length || 0,
-      score_risk: (tradeHistory?.overall_metrics as any)?.risk_score || 0,
+      score_risk: (tradeHistory?.overall_metrics as any)?.risk_score || (portfolioStats?.performance_metrics as any)?.risk_score || 0,
       roi_shrunk: (tradeHistory?.overall_metrics as any)?.roi_shrunk || 0,
+      confidence_score: (tradeHistory?.overall_metrics as any)?.confidence_score || 
+                        (portfolioStats?.performance_metrics as any)?.confidence_score || 0,
+      stake_weighted_win_rate: (portfolioStats?.performance_metrics as any)?.stake_weighted_win_rate || 0,
     };
   }, [tradeHistory, portfolioStats, userLeaderboardData, profileStats, allClosedPositions]);
 
@@ -415,24 +576,48 @@ export function WalletDashboard() {
   }, [allClosedPositions]);
 
   const primaryMetrics = [
-    { label: "ROI %", value: `${scoringMetrics?.roi >= 0 ? '+' : ''}${(scoringMetrics?.roi || 0).toFixed(2)}%`, sub: "All-time" },
-    { label: "Win Rate", value: `${(scoringMetrics?.win_rate_percent || 0).toFixed(0)}%`, sub: `${streaks.total_wins} of ${streaks.total_wins + streaks.total_losses} trades` },
-    { label: "Total Volume", value: formatCurrency(totalVolume), sub: `Across ${marketDistribution.length} markets` },
-    { label: "Total Trades", value: String(scoringMetrics?.total_trades || 0), sub: "Since joining" },
-    { label: "Total PnL", value: formatCurrency(scoringMetrics?.total_pnl || 0), sub: "Realized + Unrealized" },
+    { label: "Win Rate", value: `${(scoringMetrics?.win_rate_percent || 0).toFixed(1)}%`, sub: `${streaks.total_wins} of ${streaks.total_wins + streaks.total_losses} trades` },
+    { label: "Stake yield", value: `${scoringMetrics?.roi >= 0 ? '+' : ''}${(scoringMetrics?.roi || 0).toFixed(2)}%`, sub: "All-time" },
+    { label: "Stake-Weighted Win Rate", value: `${stakeWeightedWinRate.toFixed(1)}%`, sub: "Weighted by stake size" },
+    { label: "Unrealized PnL", value: formatCurrency(unrealizedPnl), sub: "Active positions" },
+    { label: "Realized PnL", value: formatCurrency(realizedPnl), sub: "Closed positions" },
   ];
 
+  // Calculate average stake
+  const averageStake = useMemo(() => {
+    const totalTrades = scoringMetrics?.total_trades || 0;
+    return totalTrades > 0 ? totalBuyStake / totalTrades : 0;
+  }, [totalBuyStake, scoringMetrics?.total_trades]);
+
+  // Calculate max stake
+  const maxStake = useMemo(() => {
+    let max = 0;
+    allClosedPositions.forEach(pos => {
+      const size = parseFloat(String((pos as any).total_bought || pos.size || 0));
+      const price = parseFloat(String(pos.avg_price || 0));
+      const stake = size * price;
+      if (stake > max) max = stake;
+    });
+    activePositions.forEach(pos => {
+      const stake = parseFloat(String(pos.initial_value || 0));
+      if (stake > max) max = stake;
+    });
+    return max;
+  }, [allClosedPositions, activePositions]);
+
   const advancedMetrics = [
+    { label: "Most Traded Category", value: mostTradedCategory },
+    { label: "Active Positions", value: String(activePositions.length) },
+    { label: "Closed Positions", value: String(allClosedPositions.length) },
+    { label: "Confidence Score", value: scoringMetrics?.confidence_score ? 
+      (scoringMetrics.confidence_score <= 1 ? `${(scoringMetrics.confidence_score * 100).toFixed(1)}%` : `${scoringMetrics.confidence_score.toFixed(1)}%`) 
+      : 'N/A' },
     { label: "Risk Score", value: (scoringMetrics?.score_risk || 0).toFixed(2) },
-    { label: "Max Drawdown", value: `${highestLoss ? highestLoss.toFixed(1) : '0.0'}%` },
-    { label: "Worst Loss", value: formatCurrency(highestLoss) },
-    { label: "Avg Stake", value: formatCurrency(totalVolume / (scoringMetrics?.total_trades || 1)) },
-    { label: "Stake Volatility", value: "0.31" },
-    { label: "Consistency", value: `${((streaks.total_wins / (streaks.total_wins + streaks.total_losses || 1)) * 100).toFixed(0)}%` },
-    { label: "ROI (Shrunk)", value: `${scoringMetrics?.roi_shrunk ? '+' + scoringMetrics.roi_shrunk.toFixed(1) : '0.0'}%` },
-    { label: "Trade Frequency", value: `${((scoringMetrics?.total_trades || 0) / 30).toFixed(1)} / day` },
-    { label: "Market Concentration", value: `${marketDistribution.length > 0 ? ((marketDistribution[0]?.trades_count || 0) / (Number(scoringMetrics?.total_trades) || 1) * 100).toFixed(0) : '0'}%` },
-    { label: "Confidence Score", value: `${(scoringMetrics?.final_score / 10 || 0).toFixed(1)} / 10` },
+    { label: "Total Buy Stake", value: formatCurrency(totalBuyStake) },
+    { label: "Winning Stake", value: formatCurrency(winningStakes) },
+    { label: "Losing Stake", value: formatCurrency(losingStakes) },
+    { label: "Average Stake", value: formatCurrency(averageStake) },
+    { label: "Max Stake", value: formatCurrency(maxStake) },
   ];
 
   return (
@@ -456,9 +641,14 @@ export function WalletDashboard() {
               <Search className="h-4 w-4 text-emerald-400" />
               <input
                 className="w-full bg-transparent outline-none text-sm placeholder:text-slate-500"
-                placeholder="Enter wallet address (0x...)"
+                placeholder="Search by wallet (0x...) or username"
                 value={walletAddress}
                 onChange={(e) => setWalletAddress(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    fetchWalletData();
+                  }
+                }}
               />
             </div>
           </div>
@@ -481,7 +671,7 @@ export function WalletDashboard() {
       {error && <div className="p-8"><ErrorMessage message={error} onRetry={fetchWalletData} /></div>}
 
       {/* CONTENT */}
-      {!loading && isValidWallet && walletAddress && (
+      {!loading && !error && (scoringMetrics?.total_trades > 0 || walletAddress) && (
         <div className="px-8 py-6 space-y-6">
           {/* FINAL RATING */}
           <div className="bg-slate-900/70 border border-emerald-500/40 rounded-3xl shadow-[0_0_60px_rgba(16,185,129,0.35)] p-6">
@@ -493,8 +683,17 @@ export function WalletDashboard() {
               <div className="flex gap-3 pb-2">
                 {scoringMetrics?.final_score >= 95 && <Badge text="👑 Prediction King" glow="strong" />}
                 {scoringMetrics?.total_trades > 100 && <Badge text="🏅 Polymarket Badge Holder" glow="strong" />}
-                {totalVolume >= 100000 && <Badge text="🐋 Whale" glow="strong" />}
-                {streaks.current_streak >= 5 && <Badge text="🔥 Hot Streak" glow="fire" />}
+                {(() => {
+                  const rank = getVolumeRank(totalVolume);
+                  return <Badge text={`${rank.emoji} ${rank.title}`} glow="strong" />;
+                })()}
+                {(() => {
+                  const streakBadge = getStreakBadge(streaks.current_streak);
+                  if (streakBadge) {
+                    return <Badge text={`${streakBadge.emoji} ${streakBadge.title}`} glow="fire" />;
+                  }
+                  return null;
+                })()}
               </div>
             </div>
 

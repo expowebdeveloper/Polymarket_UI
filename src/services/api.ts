@@ -550,9 +550,20 @@ export async function fetchDBDashboard(walletAddress: string): Promise<any> {
 /**
  * Fetch comprehensive dashboard data directly from live APIs (via backend aggregation)
  * @param walletAddress - Wallet address
+ * @param skipTrades - Skip fetching trade history for faster initial load
  */
-export async function fetchLiveDashboardData(walletAddress: string): Promise<any> {
-    return fetchApi<any>(`/dashboard/live/${walletAddress}`, 120000);
+export async function fetchLiveDashboardData(walletAddress: string, skipTrades: boolean = false): Promise<any> {
+    const url = `/dashboard/live/${walletAddress}${skipTrades ? '?skip_trades=true' : ''}`;
+    return fetchApi<any>(url, 120000);
+}
+
+/**
+ * Fetch filtered trade history for a wallet
+ * @param walletAddress - Wallet address
+ * @param filter - Filter type: "recent10", "7days", "30days", "1year", "all"
+ */
+export async function fetchFilteredTrades(walletAddress: string, filter: string = "all"): Promise<{ trades: any[], count: number, filter: string }> {
+    return fetchApi<{ trades: any[], count: number, filter: string }>(`/dashboard/live/${walletAddress}/trades?filter=${filter}`, 60000);
 }
 
 /**
@@ -565,9 +576,19 @@ export async function syncDBDashboard(walletAddress: string, background: boolean
 }
 
 /**
- * Fetch rewards market data from Polymarket CLOB API
- * @param conditionId - Condition ID of the market
+ * Resolve a search query to a wallet address (search by username/address)
+ * @param query - Search query (username or wallet address)
  */
+export async function resolveWalletOrUser(query: string): Promise<{ wallet_address: string, type: 'address' | 'username', name?: string, pseudonym?: string, profile_image?: string }> {
+    return fetchApi<{ wallet_address: string, type: 'address' | 'username', name?: string, pseudonym?: string, profile_image?: string }>(`/dashboard/search/${encodeURIComponent(query)}`, 30000);
+
+
+}
+
+/**
+ * Fetch rewards market data from Polymarket CLOB API
+     * @param conditionId - Condition ID of the market
+     */
 export async function fetchRewardsMarket(conditionId: string): Promise<RewardsMarketResponse> {
     // Call Polymarket CLOB API directly
     const url = `https://clob.polymarket.com/rewards/markets/${conditionId}`;
