@@ -8,7 +8,7 @@ interface AuthContextType {
     isLoading: boolean;
     login: (email: string, password: string) => Promise<void>;
     register: (email: string, name: string, password: string) => Promise<void>;
-    logout: () => void;
+    logout: () => Promise<void>;
     isAuthenticated: boolean;
 }
 
@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const storedToken = localStorage.getItem('auth_token');
         const storedUser = localStorage.getItem('auth_user');
-        
+
         if (storedToken && storedUser) {
             setToken(storedToken);
             try {
@@ -34,18 +34,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 localStorage.removeItem('auth_user');
             }
         }
-        
+
         setIsLoading(false);
     }, []);
 
     const login = async (email: string, password: string) => {
         try {
             const response: AuthResponse = await loginApi({ email, password });
-            
+
             // Store token
             setToken(response.access_token);
             localStorage.setItem('auth_token', response.access_token);
-            
+
             // Extract user info from token (simplified - in production, decode JWT or call /auth/me)
             // For now, we'll store a basic user object
             const userData: UserResponse = {
@@ -53,10 +53,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 email: email,
                 name: email.split('@')[0], // Temporary name
             };
-            
+
             setUser(userData);
             localStorage.setItem('auth_user', JSON.stringify(userData));
-            
+
             // Immediately call live leaderboard after login
             try {
                 await fetchLiveLeaderboard('day', 'PNL', 100, 0);
@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const register = async (email: string, name: string, password: string) => {
         try {
             const userData: UserResponse = await registerApi({ email, name, password });
-            
+
             // After registration, automatically login
             await login(email, password);
         } catch (error) {
@@ -83,11 +83,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const logout = () => {
-        setToken(null);
-        setUser(null);
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth_user');
+    const logout = async () => {
+        try {
+            // Call backend logout API
+            await (await import('../services/api')).logout();
+            console.log('✅ Logout API called successfully');
+        } catch (error) {
+            console.error('Logout API error (proceeding with client-side logout):', error);
+        } finally {
+            // Always clear client-side authentication state
+            setToken(null);
+            setUser(null);
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_user');
+        }
     };
 
     const value: AuthContextType = {
