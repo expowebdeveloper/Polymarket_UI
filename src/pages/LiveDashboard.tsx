@@ -123,14 +123,17 @@ export function LiveDashboard() {
         fetchTrades
     } = useTradeFilter(activeWallet);
 
-    // Fetch user profile data when wallet changes
+    // Fetch user profile data and initial trades when wallet changes
     useEffect(() => {
         if (activeWallet) {
             fetchUserLeaderboardData(activeWallet, 'overall')
                 .then(data => setUserProfile(data))
                 .catch(err => console.error('Failed to fetch user profile:', err));
+
+            // Default to Recent 10 trades
+            fetchTrades('recent10');
         }
-    }, [activeWallet]);
+    }, [activeWallet, fetchTrades]);
 
     const handleWalletSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

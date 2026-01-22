@@ -4,37 +4,19 @@
 import {
     LayoutDashboard,
     Trophy,
-    LineChart,
-    Layers,
-    FileText,
-    Settings,
-    ChevronLeft,
-    User,
     ScatterChart,
-    Search,
     Moon,
     Sun,
-    Database,
+    ChevronLeft,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useTheme } from '../contexts/ThemeContext';
 
 const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Global Leaderboard", href: "/leaderboard", icon: Trophy },
-    // { name: "DB Leaderboard", href: "/db-leaderboard", icon: Trophy },
-    { name: "Live Leaderboard", href: "/leaderboard/live", icon: ScatterChart },
     { name: "All Leaderboards", href: "/leaderboard/all", icon: Trophy },
-    { name: "View All Leaderboards", href: "/leaderboard/view-all", icon: Trophy },
-    { name: "Markets", href: "/markets", icon: LineChart },
     { name: "Live Markets", href: "/markets/live", icon: ScatterChart },
-    { name: "Traders", href: "/traders", icon: User },
-    { name: "Wallet Dashboard", href: "/wallet-dashboard", icon: Search },
     { name: "Live Dashboard (API)", href: "/live-dashboard", icon: LayoutDashboard },
-    // { name: "DB Wallet Dashboard", href: "/db-wallet-dashboard", icon: Database },
-    { name: "Whale Tracker", href: "/whale-tracker", icon: Layers },
-    { name: "Reports", href: "/reports", icon: FileText },
-    { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 interface SidebarProps {

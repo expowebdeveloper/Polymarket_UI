@@ -448,6 +448,23 @@ export async function fetchViewAllLeaderboards(
 }
 
 /**
+ * Fetch paginated leaderboard from database
+ * @param limit - Number of items per page
+ * @param offset - Offset for pagination
+ * @param sortBy - Field to sort by
+ * @param sortDesc - Whether to sort descending
+ */
+export async function fetchPaginatedLeaderboard(
+    limit: number = 10,
+    offset: number = 0,
+    sortBy: string = 'final_score',
+    sortDesc: boolean = true
+): Promise<LeaderboardResponse> {
+    const url = `/leaderboard/db/paginated?limit=${limit}&offset=${offset}&sort_by=${sortBy}&sort_desc=${sortDesc}`;
+    return fetchApi<LeaderboardResponse>(url, 30000, 'GET');
+}
+
+/**
  * Fetch analytics from database with retry logic
  */
 export async function fetchTradersAnalytics(limit: number = 100, offset: number = 0, retries: number = 2): Promise<AllLeaderboardsResponse> {
