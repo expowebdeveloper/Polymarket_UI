@@ -14,8 +14,6 @@ import {
     Search,
     Moon,
     Sun,
-    Database,
-    Activity as ActivityIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useTheme } from '../contexts/ThemeContext';
@@ -35,7 +33,6 @@ const navItems = [
     // { name: "DB Wallet Dashboard", href: "/db-wallet-dashboard", icon: Database },
     { name: "Whale Tracker", href: "/whale-tracker", icon: Layers },
     { name: "Reports", href: "/reports", icon: FileText },
-    { name: "Activity", href: "/activity", icon: ActivityIcon },
     { name: "Settings", href: "/settings", icon: Settings },
 ];
 

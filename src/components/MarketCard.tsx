@@ -112,7 +112,11 @@ export function MarketCard({ market, onToggleFavorite, isFavorite }: MarketCardP
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex flex-col">
                             <span className="text-3xl font-bold text-white tracking-tight">
-                                {Math.round((yesOutcome?.price || 0) * 100)}%
+                                {(() => {
+                                    const price = (yesOutcome?.price || 0) * 100;
+                                    if (price < 1) return '<1';
+                                    return Math.round(price);
+                                })()}%
                             </span>
                             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                                 chance
@@ -146,7 +150,8 @@ export function MarketCard({ market, onToggleFavorite, isFavorite }: MarketCardP
             ) : (
                 <div className="px-4 pb-4 mt-auto flex flex-col gap-2">
                     {displayOutcomesList.length > 0 ? displayOutcomesList.map((outcome, idx) => {
-                        const percentage = Math.round(outcome.price * 100);
+                        const pricePercent = outcome.price * 100;
+                        const percentage = pricePercent < 1 ? '<1' : Math.round(pricePercent);
                         return (
                             <div key={idx} className="flex items-center justify-between group/row">
                                 <span className="text-sm text-slate-300 truncate max-w-[120px]">{outcome.name}</span>

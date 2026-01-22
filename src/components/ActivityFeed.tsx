@@ -73,9 +73,9 @@ export function ActivityFeed() {
     const isSyncing = Date.now() - lastFlashedAt < 500;
 
     return (
-        <div className={`flex flex-col h-full ${theme === 'dark' ? 'bg-[#141517] text-slate-200' : 'bg-white text-slate-900'} rounded-xl border ${theme === 'dark' ? 'border-[#2d2e33]' : 'border-slate-200'} shadow-sm overflow-hidden transition-all duration-300`}>
+        <div className={`flex flex-col h-full bg-white text-slate-900 rounded-xl border border-slate-200 shadow-sm overflow-hidden transition-all duration-300`}>
             {/* Header */}
-            <div className={`flex items-center justify-between px-6 py-4 border-b ${theme === 'dark' ? 'border-[#2d2e33]' : 'border-slate-100'}`}>
+            <div className={`flex items-center justify-between px-6 py-4 border-b border-slate-100`}>
                 <div className="flex items-center gap-3">
                     <h2 className="text-[20px] font-bold">Activity</h2>
                     <div className={`w-2 h-2 rounded-full transition-all duration-300 ${isSyncing ? 'bg-blue-500 scale-150 shadow-[0_0_10px_#3b82f6]' : 'bg-slate-300 opacity-20'}`} />
@@ -97,7 +97,7 @@ export function ActivityFeed() {
                         <p className="text-[9px] font-bold mt-0.5">Waiting for {`>$${minAmount}`} trades...</p>
                     </div>
                 ) : (
-                    <div className={`flex flex-col ${theme === 'dark' ? 'divide-y divide-[#1c1d21]' : 'divide-y divide-slate-50'}`}>
+                    <div className={`flex flex-col divide-y divide-slate-50`}>
                         {filteredList.map((activity) => {
                             const outcome = (activity.outcome || "").toLowerCase();
                             const isPositive = outcome.includes('yes') || outcome.includes('up') || outcome.includes('buy');
@@ -111,13 +111,13 @@ export function ActivityFeed() {
                                 <div
                                     key={activity.id}
                                     // Removed cursor-pointer and hover effects for interactivity
-                                    className={`group flex items-start gap-3.5 px-6 py-3 min-h-[64px] transition-all duration-500 relative ${theme === 'dark' ? 'hover:bg-[#1c1d21]' : 'hover:bg-slate-50'
-                                        } ${isNew ? 'bg-blue-500/5' : ''}`}
+                                    className={`group flex items-start gap-3.5 px-6 py-3 min-h-[64px] transition-all duration-500 relative hover:bg-slate-50 
+                                         ${isNew ? 'bg-blue-500/5' : ''}`}
                                 >
                                     {/* Icon */}
-                                    <div className={`w-8 h-8 rounded-md flex-shrink-0 flex items-center justify-center border ${theme === 'dark' ? 'bg-[#1c1d21] border-[#2d2e33]' : 'bg-slate-50 border-slate-100'
-                                        } shadow-sm transition-transform duration-300 ${isNew ? 'scale-110' : ''}`}>
-                                        <span className={`text-[13px] font-black ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
+                                    <div className={`w-8 h-8 rounded-md flex-shrink-0 flex items-center justify-center border bg-slate-50 border-slate-100
+                                         shadow-sm transition-transform duration-300 ${isNew ? 'scale-110' : ''}`}>
+                                        <span className={`text-[13px] font-black text-slate-400`}>
                                             {firstLetter}
                                         </span>
                                     </div>
@@ -159,7 +159,7 @@ export function ActivityFeed() {
             </div>
 
             {/* Footer */}
-            <div className={`px-6 py-3 border-t ${theme === 'dark' ? 'border-[#2d2e33]' : 'border-slate-100'} bg-opacity-50`}>
+            <div className={`px-6 py-3 border-t border-slate-100 bg-opacity-50`}>
                 <div className="flex items-center gap-2.5">
                     <span className="relative flex h-2 w-2">
                         <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-red-400'} opacity-75`}></span>
@@ -178,7 +178,7 @@ export function ActivityFeed() {
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { 
-                    background: ${theme === 'dark' ? '#2d2e33' : '#e2e8f0'}; 
+                    background: #e2e8f0; 
                     border-radius: 10px; 
                 }
             `}</style>

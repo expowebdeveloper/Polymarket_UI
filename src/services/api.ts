@@ -18,6 +18,8 @@ import type {
     LeaderboardTradersResponse,
     RewardsMarketResponse,
     ApiError,
+    TraderRating,
+    PaginationInfo,
 } from '../types/api';
 
 /**
@@ -528,6 +530,28 @@ export async function fetchMarketOrders(
     offset: number = 0
 ): Promise<MarketOrdersResponse> {
     return fetchApi<MarketOrdersResponse>(`/markets/orders?market_slug=${marketSlug}&limit=${limit}&offset=${offset}`, 30000);
+}
+
+/**
+ * Fetch best traders for a specific market (aggregated server-side)
+ * @param marketSlug - Market slug identifier
+ * @param limit - Maximum number of traders (default: 100)
+ * @param offset - Offset for pagination
+ */
+export async function fetchMarketTraders(
+    marketSlug: string,
+    limit: number = 100,
+    offset: number = 0
+): Promise<{ traders: TraderRating[], pagination: PaginationInfo }> {
+    return fetchApi<{ traders: TraderRating[], pagination: PaginationInfo }>(`/markets/${encodeURIComponent(marketSlug)}/traders?limit=${limit}&offset=${offset}`, 30000);
+}
+
+/**
+ * Fetch total order count for a market (separate endpoint for performance)
+ * @param marketSlug - Market slug identifier
+ */
+export async function fetchMarketOrderCount(marketSlug: string): Promise<{ total: number }> {
+    return fetchApi<{ total: number }>(`/markets/${encodeURIComponent(marketSlug)}/orders/count`, 60000);
 }
 
 /**
