@@ -748,6 +748,40 @@ export async function login(data: LoginRequest): Promise<AuthResponse> {
 }
 
 /**
+ * Logout user (calls backend API)
+ */
+export async function logout(): Promise<{ message: string, success: boolean }> {
+    const url = `${API_BASE_URL}${API_ENDPOINTS.auth.login.replace('/login', '/logout')}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Logout failed' }));
+            throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        clearTimeout(timeoutId);
+        console.error('Logout Error:', error);
+        // Even if API fails, we'll proceed with client-side logout
+        return { message: 'Logged out locally', success: true };
+    }
+}
+
+/**
  * Fetch PnL history for a specific wallet address
  * @param walletAddress - Wallet address
  */
