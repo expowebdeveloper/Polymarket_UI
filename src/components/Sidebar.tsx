@@ -7,15 +7,12 @@ import {
     ScatterChart,
     Moon,
     Sun,
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
     ChevronLeft,
-=======
     Database,
     Activity as ActivityIcon,
->>>>>>> fe7d0d0025621996eebe245329f92f3452581a23
->>>>>>> ab52aeae6e2884aee6fe8a75b58b95abce27b0cc
+    Layers,
+    FileText,
+    Settings,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useTheme } from '../contexts/ThemeContext';
@@ -25,13 +22,10 @@ const navItems = [
     { name: "All Leaderboards", href: "/leaderboard/all", icon: Trophy },
     { name: "Live Markets", href: "/markets/live", icon: ScatterChart },
     { name: "Live Dashboard (API)", href: "/live-dashboard", icon: LayoutDashboard },
-<<<<<<< HEAD
-=======
     // { name: "DB Wallet Dashboard", href: "/db-wallet-dashboard", icon: Database },
     { name: "Whale Tracker", href: "/whale-tracker", icon: Layers },
     { name: "Reports", href: "/reports", icon: FileText },
     { name: "Settings", href: "/settings", icon: Settings },
->>>>>>> fe7d0d0025621996eebe245329f92f3452581a23
 ];
 
 interface SidebarProps {
