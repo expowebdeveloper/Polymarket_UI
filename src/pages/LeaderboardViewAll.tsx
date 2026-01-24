@@ -1,666 +1,866 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { fetchViewAllLeaderboards, fetchAllLeaderboards } from '../services/api';
-import type { AllLeaderboardsResponse, LeaderboardEntry } from '../types/api';
-import { LoadingSpinner } from '../components/LoadingSpinner';
-import { ErrorMessage } from '../components/ErrorMessage';
-import { useTheme } from '../contexts/ThemeContext';
-import { useLocation } from 'react-router-dom';
-import { 
-  BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, 
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, 
-  PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ScatterChart, Scatter, ZAxis
-} from 'recharts';
-import { Trophy, TrendingUp, TrendingDown, Users, Award, BarChart3, PieChart as PieChartIcon, Copy, Check } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+    ChevronDown,
+    Gift,
+    Search,
+    X,
+    ArrowLeft,
+    ArrowRight,
+    Sun,
+    Moon,
+    Circle,
+    Check,
+} from "lucide-react";
 
-type LeaderboardType = 
-    | 'w_shrunk' 
-    | 'roi_raw' 
-    | 'roi_shrunk' 
-    | 'pnl_shrunk' 
-    | 'score_win_rate' 
-    | 'score_roi' 
-    | 'score_pnl' 
-    | 'score_risk' 
-    | 'final_score';
+// --------------------
+// Demo data
+// --------------------
+const demoRows = [
+    {
+        rank: 1,
+        name: "ImJustKen",
+        handle: "@Domahh",
+        score: 98.7,
+        winRate: 94.2,
+        volume: "$2.4M",
+        roi: 247.3,
+        pnl: 182_450,
+        reward: 60,
+    },
+    {
+        rank: 2,
+        name: "cigarettes",
+        handle: "@friendlyping",
+        score: 98.2,
+        winRate: 91.8,
+        volume: "$1.6M",
+        roi: 189.6,
+        pnl: 143_210,
+        reward: 55,
+    },
+    {
+        rank: 3,
+        name: "risk-manager",
+        handle: "@dragonfly",
+        score: 94.1,
+        winRate: 88.7,
+        volume: "$1.5M",
+        roi: 156.4,
+        pnl: 121_890,
+        reward: 50,
+    },
+    {
+        rank: 4,
+        name: "interstellaar",
+        handle: "@interstellaar",
+        score: 98.8,
+        winRate: 86.3,
+        volume: "$1.2M",
+        roi: 142.1,
+        pnl: 98_340,
+        reward: 45,
+    },
+    {
+        rank: 5,
+        name: "TheGuru",
+        handle: "@theguru",
+        score: 86.3,
+        winRate: 83.1,
+        volume: "$980K",
+        roi: 128.9,
+        pnl: 74_520,
+        reward: 40,
+    },
+    {
+        rank: 6,
+        name: "debased",
+        handle: "@debased_PM",
+        score: 87.1,
+        winRate: 81.6,
+        volume: "$847K",
+        roi: 115.7,
+        pnl: 61_430,
+        reward: 35,
+    },
+    {
+        rank: 7,
+        name: "InfiniteCrypt0",
+        handle: "@InfiniteCrypt0",
+        score: 82.4,
+        winRate: 77.2,
+        volume: "$732K",
+        roi: 94.8,
+        pnl: 48_960,
+        reward: 30,
+    },
+];
 
-const LeaderboardViewAll: React.FC = () => {
-    const { theme } = useTheme();
-    const location = useLocation();
-    const [data, setData] = useState<AllLeaderboardsResponse | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<LeaderboardType>('final_score');
-    const [showPercentiles, setShowPercentiles] = useState(true);
-    const [selectedChart, setSelectedChart] = useState<'distribution' | 'top10' | 'scores' | 'radar'>('distribution');
-    const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
-    const [timePeriod, setTimePeriod] = useState<'day' | 'week' | 'month' | 'all'>('all');
-    const [orderBy, setOrderBy] = useState<'PNL' | 'VOL'>('PNL');
+type RankBy = "Score" | "Win Rate" | "Total Volume" | "ROI" | "PNL" | "Rewards";
+type Range = "Last 7 days" | "Last 30 days" | "All time";
 
-    useEffect(() => {
-        loadData();
-    }, [location.pathname, timePeriod, orderBy]);
+const RANGE_OPTIONS: Range[] = ["Last 7 days", "Last 30 days", "All time"];
+const RANK_OPTIONS: RankBy[] = ["Win Rate", "ROI", "Total Volume", "PNL", "Score", "Rewards"];
 
-    const loadData = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            // Use fetchAllLeaderboards for /leaderboard/all route, fetchViewAllLeaderboards for /leaderboard/view-all
-            const result = location.pathname === '/leaderboard/all' 
-                ? await fetchAllLeaderboards()
-                : await fetchViewAllLeaderboards(timePeriod, orderBy);
-            setData(result);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load leaderboards');
-        } finally {
-            setLoading(false);
-        }
+const TAG_GROUPS: { title: string; options: string[] }[] = [
+    {
+        title: "Score",
+        options: [
+            "Prediction God",
+            "Prediction King",
+            "Pro Predictor",
+            "Skilled Predictor",
+            "Rising Predictor",
+            "Average Predictor",
+            "Inconsistent Predictor",
+            "Low Confidence Predictor",
+            "Extreme Risk Predictor",
+        ],
+    },
+    {
+        title: "Volume",
+        options: [
+            "Crabs",
+            "Shrimp",
+            "Fish",
+            "Young Dolphin",
+            "Dolphin",
+            "Shark",
+            "Whale",
+            "Mega Whale",
+            "Elite Whale",
+        ],
+    },
+];
+
+// --------------------
+// Helpers
+// --------------------
+function formatMoney(n: number) {
+    const sign = n >= 0 ? "+" : "-";
+    const abs = Math.abs(n);
+    return `${sign}$${abs.toLocaleString("en-US")}`;
+}
+
+// Basic runtime "tests" (safe in browser). They ensure helpers behave as expected.
+// If you want, we can convert these to proper unit tests in your repo later.
+console.assert(formatMoney(1234) === "+$1,234", "formatMoney positive failed");
+console.assert(formatMoney(-9000) === "-$9,000", "formatMoney negative failed");
+
+// --------------------
+// UI atoms
+// --------------------
+function Pill({ value }: { value: string }) {
+    return (
+        <span className="inline-flex items-center rounded-full bg-blue-600 px-3 py-1 text-sm font-semibold text-white shadow-sm">
+            {value}
+        </span>
+    );
+}
+
+function RewardPill({ amount }: { amount: number }) {
+    return (
+        <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-800 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/30">
+            <Gift className="h-4 w-4" />
+            ${amount}
+        </span>
+    );
+}
+
+function TagPill({ label }: { label: string }) {
+    const META: Record<string, { emoji: string; cls: string }> = {
+        Whale: {
+            emoji: "🐋",
+            cls: "bg-blue-50 text-blue-800 ring-blue-200 dark:bg-blue-500/10 dark:text-blue-200 dark:ring-blue-500/30",
+        },
+        "Mega Whale": {
+            emoji: "🐳",
+            cls: "bg-blue-100 text-blue-900 ring-blue-300 dark:bg-blue-500/15 dark:text-blue-100 dark:ring-blue-500/40",
+        },
+        "Elite Whale": {
+            emoji: "👑🐋",
+            cls: "bg-gradient-to-r from-blue-600 to-indigo-600 text-white ring-blue-400 shadow dark:ring-blue-400/60",
+        },
     };
 
-    const formatCurrency = (val: number) => {
-        if (val >= 1000000) return `$${(val / 1000000).toFixed(2)}M`;
-        if (val >= 1000) return `$${(val / 1000).toFixed(2)}K`;
-        return `$${val.toFixed(2)}`;
+    const meta = META[label] ?? {
+        emoji: "🏷️",
+        cls: "bg-blue-50 text-blue-800 ring-blue-200 dark:bg-blue-500/10 dark:text-blue-200 dark:ring-blue-500/30",
     };
-
-    const formatPercent = (val: number) => `${val >= 0 ? '+' : ''}${val.toFixed(2)}%`;
-    
-    const copyWallet = (wallet: string) => {
-        navigator.clipboard.writeText(wallet);
-        setCopiedWallet(wallet);
-        setTimeout(() => setCopiedWallet(null), 2000);
-    };
-
-    const getRankIcon = (rank: number) => {
-        if (rank === 1) return '🥇';
-        if (rank === 2) return '🥈';
-        if (rank === 3) return '🥉';
-        return null;
-    };
-
-    const getCurrentLeaderboard = (): LeaderboardEntry[] => {
-        if (!data?.leaderboards) return [];
-        return data.leaderboards[activeTab] || [];
-    };
-
-    const getLeaderboardTitle = (type: LeaderboardType): string => {
-        const titles: Record<LeaderboardType, string> = {
-            'w_shrunk': 'W_shrunk Leaderboard (Ascending - Best = Rank 1)',
-            'roi_raw': 'ROI Raw Leaderboard (Descending - Best = Rank 1)',
-            'roi_shrunk': 'ROI_shrunk Leaderboard (Ascending - Best = Rank 1)',
-            'pnl_shrunk': 'PNL_shrunk Leaderboard (Ascending - Best = Rank 1)',
-            'score_win_rate': 'Win Rate Score Leaderboard (Descending - Best = Rank 1)',
-            'score_roi': 'ROI Score Leaderboard (Descending - Best = Rank 1)',
-            'score_pnl': 'PNL Score Leaderboard (Descending - Best = Rank 1)',
-            'score_risk': 'Risk Score Leaderboard (Descending - Best = Rank 1)',
-            'final_score': 'Final Score Leaderboard (Descending - Best = Rank 1)'
-        };
-        return titles[type];
-    };
-
-    // Prepare chart data
-    const chartData = useMemo(() => {
-        const currentLeaderboard = getCurrentLeaderboard();
-        if (!currentLeaderboard || currentLeaderboard.length === 0) return null;
-
-        // Top 10 for bar chart
-        const top10 = currentLeaderboard.slice(0, 10).map((entry, idx) => ({
-            rank: idx + 1,
-            name: entry.name || entry.pseudonym || `${entry.wallet_address?.slice(0, 6)}...${entry.wallet_address?.slice(-4)}`,
-            finalScore: entry.final_score || 0,
-            roi: entry.roi || 0,
-            pnl: entry.total_pnl || 0,
-            winRate: entry.win_rate || 0,
-        }));
-
-        // Score distribution (bins)
-        const distribution = [
-            { range: '0-10', count: 0 },
-            { range: '10-20', count: 0 },
-            { range: '20-30', count: 0 },
-            { range: '30-40', count: 0 },
-            { range: '40-50', count: 0 },
-            { range: '50-60', count: 0 },
-            { range: '60-70', count: 0 },
-            { range: '70-80', count: 0 },
-            { range: '80-90', count: 0 },
-            { range: '90-100', count: 0 },
-        ];
-
-        currentLeaderboard.forEach(entry => {
-            const score = entry.final_score || 0;
-            if (score >= 0 && score < 10) distribution[0].count++;
-            else if (score >= 10 && score < 20) distribution[1].count++;
-            else if (score >= 20 && score < 30) distribution[2].count++;
-            else if (score >= 30 && score < 40) distribution[3].count++;
-            else if (score >= 40 && score < 50) distribution[4].count++;
-            else if (score >= 50 && score < 60) distribution[5].count++;
-            else if (score >= 60 && score < 70) distribution[6].count++;
-            else if (score >= 70 && score < 80) distribution[7].count++;
-            else if (score >= 80 && score < 90) distribution[8].count++;
-            else if (score >= 90 && score <= 100) distribution[9].count++;
-        });
-
-        // Score comparison for top 10
-        const scoreComparison = top10.map(entry => ({
-            name: entry.name,
-            winRate: entry.winRate,
-            roi: Math.min(entry.roi, 100), // Cap at 100 for visualization
-            pnl: Math.min(Math.max(entry.pnl / 1000, -50), 50), // Normalize PnL
-            finalScore: entry.finalScore,
-        }));
-
-        // Radar chart data for top trader
-        const topTrader = currentLeaderboard[0];
-        const radarData = topTrader ? [
-            { metric: 'Win Rate', value: (topTrader.win_rate || 0) / 100 },
-            { metric: 'ROI', value: Math.min((topTrader.roi || 0) / 100, 1) },
-            { metric: 'PnL Score', value: topTrader.score_pnl || 0 },
-            { metric: 'ROI Score', value: topTrader.score_roi || 0 },
-            { metric: 'Risk Score', value: topTrader.score_risk || 0 },
-            { metric: 'Final Score', value: (topTrader.final_score || 0) / 100 },
-        ] : [];
-
-        return {
-            top10,
-            distribution,
-            scoreComparison,
-            radarData,
-        };
-    }, [data, activeTab]);
-
-    const textColor = theme === 'dark' ? '#cbd5e1' : '#475569';
-    const gridColor = theme === 'dark' ? '#334155' : '#e2e8f0';
-    const bgColor = theme === 'dark' ? '#1e293b' : '#ffffff';
-    const cardBg = theme === 'dark' ? 'bg-slate-800' : 'bg-slate-50';
-    const borderColor = theme === 'dark' ? 'border-slate-700' : 'border-slate-200';
-    const textPrimary = theme === 'dark' ? 'text-white' : 'text-slate-900';
-    const textSecondary = theme === 'dark' ? 'text-slate-400' : 'text-slate-600';
-
-    const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1'];
-
-    if (loading) {
-        return <LoadingSpinner message="Loading leaderboards..." />;
-    }
-
-    if (error) {
-        return (
-            <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-950' : 'bg-white'} ${textPrimary} p-6`}>
-                <ErrorMessage message={error} onRetry={loadData} />
-            </div>
-        );
-    }
-
-    if (!data) {
-        return (
-            <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-950' : 'bg-white'} ${textPrimary} p-6`}>
-                <ErrorMessage message="No data available" onRetry={loadData} />
-            </div>
-        );
-    }
-
-    const currentLeaderboard = getCurrentLeaderboard();
 
     return (
-        <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-950' : 'bg-white'} ${textPrimary} p-6`}>
-            <div className="max-w-[95%] mx-auto space-y-6">
-                {/* Header */}
-                <div className="mb-8">
-                    <div className="flex items-center justify-between mb-4">
-                        <div>
-                            <h1 className={`text-4xl font-bold ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'} mb-2 border-b-2 ${theme === 'dark' ? 'border-yellow-400' : 'border-yellow-600'} pb-2 flex items-center gap-3`}>
-                                <Trophy className="w-10 h-10" />
-                                All Leaderboards & Analytics
-                            </h1>
-                            <p className={`${textSecondary} mt-2`}>
-                                Comprehensive leaderboard analysis with percentile information and performance metrics
-                            </p>
-                        </div>
-                    </div>
-                    
-                    {/* Time Period and Order By Selector */}
-                    <div className={`${cardBg} rounded-lg p-4 border ${borderColor} flex flex-wrap items-center gap-4`}>
-                        <div className="flex items-center gap-2">
-                            <span className={`${textSecondary} text-sm font-medium`}>Time Period:</span>
-                            <div className="flex gap-2">
-                                {(['day', 'week', 'month', 'all'] as const).map((period) => (
-                                    <button
-                                        key={period}
-                                        onClick={() => setTimePeriod(period)}
-                                        className={`px-4 py-2 rounded text-sm font-medium transition ${
-                                            timePeriod === period
-                                                ? `${theme === 'dark' ? 'bg-emerald-600' : 'bg-emerald-500'} text-white`
-                                                : `${theme === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`
-                                        }`}
-                                    >
-                                        {period === 'all' ? 'Overall' : period.charAt(0).toUpperCase() + period.slice(1)}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className={`${textSecondary} text-sm font-medium`}>Order By:</span>
-                            <div className="flex gap-2">
-                                {(['PNL', 'VOL'] as const).map((order) => (
-                                    <button
-                                        key={order}
-                                        onClick={() => setOrderBy(order)}
-                                        className={`px-4 py-2 rounded text-sm font-medium transition ${
-                                            orderBy === order
-                                                ? `${theme === 'dark' ? 'bg-blue-600' : 'bg-blue-500'} text-white`
-                                                : `${theme === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`
-                                        }`}
-                                    >
-                                        {order}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <div className={`${textSecondary} text-xs ml-auto`}>
-                            <span className="font-semibold">Note:</span> Time period affects both wallet selection and metrics calculation
-                        </div>
-                    </div>
+        <span
+            className={
+                "inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold ring-1 shadow-sm " +
+                meta.cls
+            }
+        >
+            <span aria-hidden>{meta.emoji}</span>
+            {label}
+        </span>
+    );
+}
+
+function DropdownLike({
+    label,
+    onClick,
+    active,
+}: {
+    label: string;
+    onClick?: () => void;
+    active?: boolean;
+}) {
+    return (
+        <button
+            onClick={onClick}
+            className={
+                "group inline-flex min-w-[220px] items-center justify-between rounded-xl border bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:shadow dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 " +
+                (active
+                    ? "border-blue-400 ring-2 ring-blue-100 dark:ring-blue-900/40"
+                    : "border-slate-200 dark:border-slate-800")
+            }
+            type="button"
+        >
+            <span className="truncate">{label}</span>
+            <ChevronDown
+                className={
+                    "h-4 w-4 text-slate-400 transition group-hover:text-slate-500 dark:text-slate-500 " +
+                    (active ? "rotate-180" : "")
+                }
+            />
+        </button>
+    );
+}
+
+// --------------------
+// Popover menus
+// --------------------
+function useClickOutside(
+    open: boolean,
+    refs: React.RefObject<HTMLElement>[],
+    onClose: () => void
+) {
+    useEffect(() => {
+        if (!open) return;
+        const onDown = (e: MouseEvent) => {
+            const t = e.target as Node;
+            for (const r of refs) {
+                if (r.current?.contains(t)) return;
+            }
+            onClose();
+        };
+        window.addEventListener("mousedown", onDown);
+        return () => window.removeEventListener("mousedown", onDown);
+    }, [open, onClose, refs]);
+}
+
+function Popover({
+    open,
+    anchorRef,
+    children,
+    width = 320,
+}: {
+    open: boolean;
+    anchorRef: React.RefObject<HTMLDivElement>;
+    children: React.ReactNode;
+    width?: number;
+}) {
+    if (!open) return null;
+
+    const left = anchorRef.current
+        ? anchorRef.current.getBoundingClientRect().left
+        : 24;
+    const top = anchorRef.current
+        ? anchorRef.current.getBoundingClientRect().bottom + 10
+        : 80;
+
+    return (
+        <div className="fixed inset-0 z-40">
+            <div className="absolute inset-0" />
+            <div
+                className="absolute z-50 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-800 dark:bg-slate-900"
+                style={{ left, top, width }}
+            >
+                {children}
+            </div>
+        </div>
+    );
+}
+
+function RangeMenu({
+    open,
+    anchorRef,
+    value,
+    onChange,
+    onApply,
+    onClose,
+}: {
+    open: boolean;
+    anchorRef: React.RefObject<HTMLDivElement>;
+    value: Range;
+    onChange: (v: Range) => void;
+    onApply: () => void;
+    onClose: () => void;
+}) {
+    const panelRef = useRef<HTMLDivElement | null>(null);
+    useClickOutside(open, [panelRef as any, anchorRef as any], onClose);
+
+    return (
+        <Popover open={open} anchorRef={anchorRef} width={320}>
+            <div ref={panelRef}>
+                <div className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                    Time range
                 </div>
 
-                {/* Statistics Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className={`${cardBg} rounded-lg p-4 border ${borderColor}`}>
-                        <div className={`${textSecondary} text-sm mb-1 flex items-center gap-2`}>
-                            <Users className="w-4 h-4" />
-                            Total Traders
-                        </div>
-                        <div className={`text-3xl font-bold ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>
-                            {data.total_traders.toLocaleString()}
-                        </div>
-                    </div>
-                    <div className={`${cardBg} rounded-lg p-4 border ${borderColor}`}>
-                        <div className={`${textSecondary} text-sm mb-1 flex items-center gap-2`}>
-                            <Award className="w-4 h-4" />
-                            Population (≥5 trades)
-                        </div>
-                        <div className={`text-3xl font-bold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
-                            {data.population_traders.toLocaleString()}
-                        </div>
-                        <div className={`text-xs ${textSecondary} mt-1`}>Used for percentile calculations</div>
-                    </div>
-                    <div className={`${cardBg} rounded-lg p-4 border ${borderColor}`}>
-                        <div className={`${textSecondary} text-sm mb-1 flex items-center gap-2`}>
-                            <TrendingUp className="w-4 h-4" />
-                            ROI Median
-                        </div>
-                        <div className={`text-3xl font-bold ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
-                            {formatPercent(data.medians.roi_median)}
-                        </div>
-                    </div>
-                    <div className={`${cardBg} rounded-lg p-4 border ${borderColor}`}>
-                        <div className={`${textSecondary} text-sm mb-1 flex items-center gap-2`}>
-                            <BarChart3 className="w-4 h-4" />
-                            PnL Median
-                        </div>
-                        <div className={`text-3xl font-bold ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}>
-                            {formatCurrency(data.medians.pnl_median)}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Percentile Information */}
-                {showPercentiles && (
-                    <div className={`${cardBg} rounded-lg p-6 border ${borderColor}`}>
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}>
-                                📊 Percentile Anchors (for Normalization)
-                            </h2>
+                <div className="space-y-2">
+                    {RANGE_OPTIONS.map((opt) => {
+                        const selected = value === opt;
+                        return (
                             <button
-                                onClick={() => setShowPercentiles(false)}
-                                className={`${textSecondary} hover:${textPrimary} px-3 py-1 rounded ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-200 hover:bg-slate-300'}`}
+                                key={opt}
+                                type="button"
+                                onClick={() => onChange(opt)}
+                                className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left text-sm text-slate-800 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-800/60"
                             >
-                                Hide
+                                <span className="relative inline-flex h-5 w-5 items-center justify-center">
+                                    {selected ? (
+                                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 dark:bg-blue-500">
+                                            <Check className="h-3.5 w-3.5 text-white" />
+                                        </span>
+                                    ) : (
+                                        <Circle className="h-5 w-5 text-slate-300 dark:text-slate-600" />
+                                    )}
+                                </span>
+                                <span className="font-medium">{opt}</span>
                             </button>
-                        </div>
-                        <p className={`${textSecondary} text-sm mb-4`}>
-                            These values are calculated from traders with ≥5 trades and used to normalize scores to 0-1 range.
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className={`${theme === 'dark' ? 'bg-slate-900' : 'bg-white'} rounded p-4 border ${borderColor}`}>
-                                <div className={`${textSecondary} text-sm mb-2`}>W_shrunk Percentiles</div>
-                                <div className="space-y-1">
-                                    <div className="flex justify-between">
-                                        <span className={textSecondary}>1st:</span>
-                                        <span className={`${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'} font-mono`}>
-                                            {data.percentiles.w_shrunk_1_percent.toFixed(6)}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className={textSecondary}>99th:</span>
-                                        <span className={`${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'} font-mono`}>
-                                            {data.percentiles.w_shrunk_99_percent.toFixed(6)}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className={`${theme === 'dark' ? 'bg-slate-900' : 'bg-white'} rounded p-4 border ${borderColor}`}>
-                                <div className={`${textSecondary} text-sm mb-2`}>ROI_shrunk Percentiles</div>
-                                <div className="space-y-1">
-                                    <div className="flex justify-between">
-                                        <span className={textSecondary}>1st:</span>
-                                        <span className={`${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'} font-mono`}>
-                                            {data.percentiles.roi_shrunk_1_percent.toFixed(6)}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className={textSecondary}>99th:</span>
-                                        <span className={`${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'} font-mono`}>
-                                            {data.percentiles.roi_shrunk_99_percent.toFixed(6)}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className={`${theme === 'dark' ? 'bg-slate-900' : 'bg-white'} rounded p-4 border ${borderColor}`}>
-                                <div className={`${textSecondary} text-sm mb-2`}>PNL_shrunk Percentiles</div>
-                                <div className="space-y-1">
-                                    <div className="flex justify-between">
-                                        <span className={textSecondary}>1st:</span>
-                                        <span className={`${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'} font-mono`}>
-                                            {data.percentiles.pnl_shrunk_1_percent.toFixed(6)}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className={textSecondary}>99th:</span>
-                                        <span className={`${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'} font-mono`}>
-                                            {data.percentiles.pnl_shrunk_99_percent.toFixed(6)}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                        );
+                    })}
+                </div>
 
-                {!showPercentiles && (
+                <div className="mt-4 flex items-center justify-end">
                     <button
-                        onClick={() => setShowPercentiles(true)}
-                        className={`${theme === 'dark' ? 'text-purple-400 hover:text-purple-300' : 'text-purple-600 hover:text-purple-700'} px-4 py-2 rounded ${theme === 'dark' ? 'bg-slate-800 hover:bg-slate-700' : 'bg-slate-100 hover:bg-slate-200'} border ${borderColor}`}
+                        type="button"
+                        onClick={onApply}
+                        className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:shadow"
                     >
-                        Show Percentile Information
+                        Apply
                     </button>
-                )}
+                </div>
+            </div>
+        </Popover>
+    );
+}
 
-                {/* Charts Section */}
-                {chartData && currentLeaderboard.length > 0 && (
-                    <div className={`${cardBg} rounded-lg p-6 border ${borderColor}`}>
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                                📈 Performance Analytics
-                            </h2>
-                            <div className="flex gap-2">
-                                {(['distribution', 'top10', 'scores', 'radar'] as const).map((chartType) => (
-                                    <button
-                                        key={chartType}
-                                        onClick={() => setSelectedChart(chartType)}
-                                        className={`px-4 py-2 rounded text-sm font-medium transition ${
-                                            selectedChart === chartType
-                                                ? `${theme === 'dark' ? 'bg-emerald-600 text-white' : 'bg-emerald-500 text-white'}`
-                                                : `${theme === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`
-                                        }`}
-                                    >
-                                        {chartType === 'distribution' && 'Distribution'}
-                                        {chartType === 'top10' && 'Top 10'}
-                                        {chartType === 'scores' && 'Scores'}
-                                        {chartType === 'radar' && 'Radar'}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+function RankByMenu({
+    open,
+    anchorRef,
+    value,
+    onChange,
+    onApply,
+    onClose,
+}: {
+    open: boolean;
+    anchorRef: React.RefObject<HTMLDivElement>;
+    value: RankBy;
+    onChange: (v: RankBy) => void;
+    onApply: () => void;
+    onClose: () => void;
+}) {
+    const panelRef = useRef<HTMLDivElement | null>(null);
+    useClickOutside(open, [panelRef as any, anchorRef as any], onClose);
 
-                        {/* Distribution Chart */}
-                        {selectedChart === 'distribution' && (
-                            <div className="h-96">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={chartData.distribution}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-                                        <XAxis dataKey="range" stroke={textColor} tick={{ fill: textColor }} />
-                                        <YAxis stroke={textColor} tick={{ fill: textColor }} />
-                                        <Tooltip
-                                            contentStyle={{
-                                                backgroundColor: bgColor,
-                                                border: `1px solid ${gridColor}`,
-                                                borderRadius: '8px',
-                                                color: textColor,
-                                            }}
-                                        />
-                                        <Bar dataKey="count" fill="#10b981" radius={[8, 8, 0, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        )}
+    return (
+        <Popover open={open} anchorRef={anchorRef} width={320}>
+            <div ref={panelRef}>
+                <div className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                    Metrics
+                </div>
 
-                        {/* Top 10 Bar Chart */}
-                        {selectedChart === 'top10' && (
-                            <div className="h-96">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={chartData.top10} layout="vertical">
-                                        <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-                                        <XAxis type="number" stroke={textColor} tick={{ fill: textColor }} />
-                                        <YAxis dataKey="name" type="category" width={120} stroke={textColor} tick={{ fill: textColor }} />
-                                        <Tooltip
-                                            contentStyle={{
-                                                backgroundColor: bgColor,
-                                                border: `1px solid ${gridColor}`,
-                                                borderRadius: '8px',
-                                                color: textColor,
-                                            }}
-                                            formatter={(value: number) => value.toFixed(2)}
-                                        />
-                                        <Bar dataKey="finalScore" fill="#10b981" radius={[0, 8, 8, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        )}
-
-                        {/* Score Comparison Line Chart */}
-                        {selectedChart === 'scores' && (
-                            <div className="h-96">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={chartData.scoreComparison}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-                                        <XAxis dataKey="name" stroke={textColor} tick={{ fill: textColor }} angle={-45} textAnchor="end" height={100} />
-                                        <YAxis stroke={textColor} tick={{ fill: textColor }} />
-                                        <Tooltip
-                                            contentStyle={{
-                                                backgroundColor: bgColor,
-                                                border: `1px solid ${gridColor}`,
-                                                borderRadius: '8px',
-                                                color: textColor,
-                                            }}
-                                        />
-                                        <Legend />
-                                        <Line type="monotone" dataKey="winRate" stroke="#3b82f6" strokeWidth={2} name="Win Rate %" />
-                                        <Line type="monotone" dataKey="roi" stroke="#8b5cf6" strokeWidth={2} name="ROI %" />
-                                        <Line type="monotone" dataKey="finalScore" stroke="#10b981" strokeWidth={2} name="Final Score" />
-                                    </LineChart>
-                                </ResponsiveContainer>
-                            </div>
-                        )}
-
-                        {/* Radar Chart */}
-                        {selectedChart === 'radar' && chartData.radarData.length > 0 && (
-                            <div className="h-96">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <RadarChart data={chartData.radarData}>
-                                        <PolarGrid stroke={gridColor} />
-                                        <PolarAngleAxis dataKey="metric" tick={{ fill: textColor }} />
-                                        <PolarRadiusAxis angle={90} domain={[0, 1]} tick={{ fill: textColor }} />
-                                        <Radar
-                                            name="Top Trader"
-                                            dataKey="value"
-                                            stroke="#10b981"
-                                            fill="#10b981"
-                                            fillOpacity={0.6}
-                                        />
-                                        <Tooltip
-                                            contentStyle={{
-                                                backgroundColor: bgColor,
-                                                border: `1px solid ${gridColor}`,
-                                                borderRadius: '8px',
-                                                color: textColor,
-                                            }}
-                                        />
-                                    </RadarChart>
-                                </ResponsiveContainer>
-                        </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Leaderboard Tabs */}
-                <div className={`${cardBg} rounded-lg p-4 border ${borderColor}`}>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                        {(['w_shrunk', 'roi_raw', 'roi_shrunk', 'pnl_shrunk', 'score_win_rate', 'score_roi', 'score_pnl', 'score_risk', 'final_score'] as LeaderboardType[]).map((tab) => (
+                <div className="space-y-2">
+                    {RANK_OPTIONS.map((opt) => {
+                        const selected = value === opt;
+                        return (
                             <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`px-4 py-2 rounded transition-colors text-sm font-medium ${
-                                    activeTab === tab
-                                        ? tab === 'final_score'
-                                            ? `${theme === 'dark' ? 'bg-yellow-600' : 'bg-yellow-500'} text-white font-bold`
-                                            : `${theme === 'dark' ? 'bg-purple-600' : 'bg-purple-500'} text-white`
-                                        : `${theme === 'dark' ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`
-                                }`}
+                                key={opt}
+                                type="button"
+                                onClick={() => onChange(opt)}
+                                className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left text-sm text-slate-800 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-800/60"
                             >
-                                {tab === 'w_shrunk' && 'W_shrunk'}
-                                {tab === 'roi_raw' && 'ROI Raw'}
-                                {tab === 'roi_shrunk' && 'ROI_shrunk'}
-                                {tab === 'pnl_shrunk' && 'PNL_shrunk'}
-                                {tab === 'score_win_rate' && 'Win Rate Score'}
-                                {tab === 'score_roi' && 'ROI Score'}
-                                {tab === 'score_pnl' && 'PnL Score'}
-                                {tab === 'score_risk' && 'Risk Score'}
-                                {tab === 'final_score' && 'Final Score'}
+                                <span className="relative inline-flex h-5 w-5 items-center justify-center">
+                                    {selected ? (
+                                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 dark:bg-blue-500">
+                                            <Check className="h-3.5 w-3.5 text-white" />
+                                        </span>
+                                    ) : (
+                                        <Circle className="h-5 w-5 text-slate-300 dark:text-slate-600" />
+                                    )}
+                                </span>
+                                <span className="font-medium">{opt}</span>
                             </button>
-                        ))}
+                        );
+                    })}
+                </div>
+
+                <div className="mt-4 flex items-center justify-between">
+                    <button
+                        type="button"
+                        onClick={() => onChange("Score")}
+                        className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                    >
+                        Select All
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={onApply}
+                        className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:shadow"
+                    >
+                        Apply
+                    </button>
+                </div>
+            </div>
+        </Popover>
+    );
+}
+
+function TagsMenu({
+    open,
+    anchorRef,
+    values,
+    onChange,
+    onApply,
+    onClose,
+}: {
+    open: boolean;
+    anchorRef: React.RefObject<HTMLDivElement>;
+    values: string[];
+    onChange: (v: string[]) => void;
+    onApply: () => void;
+    onClose: () => void;
+}) {
+    const panelRef = useRef<HTMLDivElement | null>(null);
+    useClickOutside(open, [panelRef as any, anchorRef as any], onClose);
+
+    const allOptions = useMemo(() => TAG_GROUPS.flatMap((g) => g.options), []);
+
+    const toggle = (tag: string) => {
+        if (values.includes(tag)) onChange(values.filter((t) => t !== tag));
+        else onChange([...values, tag]);
+    };
+
+    return (
+        <Popover open={open} anchorRef={anchorRef} width={360}>
+            <div ref={panelRef} className="max-h-[520px] overflow-auto">
+                <div className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                    Tags
+                </div>
+
+                <div className="space-y-4">
+                    {TAG_GROUPS.map((group) => (
+                        <div key={group.title}>
+                            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                {group.title}
+                            </div>
+
+                            <div className="space-y-1">
+                                {group.options.map((opt) => {
+                                    const selected = values.includes(opt);
+                                    return (
+                                        <button
+                                            key={opt}
+                                            type="button"
+                                            onClick={() => toggle(opt)}
+                                            className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left text-sm text-slate-800 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-800/60"
+                                        >
+                                            <span className="relative inline-flex h-5 w-5 items-center justify-center">
+                                                {selected ? (
+                                                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-blue-600 dark:bg-blue-500">
+                                                        <Check className="h-3.5 w-3.5 text-white" />
+                                                    </span>
+                                                ) : (
+                                                    <span className="h-5 w-5 rounded-md border border-slate-300 dark:border-slate-600" />
+                                                )}
+                                            </span>
+                                            <span className="font-medium">{opt}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="mt-4 flex items-center justify-between">
+                    <button
+                        type="button"
+                        onClick={() => onChange(allOptions)}
+                        className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                    >
+                        Select All
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={onApply}
+                        className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:shadow"
+                    >
+                        Apply
+                    </button>
+                </div>
+            </div>
+        </Popover>
+    );
+}
+
+// --------------------
+// Main
+// --------------------
+export default function LeaderboardViewAll() {
+    // Expected behavior question (quick): should dark mode persist across refresh (localStorage) or per-session only?
+    // Right now it's per-session only.
+    const [darkMode, setDarkMode] = useState(false);
+
+    const [category, setCategory] = useState("All Categories");
+    const [range, setRange] = useState<Range>("Last 30 days");
+    const [rankBy, setRankBy] = useState<RankBy>("Score");
+
+    const [rankMenuOpen, setRankMenuOpen] = useState(false);
+    const [rankDraft, setRankDraft] = useState<RankBy>("Score");
+    const rankAnchorRef = useRef<HTMLDivElement | null>(null);
+
+    const [rangeMenuOpen, setRangeMenuOpen] = useState(false);
+    const [rangeDraft, setRangeDraft] = useState<Range>("Last 30 days");
+    const rangeAnchorRef = useRef<HTMLDivElement | null>(null);
+
+    const [tagsMenuOpen, setTagsMenuOpen] = useState(false);
+    const [tagsDraft, setTagsDraft] = useState<string[]>([]);
+    const [activeTags, setActiveTags] = useState<string[]>([]);
+    const tagsAnchorRef = useRef<HTMLDivElement | null>(null);
+
+    const [query, setQuery] = useState("");
+    const [page, setPage] = useState(1);
+    const totalPages = 7;
+
+    const rows = useMemo(() => {
+        const filtered = demoRows.filter((r) =>
+            `${r.name} ${r.handle}`.toLowerCase().includes(query.trim().toLowerCase())
+        );
+
+        if (rankBy === "Score") return [...filtered].sort((a, b) => b.score - a.score);
+        if (rankBy === "Win Rate") return [...filtered].sort((a, b) => b.winRate - a.winRate);
+        if (rankBy === "ROI") return [...filtered].sort((a, b) => b.roi - a.roi);
+        if (rankBy === "PNL") return [...filtered].sort((a, b) => b.pnl - a.pnl);
+        if (rankBy === "Rewards") return [...filtered].sort((a, b) => b.reward - a.reward);
+        // Total Volume demo: keep stable
+        return filtered;
+    }, [query, rankBy]);
+
+    return (
+        <div className={darkMode ? "dark" : ""}>
+            <div className="min-h-screen bg-slate-50 p-6 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+                <div className="mx-auto max-w-6xl">
+                    {/* Header */}
+                    <div className="mb-6">
+                        <div className="flex items-center justify-between gap-4">
+                            <div>
+                                <h1 className="text-2xl font-semibold tracking-tight">Trader Leaderboard</h1>
+                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                    Top performing traders ranked by consistency and returns
+                                </p>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <div className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 md:flex">
+                                    <Search className="h-4 w-4 text-slate-400" />
+                                    <input
+                                        value={query}
+                                        onChange={(e) => setQuery(e.target.value)}
+                                        placeholder="Search trader…"
+                                        className="w-56 bg-transparent outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                                    />
+                                    {query ? (
+                                        <button
+                                            onClick={() => setQuery("")}
+                                            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                                            aria-label="Clear search"
+                                            type="button"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </button>
+                                    ) : null}
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setDarkMode((v) => !v)}
+                                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:shadow dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                                    aria-label="Toggle dark mode"
+                                >
+                                    {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                                    {darkMode ? "Light" : "Dark"}
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Current Leaderboard Table */}
-                    <div className="overflow-x-auto">
-                        <h3 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>
-                            {getLeaderboardTitle(activeTab)}
-                        </h3>
+                    {/* Filters */}
+                    <div className="mb-6 flex flex-wrap items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <DropdownLike label={category} onClick={() => setCategory("All Categories")} />
+
+                            {/* Time range */}
+                            <div ref={rangeAnchorRef} className="relative">
+                                <DropdownLike
+                                    label={range}
+                                    active={rangeMenuOpen}
+                                    onClick={() => {
+                                        setRangeDraft(range);
+                                        setRangeMenuOpen((v) => !v);
+                                    }}
+                                />
+                            </div>
+
+                            <RangeMenu
+                                open={rangeMenuOpen}
+                                anchorRef={rangeAnchorRef}
+                                value={rangeDraft}
+                                onChange={setRangeDraft}
+                                onApply={() => {
+                                    setRange(rangeDraft);
+                                    setRangeMenuOpen(false);
+                                }}
+                                onClose={() => setRangeMenuOpen(false)}
+                            />
+
+                            {/* Rank by */}
+                            <div ref={rankAnchorRef} className="relative">
+                                <DropdownLike
+                                    label={rankBy}
+                                    active={rankMenuOpen}
+                                    onClick={() => {
+                                        setRankDraft(rankBy);
+                                        setRankMenuOpen((v) => !v);
+                                    }}
+                                />
+                            </div>
+
+                            {/* Tags */}
+                            <div ref={tagsAnchorRef} className="relative">
+                                <DropdownLike
+                                    label={activeTags.length ? `Tags (${activeTags.length})` : "Tags"}
+                                    active={tagsMenuOpen}
+                                    onClick={() => {
+                                        setTagsDraft(activeTags);
+                                        setTagsMenuOpen((v) => !v);
+                                    }}
+                                />
+                            </div>
+
+                            <RankByMenu
+                                open={rankMenuOpen}
+                                anchorRef={rankAnchorRef}
+                                value={rankDraft}
+                                onChange={setRankDraft}
+                                onApply={() => {
+                                    setRankBy(rankDraft);
+                                    setRankMenuOpen(false);
+                                }}
+                                onClose={() => setRankMenuOpen(false)}
+                            />
+
+                            <TagsMenu
+                                open={tagsMenuOpen}
+                                anchorRef={tagsAnchorRef}
+                                values={tagsDraft}
+                                onChange={setTagsDraft}
+                                onApply={() => {
+                                    setActiveTags(tagsDraft);
+                                    setTagsMenuOpen(false);
+                                }}
+                                onClose={() => setTagsMenuOpen(false)}
+                            />
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <button
+                                className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:shadow"
+                                onClick={() => {
+                                    // Demo: menus apply inside their own Apply button
+                                    setRankMenuOpen(false);
+                                    setRangeMenuOpen(false);
+                                    setTagsMenuOpen(false);
+                                }}
+                                type="button"
+                            >
+                                Apply Filters
+                            </button>
+                            <button
+                                className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:shadow dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                                onClick={() => {
+                                    setCategory("All Categories");
+                                    setRange("Last 30 days");
+                                    setRangeDraft("Last 30 days");
+                                    setRankBy("Score");
+                                    setRankDraft("Score");
+                                    setActiveTags([]);
+                                    setTagsDraft([]);
+                                    setQuery("");
+
+                                    setRankMenuOpen(false);
+                                    setRangeMenuOpen(false);
+                                    setTagsMenuOpen(false);
+                                }}
+                                type="button"
+                            >
+                                Clear Filters
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Table */}
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
                         <div className="overflow-x-auto">
-                            <table className="w-full border-collapse min-w-full">
+                            <table className="w-full min-w-[1080px] border-collapse">
                                 <thead>
-                                    <tr className={theme === 'dark' ? 'bg-slate-900' : 'bg-slate-100'}>
-                                        <th className={`border ${borderColor} px-3 py-2 text-left text-xs font-semibold ${textPrimary}`}>Rank</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-left text-xs font-semibold ${textPrimary}`}>Wallet</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>Total PnL</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>ROI</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>Win Rate</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>Trades</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>W_shrunk</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>ROI_shrunk</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>PNL_shrunk</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>W_Score</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>ROI_Score</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>PNL_Score</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>Risk_Score</th>
-                                        <th className={`border ${borderColor} px-3 py-2 text-right text-xs font-semibold ${textPrimary}`}>Final Score</th>
+                                    <tr className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                                        {[
+                                            "Rank",
+                                            "Trader",
+                                            "Score",
+                                            "Win Rate",
+                                            "Total Volume",
+                                            "ROI",
+                                            "PNL",
+                                            "Tags",
+                                            "Rewards",
+                                        ].map((h) => (
+                                            <th
+                                                key={h}
+                                                className="px-6 py-4 text-left text-sm font-semibold text-slate-600 dark:text-slate-300"
+                                            >
+                                                {h}
+                                            </th>
+                                        ))}
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {currentLeaderboard.length > 0 ? (
-                                        currentLeaderboard.map((entry, index) => {
-                                            const rank = entry.rank || index + 1;
-                                            const rankIcon = getRankIcon(rank);
-                                            const traderName = entry.name || entry.pseudonym || 'Anonymous';
-                                            const traderInitial = traderName.charAt(0).toUpperCase();
-                                            
-                                            return (
-                                                <tr 
-                                                    key={entry.wallet_address || index} 
-                                                    className={`${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-slate-50'} transition-colors border-b ${borderColor}`}
-                                                >
-                                                    <td className={`px-3 py-2 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>
-                                                        <div className="flex items-center gap-1">
-                                                            {rankIcon && <span className="text-lg">{rankIcon}</span>}
-                                                            <span className="font-semibold text-sm">{rank}</span>
+                                    {rows.map((r) => (
+                                        <tr
+                                            key={r.rank}
+                                            className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/60 dark:border-slate-800/60 dark:hover:bg-slate-800/40"
+                                        >
+                                            <td className="px-6 py-5 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                                {r.rank}
+                                            </td>
+
+                                            <td className="px-6 py-5">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-9 w-9 rounded-full bg-slate-200 dark:bg-slate-700" />
+                                                    <div>
+                                                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                                            {r.name}
                                                         </div>
-                                                    </td>
-                                                    <td className={`px-3 py-2 font-mono text-xs ${textPrimary}`}>
-                                                        <div className="flex items-center gap-1">
-                                                            <span className="truncate max-w-[120px]">{entry.wallet_address || 'N/A'}</span>
-                                                            <button
-                                                                onClick={() => entry.wallet_address && copyWallet(entry.wallet_address)}
-                                                                className={`p-0.5 rounded hover:${theme === 'dark' ? 'bg-slate-700' : 'bg-slate-200'} transition flex-shrink-0`}
-                                                                title="Copy wallet address"
-                                                            >
-                                                                {copiedWallet === entry.wallet_address ? (
-                                                                    <Check className="w-3 h-3 text-green-400" />
-                                                                ) : (
-                                                                    <Copy className="w-3 h-3" />
-                                                                )}
-                                                            </button>
+                                                        <div className="text-sm text-slate-500 dark:text-slate-400">
+                                                            {r.handle}
                                                         </div>
-                                                    </td>
-                                                    <td className={`px-3 py-2 text-right text-xs font-semibold ${
-                                                        entry.total_pnl >= 0 
-                                                            ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') 
-                                                            : (theme === 'dark' ? 'text-red-400' : 'text-red-600')
-                                                    }`}>
-                                                        {formatCurrency(entry.total_pnl)}
-                                                    </td>
-                                                    <td className={`px-3 py-2 text-right text-xs ${
-                                                        entry.roi >= 0 
-                                                            ? (theme === 'dark' ? 'text-green-400' : 'text-green-600') 
-                                                            : (theme === 'dark' ? 'text-red-400' : 'text-red-600')
-                                                    }`}>
-                                                        {formatPercent(entry.roi)}
-                                                    </td>
-                                                    <td className={`px-3 py-2 text-right text-xs ${textPrimary}`}>
-                                                        {formatPercent(entry.win_rate || 0)}
-                                                    </td>
-                                                    <td className={`px-3 py-2 text-right text-xs ${textPrimary}`}>
-                                                        {entry.total_trades || 0}
-                                                    </td>
-                                                    <td className={`px-3 py-2 text-right text-xs font-mono ${textPrimary}`}>
-                                                        {entry.W_shrunk !== undefined && entry.W_shrunk !== null ? entry.W_shrunk.toFixed(6) : 'N/A'}
-                                                    </td>
-                                                    <td className={`px-3 py-2 text-right text-xs font-mono ${textPrimary}`}>
-                                                        {entry.roi_shrunk !== undefined && entry.roi_shrunk !== null ? entry.roi_shrunk.toFixed(6) : 'N/A'}
-                                                    </td>
-                                                    <td className={`px-3 py-2 text-right text-xs font-mono ${textPrimary}`}>
-                                                        {entry.pnl_shrunk !== undefined && entry.pnl_shrunk !== null ? entry.pnl_shrunk.toFixed(6) : 'N/A'}
-                                                    </td>
-                                                    <td className={`px-3 py-2 text-right text-xs ${textPrimary}`}>
-                                                        {entry.score_win_rate?.toFixed(4) || '0.0000'}
-                                                    </td>
-                                                    <td className={`px-3 py-2 text-right text-xs ${textPrimary}`}>
-                                                        {entry.score_roi?.toFixed(4) || '0.0000'}
-                                                    </td>
-                                                    <td className={`px-3 py-2 text-right text-xs ${textPrimary}`}>
-                                                        {entry.score_pnl?.toFixed(4) || '0.0000'}
-                                                    </td>
-                                                    <td className={`px-3 py-2 text-right text-xs ${textPrimary}`}>
-                                                        {entry.score_risk?.toFixed(4) || '0.0000'}
-                                                    </td>
-                                                    <td className={`px-3 py-2 text-right text-xs font-bold ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>
-                                                        {entry.final_score?.toFixed(2) || '0.00'}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={14} className={`px-4 py-8 text-center ${textSecondary}`}>
-                                                No data available for this leaderboard
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <td className="px-6 py-5">
+                                                <Pill value={r.score.toFixed(1)} />
+                                            </td>
+
+                                            <td className="px-6 py-5 text-sm text-slate-700 dark:text-slate-200">
+                                                {r.winRate.toFixed(1)}%
+                                            </td>
+                                            <td className="px-6 py-5 text-sm text-slate-700 dark:text-slate-200">
+                                                {r.volume}
+                                            </td>
+
+                                            <td className="px-6 py-5 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                                                +{r.roi.toFixed(1)}%
+                                            </td>
+
+                                            <td className="px-6 py-5 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                                                {formatMoney(r.pnl)}
+                                            </td>
+
+                                            <td className="px-6 py-5">
+                                                <TagPill label={r.rank <= 3 ? "Mega Whale" : "Whale"} />
+                                            </td>
+
+                                            <td className="px-6 py-5">
+                                                <RewardPill amount={r.reward} />
                                             </td>
                                         </tr>
-                                    )}
+                                    ))}
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Pagination */}
+                        <div className="flex items-center justify-center gap-4 border-t border-slate-200 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-900">
+                            <button
+                                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-slate-800"
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                aria-label="Previous page"
+                                type="button"
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                            </button>
+
+                            <button
+                                className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm"
+                                type="button"
+                            >
+                                {page}
+                            </button>
+                            <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+                                {page} / {totalPages}
+                            </span>
+
+                            <button
+                                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-slate-800"
+                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                disabled={page === totalPages}
+                                aria-label="Next page"
+                                type="button"
+                            >
+                                <ArrowRight className="h-4 w-4" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Mobile search */}
+                    <div className="mt-4 md:hidden">
+                        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                            <Search className="h-4 w-4 text-slate-400" />
+                            <input
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                placeholder="Search trader…"
+                                className="w-full bg-transparent outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                            />
+                            {query ? (
+                                <button
+                                    onClick={() => setQuery("")}
+                                    className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                                    aria-label="Clear search"
+                                    type="button"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            ) : null}
+                        </div>
+                    </div>
+
+                    <div className="mt-6 text-xs text-slate-500 dark:text-slate-400">
+                        Tip: Use <span className="font-semibold">Rank by</span>, <span className="font-semibold">Tags</span>, and
+                        <span className="font-semibold"> Time range</span> popovers.
                     </div>
                 </div>
             </div>
         </div>
     );
-};
-
-export default LeaderboardViewAll;
+}

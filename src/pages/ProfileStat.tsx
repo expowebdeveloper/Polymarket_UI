@@ -3,7 +3,7 @@ import { Search, Wallet, TrendingUp, TrendingDown, Trophy, Fish, Flame, ChevronD
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { BarChart, Bar, Cell, PieChart, Pie, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { useLiveDashboard } from '../hooks/useLiveDashboard';
+import { useProfileStat } from '../hooks/useProfileStat';
 import { useTradeFilter, TradeFilter } from '../hooks/useTradeFilter';
 import { resolveWalletOrUser, fetchUserLeaderboardData } from '../services/api';
 import { getVolumeRank } from '../utils/rankUtils';
@@ -86,7 +86,7 @@ const getBadgeInfo = (score: number) => {
     };
 };
 
-export function LiveDashboard() {
+export function ProfileStat() {
     const [walletInput, setWalletInput] = useState('');
     const [activeWallet, setActiveWallet] = useState('');
     const [userProfile, setUserProfile] = useState<UserLeaderboardData | null>(null);
@@ -112,7 +112,7 @@ export function LiveDashboard() {
         userPnL,
         portfolioValue,
         refresh
-    } = useLiveDashboard(activeWallet);
+    } = useProfileStat(activeWallet);
 
     // Trade filtering with caching
     const {

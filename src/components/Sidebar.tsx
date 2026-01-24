@@ -30,7 +30,7 @@ const navItems = [
     { name: "Live Markets", href: "/markets/live", icon: ScatterChart },
     { name: "Traders", href: "/traders", icon: User },
     { name: "Wallet Dashboard", href: "/wallet-dashboard", icon: Search },
-    { name: "Live Dashboard (API)", href: "/live-dashboard", icon: LayoutDashboard },
+    { name: "Profile Stat", href: "/profile-stat", icon: LayoutDashboard },
     // { name: "DB Wallet Dashboard", href: "/db-wallet-dashboard", icon: Database },
     { name: "Whale Tracker", href: "/whale-tracker", icon: Layers },
     { name: "Reports", href: "/reports", icon: FileText },
