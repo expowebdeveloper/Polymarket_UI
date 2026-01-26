@@ -10,96 +10,39 @@ import {
     Moon,
     Circle,
     Check,
+    Loader2,
 } from "lucide-react";
+import {
+    fetchDailyVolumeLeaderboard,
+    fetchWeeklyVolumeLeaderboard,
+    fetchMonthlyVolumeLeaderboard,
+    fetchLeaderboardEntries
+} from "../services/api";
+import type { LeaderboardEntry } from "../types/api";
 
 // --------------------
-// Demo data
+// Types
 // --------------------
-const demoRows = [
-    {
-        rank: 1,
-        name: "ImJustKen",
-        handle: "@Domahh",
-        score: 98.7,
-        winRate: 94.2,
-        volume: "$2.4M",
-        roi: 247.3,
-        pnl: 182_450,
-        reward: 60,
-    },
-    {
-        rank: 2,
-        name: "cigarettes",
-        handle: "@friendlyping",
-        score: 98.2,
-        winRate: 91.8,
-        volume: "$1.6M",
-        roi: 189.6,
-        pnl: 143_210,
-        reward: 55,
-    },
-    {
-        rank: 3,
-        name: "risk-manager",
-        handle: "@dragonfly",
-        score: 94.1,
-        winRate: 88.7,
-        volume: "$1.5M",
-        roi: 156.4,
-        pnl: 121_890,
-        reward: 50,
-    },
-    {
-        rank: 4,
-        name: "interstellaar",
-        handle: "@interstellaar",
-        score: 98.8,
-        winRate: 86.3,
-        volume: "$1.2M",
-        roi: 142.1,
-        pnl: 98_340,
-        reward: 45,
-    },
-    {
-        rank: 5,
-        name: "TheGuru",
-        handle: "@theguru",
-        score: 86.3,
-        winRate: 83.1,
-        volume: "$980K",
-        roi: 128.9,
-        pnl: 74_520,
-        reward: 40,
-    },
-    {
-        rank: 6,
-        name: "debased",
-        handle: "@debased_PM",
-        score: 87.1,
-        winRate: 81.6,
-        volume: "$847K",
-        roi: 115.7,
-        pnl: 61_430,
-        reward: 35,
-    },
-    {
-        rank: 7,
-        name: "InfiniteCrypt0",
-        handle: "@InfiniteCrypt0",
-        score: 82.4,
-        winRate: 77.2,
-        volume: "$732K",
-        roi: 94.8,
-        pnl: 48_960,
-        reward: 30,
-    },
-];
-
 type RankBy = "Score" | "Win Rate" | "Total Volume" | "ROI" | "PNL" | "Rewards";
-type Range = "Last 7 days" | "Last 30 days" | "All time";
+type Range = "Last 7 days" | "Last 30 days" | "All time" | "Last 24h";
 
-const RANGE_OPTIONS: Range[] = ["Last 7 days", "Last 30 days", "All time"];
-const RANK_OPTIONS: RankBy[] = ["Win Rate", "ROI", "Total Volume", "PNL", "Score", "Rewards"];
+interface TableRow {
+    rank: number;
+    name: string;
+    handle: string;
+    score: number;
+    winRate: number;
+    volume: string;
+    roi: number;
+    pnl: number;
+    reward: number;
+    profileImage?: string;
+}
+
+
+
+const RANGE_OPTIONS: Range[] = ["Last 24h", "Last 7 days", "Last 30 days", "All time"];
+const RANK_OPTIONS: RankBy[] = ["Win Rate", "ROI", "Total Volume", "PNL", "Score"]; // Removed Rewards as not yet supported in DB sort
 
 const TAG_GROUPS: { title: string; options: string[] }[] = [
     {
@@ -138,13 +81,12 @@ const TAG_GROUPS: { title: string; options: string[] }[] = [
 function formatMoney(n: number) {
     const sign = n >= 0 ? "+" : "-";
     const abs = Math.abs(n);
+    if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
+    if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1)}K`;
     return `${sign}$${abs.toLocaleString("en-US")}`;
 }
 
-// Basic runtime "tests" (safe in browser). They ensure helpers behave as expected.
-// If you want, we can convert these to proper unit tests in your repo later.
-console.assert(formatMoney(1234) === "+$1,234", "formatMoney positive failed");
-console.assert(formatMoney(-9000) === "-$9,000", "formatMoney negative failed");
+
 
 // --------------------
 // UI atoms
@@ -520,7 +462,7 @@ export default function LeaderboardViewAll() {
     const [darkMode, setDarkMode] = useState(false);
 
     const [category, setCategory] = useState("All Categories");
-    const [range, setRange] = useState<Range>("Last 30 days");
+    const [range, setRange] = useState<Range>("All time");
     const [rankBy, setRankBy] = useState<RankBy>("Score");
 
     const [rankMenuOpen, setRankMenuOpen] = useState(false);
@@ -528,7 +470,7 @@ export default function LeaderboardViewAll() {
     const rankAnchorRef = useRef<HTMLDivElement | null>(null);
 
     const [rangeMenuOpen, setRangeMenuOpen] = useState(false);
-    const [rangeDraft, setRangeDraft] = useState<Range>("Last 30 days");
+    const [rangeDraft, setRangeDraft] = useState<Range>("All time");
     const rangeAnchorRef = useRef<HTMLDivElement | null>(null);
 
     const [tagsMenuOpen, setTagsMenuOpen] = useState(false);
@@ -537,22 +479,76 @@ export default function LeaderboardViewAll() {
     const tagsAnchorRef = useRef<HTMLDivElement | null>(null);
 
     const [query, setQuery] = useState("");
+    const [rows, setRows] = useState<TableRow[]>([]);
+    const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(1);
-    const totalPages = 7;
+    const [totalPages, setTotalPages] = useState(1);
+    const LIMIT = 50;
 
-    const rows = useMemo(() => {
-        const filtered = demoRows.filter((r) =>
+    // Fetch data from API
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                let orderBy: 'PNL' | 'VOL' | 'ROI' | 'WIN_RATE' | 'SCORE' = 'VOL';
+                switch (rankBy) {
+                    case "Score": orderBy = 'SCORE'; break;
+                    case "Win Rate": orderBy = 'WIN_RATE'; break;
+                    case "ROI": orderBy = 'ROI'; break;
+                    case "PNL": orderBy = 'PNL'; break;
+                    case "Total Volume": orderBy = 'VOL'; break;
+                    default: orderBy = 'VOL';
+                }
+
+                const offset = (page - 1) * LIMIT;
+                let response;
+
+                if (range === "Last 24h") {
+                    response = await fetchDailyVolumeLeaderboard(LIMIT, offset, orderBy);
+                } else if (range === "Last 7 days") {
+                    response = await fetchWeeklyVolumeLeaderboard(LIMIT, offset, orderBy);
+                } else if (range === "Last 30 days") {
+                    response = await fetchMonthlyVolumeLeaderboard(LIMIT, offset, orderBy);
+                } else {
+                    // "All time" uses valid calculated entries from leaderboard_entries table
+                    response = await fetchLeaderboardEntries(LIMIT, offset, orderBy);
+                }
+
+                // Transform API response to TableRow
+                const transformedRows: TableRow[] = response.entries.map((entry: LeaderboardEntry) => ({
+                    rank: entry.rank,
+                    name: entry.name || "Unknown",
+                    handle: entry.pseudonym ? `@${entry.pseudonym}` : (entry.wallet_address ? `${entry.wallet_address.slice(0, 6)}...` : "—"),
+                    score: entry.final_score || 0,
+                    winRate: entry.win_rate || 0,
+                    volume: formatMoney(entry.total_stakes || 0).replace('+', ''), // Remove + sign for volume
+                    roi: entry.roi || 0,
+                    pnl: entry.total_pnl || 0,
+                    reward: 0, // Placeholder
+                    profileImage: entry.profile_image
+                }));
+
+                setRows(transformedRows);
+                // Calculate total pages (approximate if count not returned, but response has count)
+                setTotalPages(Math.ceil(response.count / LIMIT) || 1);
+
+            } catch (error) {
+                console.error("Failed to fetch leaderboard:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [range, rankBy, page]);
+
+    // Local filter for search (since API doesn't support search yet easily on these endpoints without full scan)
+    const displayRows = useMemo(() => {
+        if (!query) return rows;
+        return rows.filter((r) =>
             `${r.name} ${r.handle}`.toLowerCase().includes(query.trim().toLowerCase())
         );
-
-        if (rankBy === "Score") return [...filtered].sort((a, b) => b.score - a.score);
-        if (rankBy === "Win Rate") return [...filtered].sort((a, b) => b.winRate - a.winRate);
-        if (rankBy === "ROI") return [...filtered].sort((a, b) => b.roi - a.roi);
-        if (rankBy === "PNL") return [...filtered].sort((a, b) => b.pnl - a.pnl);
-        if (rankBy === "Rewards") return [...filtered].sort((a, b) => b.reward - a.reward);
-        // Total Volume demo: keep stable
-        return filtered;
-    }, [query, rankBy]);
+    }, [rows, query]);
 
     return (
         <div className={darkMode ? "dark" : ""}>
@@ -743,57 +739,77 @@ export default function LeaderboardViewAll() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {rows.map((r) => (
-                                        <tr
-                                            key={r.rank}
-                                            className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/60 dark:border-slate-800/60 dark:hover:bg-slate-800/40"
-                                        >
-                                            <td className="px-6 py-5 text-sm font-semibold text-slate-800 dark:text-slate-100">
-                                                {r.rank}
-                                            </td>
-
-                                            <td className="px-6 py-5">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-9 w-9 rounded-full bg-slate-200 dark:bg-slate-700" />
-                                                    <div>
-                                                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                                            {r.name}
-                                                        </div>
-                                                        <div className="text-sm text-slate-500 dark:text-slate-400">
-                                                            {r.handle}
-                                                        </div>
-                                                    </div>
+                                    {loading ? (
+                                        <tr>
+                                            <td colSpan={9} className="py-8 text-center text-slate-500">
+                                                <div className="flex justify-center items-center gap-2">
+                                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                                    Loading leaderboard...
                                                 </div>
                                             </td>
-
-                                            <td className="px-6 py-5">
-                                                <Pill value={r.score.toFixed(1)} />
-                                            </td>
-
-                                            <td className="px-6 py-5 text-sm text-slate-700 dark:text-slate-200">
-                                                {r.winRate.toFixed(1)}%
-                                            </td>
-                                            <td className="px-6 py-5 text-sm text-slate-700 dark:text-slate-200">
-                                                {r.volume}
-                                            </td>
-
-                                            <td className="px-6 py-5 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                                                +{r.roi.toFixed(1)}%
-                                            </td>
-
-                                            <td className="px-6 py-5 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                                                {formatMoney(r.pnl)}
-                                            </td>
-
-                                            <td className="px-6 py-5">
-                                                <TagPill label={r.rank <= 3 ? "Mega Whale" : "Whale"} />
-                                            </td>
-
-                                            <td className="px-6 py-5">
-                                                <RewardPill amount={r.reward} />
+                                        </tr>
+                                    ) : displayRows.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={9} className="py-8 text-center text-slate-500">
+                                                No traders found
                                             </td>
                                         </tr>
-                                    ))}
+                                    ) : (
+                                        displayRows.map((r) => (
+                                            <tr
+                                                key={r.rank}
+                                                className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/60 dark:border-slate-800/60 dark:hover:bg-slate-800/40"
+                                            >
+                                                <td className="px-6 py-5 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                                    {r.rank}
+                                                </td>
+
+                                                <td className="px-6 py-5">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="h-9 w-9 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                                                            {r.profileImage ? (
+                                                                <img src={r.profileImage} alt={r.name} className="h-full w-full object-cover" />
+                                                            ) : null}
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                                                {r.name}
+                                                            </div>
+                                                            <div className="text-sm text-slate-500 dark:text-slate-400">
+                                                                {r.handle}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                <td className="px-6 py-5">
+                                                    <Pill value={r.score.toFixed(1)} />
+                                                </td>
+
+                                                <td className="px-6 py-5 text-sm text-slate-700 dark:text-slate-200">
+                                                    {r.winRate.toFixed(1)}%
+                                                </td>
+                                                <td className="px-6 py-5 text-sm text-slate-700 dark:text-slate-200">
+                                                    {r.volume}
+                                                </td>
+
+                                                <td className="px-6 py-5 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                                                    +{r.roi.toFixed(1)}%
+                                                </td>
+
+                                                <td className="px-6 py-5 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                                                    {formatMoney(r.pnl)}
+                                                </td>
+
+                                                <td className="px-6 py-5">
+                                                    <TagPill label={r.rank <= 3 ? "Mega Whale" : "Whale"} />
+                                                </td>
+
+                                                <td className="px-6 py-5">
+                                                    <RewardPill amount={r.reward} />
+                                                </td>
+                                            </tr>
+                                        )))}
                                 </tbody>
                             </table>
                         </div>

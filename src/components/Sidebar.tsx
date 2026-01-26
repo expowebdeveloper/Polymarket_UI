@@ -22,7 +22,7 @@ import { useTheme } from '../contexts/ThemeContext';
 const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Global Leaderboard", href: "/leaderboard", icon: Trophy },
-    // { name: "DB Leaderboard", href: "/db-leaderboard", icon: Trophy },
+    { name: "DB Leaderboard", href: "/db-leaderboard", icon: Trophy },
     { name: "Live Leaderboard", href: "/leaderboard/live", icon: ScatterChart },
     { name: "All Leaderboards", href: "/leaderboard/all", icon: Trophy },
     { name: "View All Leaderboards", href: "/leaderboard/view-all", icon: Trophy },

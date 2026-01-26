@@ -323,7 +323,7 @@ export async function fetchBiggestWinners(
 export async function fetchDailyVolumeLeaderboard(
     limit: number = 50,
     offset: number = 0,
-    orderBy: 'PNL' | 'VOL' = 'VOL'
+    orderBy: 'PNL' | 'VOL' | 'ROI' | 'WIN_RATE' | 'SCORE' = 'VOL'
 ): Promise<LeaderboardResponse> {
     const endpoint = API_ENDPOINTS.leaderboard.dailyVolume;
     const url = `${endpoint}?limit=${limit}&offset=${offset}&order_by=${orderBy}`;
@@ -339,7 +339,7 @@ export async function fetchDailyVolumeLeaderboard(
 export async function fetchWeeklyVolumeLeaderboard(
     limit: number = 50,
     offset: number = 0,
-    orderBy: 'PNL' | 'VOL' = 'VOL'
+    orderBy: 'PNL' | 'VOL' | 'ROI' | 'WIN_RATE' | 'SCORE' = 'VOL'
 ): Promise<LeaderboardResponse> {
     const endpoint = API_ENDPOINTS.leaderboard.weeklyVolume;
     const url = `${endpoint}?limit=${limit}&offset=${offset}&order_by=${orderBy}`;
@@ -355,12 +355,28 @@ export async function fetchWeeklyVolumeLeaderboard(
 export async function fetchMonthlyVolumeLeaderboard(
     limit: number = 50,
     offset: number = 0,
-    orderBy: 'PNL' | 'VOL' = 'VOL'
+    orderBy: 'PNL' | 'VOL' | 'ROI' | 'WIN_RATE' | 'SCORE' = 'VOL'
 ): Promise<LeaderboardResponse> {
     const endpoint = API_ENDPOINTS.leaderboard.monthlyVolume;
     const url = `${endpoint}?limit=${limit}&offset=${offset}&order_by=${orderBy}`;
     return fetchApi<LeaderboardResponse>(url, 30000, 'GET');
 }
+
+/**
+ * Fetch leaderboard entries from database (calculated scores)
+ * @param limit - Maximum number of entries
+ * @param offset - Offset for pagination
+ * @param orderBy - Order by metric ('SCORE', 'PNL', etc.)
+ */
+export async function fetchLeaderboardEntries(
+    limit: number = 50,
+    offset: number = 0,
+    orderBy: 'PNL' | 'VOL' | 'ROI' | 'WIN_RATE' | 'SCORE' = 'SCORE'
+): Promise<LeaderboardResponse> {
+    const url = `/leaderboard/entries?limit=${limit}&offset=${offset}&order_by=${orderBy}`;
+    return fetchApi<LeaderboardResponse>(url, 30000, 'GET');
+}
+
 
 /**
  * Fetch markets from the API

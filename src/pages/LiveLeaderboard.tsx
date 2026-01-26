@@ -555,7 +555,7 @@ export default function LiveLeaderboard() {
         if (activeTags.length > 0) {
             filtered = filtered.filter((r) => {
                 const volumeTag = getVolumeTag(r.total_stakes || 0);
-                const scoreTag = getScoreTag((r.final_score || 0) * 100);
+                const scoreTag = getScoreTag(r.final_score || 0);
                 return activeTags.includes(volumeTag) || activeTags.includes(scoreTag);
             });
         }
@@ -773,7 +773,7 @@ export default function LiveLeaderboard() {
                                     <tbody>
                                         {paginatedRows.map((r) => {
                                             const volumeTag = getVolumeTag(r.total_stakes || 0);
-                                            const displayScore = (r.final_score || 0) * 100;
+                                            const displayScore = r.final_score || 0;
                                             const rewardAmount = Math.floor(Math.random() * 50) + 10; // Placeholder
 
                                             return (
@@ -812,14 +812,14 @@ export default function LiveLeaderboard() {
                                                     </td>
 
                                                     <td className="px-6 py-5 text-sm text-slate-700 dark:text-slate-200">
-                                                        {((r.win_rate || 0) * 100).toFixed(1)}%
+                                                        {(r.win_rate || 0).toFixed(1)}%
                                                     </td>
                                                     <td className="px-6 py-5 text-sm text-slate-700 dark:text-slate-200">
                                                         {formatVolume(r.total_stakes || 0)}
                                                     </td>
 
                                                     <td className="px-6 py-5 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                                                        +{((r.roi || 0) * 100).toFixed(1)}%
+                                                        +{(r.roi || 0).toFixed(1)}%
                                                     </td>
 
                                                     <td className="px-6 py-5 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
