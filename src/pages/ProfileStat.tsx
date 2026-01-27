@@ -632,9 +632,9 @@ export function ProfileStat() {
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 mt-6">
                             <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
-                                <p className="text-xs text-slate-300 mb-0.5">Balance</p>
+                                <p className="text-xs text-slate-300 mb-0.5">Active Positions Value</p>
                                 <p className="text-base font-bold text-emerald-300">{formatCurrency(balance)}</p>
-                                <p className="text-[10px] text-slate-400 mt-0.5">Positions + Cash</p>
+                                <p className="text-[10px] text-slate-400 mt-0.5">Current Value</p>
                             </div>
                             <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
                                 <p className="text-xs text-slate-300 mb-0.5">Total PNL</p>
@@ -646,11 +646,11 @@ export function ProfileStat() {
                             </div>
                             <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
                                 <p className="text-xs text-slate-300 mb-0.5">Predictions</p>
-                                <p className="text-base font-bold text-emerald-300">{totalPredictions}</p>
+                                <p className="text-base font-bold text-emerald-300">{metrics.total_trades}</p>
                             </div>
                             <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
                                 <p className="text-xs text-slate-300 mb-0.5">Total Trades</p>
-                                <p className="text-base font-bold text-emerald-300">{metrics.total_trades}</p>
+                                <p className="text-base font-bold text-emerald-300">{totalPredictions}</p>
                             </div>
                             <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
                                 <p className="text-xs text-slate-300 mb-0.5">Biggest Win</p>
@@ -801,16 +801,16 @@ export function ProfileStat() {
                                     <p className="text-lg font-bold text-white">{metrics.closed_positions || 0}</p>
                                 </div>
                                 <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
-                                    <p className="text-xs text-slate-400 uppercase mb-1">Confidence Score</p>
+                                    <p className="text-xs text-slate-400 uppercase mb-1">All-time PnL Rank</p>
                                     <p className="text-lg font-bold text-emerald-400">
-                                        {metrics.confidence_score ?
-                                            (metrics.confidence_score <= 1 ? `${(metrics.confidence_score * 100).toFixed(1)}%` : `${metrics.confidence_score.toFixed(1)}%`)
-                                            : 'N/A'}
+                                        {metrics.pnl_rank ? `#${metrics.pnl_rank}` : 'N/A'}
                                     </p>
                                 </div>
                                 <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
-                                    <p className="text-xs text-slate-400 uppercase mb-1">Risk Score</p>
-                                    <p className="text-lg font-bold text-white">{(metrics.score_risk || metrics.risk_score || 0).toFixed(2)}</p>
+                                    <p className="text-xs text-slate-400 uppercase mb-1">All-time Vol Rank</p>
+                                    <p className="text-lg font-bold text-white">
+                                        {metrics.volume_rank ? `#${metrics.volume_rank}` : 'N/A'}
+                                    </p>
                                 </div>
                                 <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
                                     <p className="text-xs text-slate-400 uppercase mb-1">Total Buy Stake</p>

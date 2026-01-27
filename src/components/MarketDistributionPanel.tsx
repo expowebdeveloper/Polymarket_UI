@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 
 type Metric = "roi" | "win" | "risk";
-type RightMetric = "volume" | "pnl";
+type RightMetric = "volume" | "pnl" | "winrate";
 
 type MarketDatum = {
   key: string;
@@ -306,7 +306,9 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
       .map((m) => ({
         key: m!.key,
         label: m!.label,
-        value: rightMetric === "volume" ? m!.volume : m!.pnl,
+        key: m!.key,
+        label: m!.label,
+        value: rightMetric === "volume" ? m!.volume : rightMetric === "pnl" ? m!.pnl : m!.winRatePct,
       }));
 
     // If no data, return empty array
@@ -401,7 +403,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
             <div>
               <p className="text-white font-semibold">Total Market Volume/PNL by Category</p>
               <p className="text-xs text-slate-400 mt-1">
-                {rightMetric === "volume" ? "Total Volume by Category" : "Total PNL by Category"}
+                {rightMetric === "volume" ? "Total Volume by Category" : rightMetric === "pnl" ? "Total PNL by Category" : "Win Rate % by Category"}
               </p>
             </div>
 
@@ -410,7 +412,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
                 active={rightMetric === "volume"}
                 onClick={() => {
                   setRightMetric("volume");
-                  setSeriesSeed((s) => s + 1); // randomize
+                  setSeriesSeed((s) => s + 1);
                 }}
               >
                 Volume
@@ -419,10 +421,19 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
                 active={rightMetric === "pnl"}
                 onClick={() => {
                   setRightMetric("pnl");
-                  setSeriesSeed((s) => s + 1); // randomize
+                  setSeriesSeed((s) => s + 1);
                 }}
               >
                 PNL
+              </MetricPill>
+              <MetricPill
+                active={rightMetric === "winrate"}
+                onClick={() => {
+                  setRightMetric("winrate");
+                  setSeriesSeed((s) => s + 1);
+                }}
+              >
+                Win Rate
               </MetricPill>
             </div>
           </div>
@@ -431,13 +442,14 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
             <VolumeBarChart
               data={rightSeries}
               height={280}
-              ariaLabel={rightMetric === "volume" ? "Total Volume by Category" : "Total PNL by Category"}
-              valueFormatter={formatMoneyCompact}
+              ariaLabel={rightMetric}
+              valueFormatter={rightMetric === "winrate" ? (v) => `${v.toFixed(1)}%` : formatMoneyCompact}
+              axisFormatter={rightMetric === "winrate" ? (v) => `${Math.round(v)}%` : formatAxisMoney}
             />
           </div>
 
           <div className="mt-4">
-            <LegendList items={rightSeries} valueFormatter={formatMoneyCompact} />
+            <LegendList items={rightSeries} valueFormatter={rightMetric === "winrate" ? (v) => `${v.toFixed(1)}%` : formatMoneyCompact} />
           </div>
         </div>
       </div>
@@ -539,11 +551,13 @@ function VolumeBarChart({
   height = 320,
   ariaLabel = "Bar chart",
   valueFormatter = formatMoneyCompact,
+  axisFormatter,
 }: {
   data: { key: string; label: string; value: number }[];
   height?: number;
   ariaLabel?: string;
   valueFormatter?: (v: number) => string;
+  axisFormatter?: (v: number) => string;
 }) {
   if (data.length === 0) {
     return (
@@ -579,7 +593,7 @@ function VolumeBarChart({
             <g key={t}>
               <line x1={padL} y1={y} x2={width - padR} y2={y} stroke="rgba(148,163,184,0.18)" strokeWidth={1} />
               <text x={padL - 12} y={y + 6} fontSize={18} fill="rgba(148,163,184,0.85)" textAnchor="end">
-                {formatAxisMoney(t)}
+                {axisFormatter ? axisFormatter(t) : formatAxisMoney(t)}
               </text>
             </g>
           );
