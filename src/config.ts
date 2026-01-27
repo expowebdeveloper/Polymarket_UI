@@ -15,7 +15,7 @@ const getApiBaseUrl = (): string => {
   }
 
   // Development fallback
-  return 'https://backend.polyrating.com';
+  return 'http://localhost:8000';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
