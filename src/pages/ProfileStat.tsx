@@ -129,8 +129,11 @@ export function ProfileStat() {
             fetchUserLeaderboardData(activeWallet, 'overall')
                 .then(data => setUserProfile(data))
                 .catch(err => console.error('Failed to fetch user profile:', err));
+
+            // Fetch default recent 10 trades
+            fetchTrades('recent10');
         }
-    }, [activeWallet]);
+    }, [activeWallet, fetchTrades]);
 
     const handleWalletSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -1175,6 +1178,7 @@ export function ProfileStat() {
                                         <table className="w-full">
                                             <thead>
                                                 <tr className="border-b border-slate-800 text-slate-400 text-sm">
+                                                    <th className="text-left py-3 px-4 font-medium">Date</th>
                                                     <th className="text-left py-3 px-4 font-medium">Market</th>
                                                     <th className="text-left py-3 px-4 font-medium">Outcome</th>
                                                     <th className="text-left py-3 px-4 font-medium">Size</th>
@@ -1188,6 +1192,9 @@ export function ProfileStat() {
                                                     .slice((closedPositionsPage - 1) * itemsPerPage, closedPositionsPage * itemsPerPage)
                                                     .map((position, idx) => (
                                                         <tr key={idx} className="hover:bg-slate-800/30">
+                                                            <td className="py-3 px-4 text-slate-300 text-sm whitespace-nowrap">
+                                                                {formatDate((position as any).timestamp || (position as any).created_at)}
+                                                            </td>
                                                             <td className="py-3 px-4 text-white font-medium max-w-xs truncate">
                                                                 {position.title || position.slug || 'Market'}
                                                             </td>

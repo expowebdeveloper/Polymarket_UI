@@ -306,8 +306,6 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
       .map((m) => ({
         key: m!.key,
         label: m!.label,
-        key: m!.key,
-        label: m!.label,
         value: rightMetric === "volume" ? m!.volume : rightMetric === "pnl" ? m!.pnl : m!.winRatePct,
       }));
 
@@ -339,8 +337,8 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
         {/* LEFT CARD - Donut Chart + Ranked List */}
         <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6">
           <div>
-            <p className="text-white font-semibold">Win Rate by Category</p>
-            <p className="text-xs text-slate-400 mt-1">Category split (colors match the right chart)</p>
+            <p className="text-white font-semibold">Volume by Category</p>
+            <p className="text-xs text-slate-400 mt-1">Capital allocation (colors match the right chart)</p>
           </div>
 
           {/* donut */}
