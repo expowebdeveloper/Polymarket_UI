@@ -62,11 +62,11 @@ export function Traders() {
     try {
       setLoading(true);
       setError(null);
-      
+
       // If fetchAll is true, don't pass limit/offset to get all traders
       const limit = fetchAll ? null : pageSize;
       const offset = fetchAll ? 0 : (page - 1) * pageSize;
-      
+
       const response = await fetchLeaderboardTraders(
         selectedCategory,
         selectedTimePeriod,
@@ -96,10 +96,10 @@ export function Traders() {
     const wallet = trader.wallet_address?.toLowerCase() || '';
     const userName = trader.userName?.toLowerCase() || '';
     const xUsername = trader.xUsername?.toLowerCase() || '';
-    
-    return wallet.includes(searchLower) || 
-           userName.includes(searchLower) || 
-           xUsername.includes(searchLower);
+
+    return wallet.includes(searchLower) ||
+      userName.includes(searchLower) ||
+      xUsername.includes(searchLower);
   });
 
   // Calculate pagination info
@@ -141,11 +141,10 @@ export function Traders() {
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition capitalize ${
-                  selectedCategory === category
-                    ? 'bg-emerald-400/20 text-emerald-400'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition capitalize ${selectedCategory === category
+                  ? 'bg-emerald-400/20 text-emerald-400'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  }`}
               >
                 {category}
               </button>
@@ -195,11 +194,10 @@ export function Traders() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => setFetchAll(!fetchAll)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                fetchAll
-                  ? 'bg-emerald-400/20 text-emerald-400 border border-emerald-400/30'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${fetchAll
+                ? 'bg-emerald-400/20 text-emerald-400 border border-emerald-400/30'
+                : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                }`}
               title={fetchAll ? "Currently fetching all traders. Click to enable pagination." : "Currently using pagination. Click to fetch all traders."}
             >
               {fetchAll ? '✓ Fetching All' : 'Fetch All Traders'}
@@ -228,7 +226,7 @@ export function Traders() {
                 const rank = trader.rank || ((currentPage - 1) * pageSize) + index + 1;
                 const isPositivePnl = trader.pnl >= 0;
                 const isPositiveRoi = trader.roi !== null && trader.roi !== undefined && trader.roi >= 0;
-                
+
                 return (
                   <div
                     key={trader.wallet_address}
@@ -240,11 +238,10 @@ export function Traders() {
                         {/* Rank */}
                         <div className="flex items-center justify-center w-12 h-12 rounded-full bg-slate-700">
                           {rank <= 3 ? (
-                            <Medal className={`w-6 h-6 ${
-                              rank === 1 ? 'text-yellow-400' :
+                            <Medal className={`w-6 h-6 ${rank === 1 ? 'text-yellow-400' :
                               rank === 2 ? 'text-slate-300' :
-                              'text-amber-600'
-                            }`} />
+                                'text-amber-600'
+                              }`} />
                           ) : (
                             <span className="text-emerald-400 font-bold">{rank}</span>
                           )}
@@ -278,16 +275,20 @@ export function Traders() {
                         </div>
 
                         {/* Stats */}
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+
+                        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
+                          <div>
+                            <p className="text-slate-400 mb-1">Score</p>
+                            <p className="text-white font-medium">{(trader.final_score || 0).toFixed(1)}</p>
+                          </div>
                           <div>
                             <p className="text-slate-400 mb-1">Volume</p>
                             <p className="text-white font-medium">{formatCurrency(trader.vol)}</p>
                           </div>
                           <div>
                             <p className="text-slate-400 mb-1">PnL</p>
-                            <p className={`font-medium flex items-center gap-1 ${
-                              isPositivePnl ? 'text-emerald-400' : 'text-red-400'
-                            }`}>
+                            <p className={`font-medium flex items-center gap-1 ${isPositivePnl ? 'text-emerald-400' : 'text-red-400'
+                              }`}>
                               {isPositivePnl ? (
                                 <TrendingUp className="w-4 h-4" />
                               ) : (
@@ -299,9 +300,8 @@ export function Traders() {
                           {trader.roi !== null && trader.roi !== undefined && (
                             <div>
                               <p className="text-slate-400 mb-1">ROI</p>
-                              <p className={`font-medium flex items-center gap-1 ${
-                                isPositiveRoi ? 'text-emerald-400' : 'text-red-400'
-                              }`}>
+                              <p className={`font-medium flex items-center gap-1 ${isPositiveRoi ? 'text-emerald-400' : 'text-red-400'
+                                }`}>
                                 {isPositiveRoi ? (
                                   <TrendingUp className="w-4 h-4" />
                                 ) : (
@@ -325,6 +325,7 @@ export function Traders() {
                       </div>
                     </div>
                   </div>
+
                 );
               })}
             </div>
@@ -339,16 +340,15 @@ export function Traders() {
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={!canGoPrevious || loading}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
-                      canGoPrevious && !loading
-                        ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                        : 'bg-slate-800/50 text-slate-500 cursor-not-allowed'
-                    }`}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${canGoPrevious && !loading
+                      ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                      : 'bg-slate-800/50 text-slate-500 cursor-not-allowed'
+                      }`}
                   >
                     <ChevronLeft className="w-4 h-4" />
                     Previous
                   </button>
-                  
+
                   {/* Page Numbers */}
                   <div className="flex items-center gap-1">
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -362,17 +362,16 @@ export function Traders() {
                       } else {
                         pageNum = currentPage - 2 + i;
                       }
-                      
+
                       return (
                         <button
                           key={pageNum}
                           onClick={() => handlePageChange(pageNum)}
                           disabled={loading}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
-                            currentPage === pageNum
-                              ? 'bg-emerald-400/20 text-emerald-400'
-                              : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                          } ${loading ? 'cursor-not-allowed opacity-50' : ''}`}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition ${currentPage === pageNum
+                            ? 'bg-emerald-400/20 text-emerald-400'
+                            : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                            } ${loading ? 'cursor-not-allowed opacity-50' : ''}`}
                         >
                           {pageNum}
                         </button>
@@ -383,11 +382,10 @@ export function Traders() {
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={!canGoNext || loading}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
-                      canGoNext && !loading
-                        ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                        : 'bg-slate-800/50 text-slate-500 cursor-not-allowed'
-                    }`}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${canGoNext && !loading
+                      ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                      : 'bg-slate-800/50 text-slate-500 cursor-not-allowed'
+                      }`}
                   >
                     Next
                     <ChevronRight className="w-4 h-4" />
@@ -398,7 +396,7 @@ export function Traders() {
           </>
         )}
       </div>
-    </div>
+    </div >
   );
 }
 

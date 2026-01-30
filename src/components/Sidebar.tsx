@@ -4,34 +4,37 @@
 import {
     LayoutDashboard,
     Trophy,
+    LineChart,
+    Layers,
+    FileText,
+    Settings,
+    ChevronLeft,
+    User,
     ScatterChart,
+    Search,
     Moon,
     Sun,
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-    ChevronLeft,
-=======
     Database,
-    Activity as ActivityIcon,
->>>>>>> fe7d0d0025621996eebe245329f92f3452581a23
->>>>>>> ab52aeae6e2884aee6fe8a75b58b95abce27b0cc
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useTheme } from '../contexts/ThemeContext';
 
 const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Global Leaderboard", href: "/leaderboard", icon: Trophy },
+    { name: "DB Leaderboard", href: "/db-leaderboard", icon: Trophy },
+    { name: "Live Leaderboard", href: "/leaderboard/live", icon: ScatterChart },
     { name: "All Leaderboards", href: "/leaderboard/all", icon: Trophy },
+    { name: "View All Leaderboards", href: "/leaderboard/view-all", icon: Trophy },
+    { name: "Markets", href: "/markets", icon: LineChart },
     { name: "Live Markets", href: "/markets/live", icon: ScatterChart },
-    { name: "Live Dashboard (API)", href: "/live-dashboard", icon: LayoutDashboard },
-<<<<<<< HEAD
-=======
+    { name: "Traders", href: "/traders", icon: User },
+    { name: "Wallet Dashboard", href: "/wallet-dashboard", icon: Search },
+    { name: "Profile Stat", href: "/profile-stat", icon: LayoutDashboard },
     // { name: "DB Wallet Dashboard", href: "/db-wallet-dashboard", icon: Database },
     { name: "Whale Tracker", href: "/whale-tracker", icon: Layers },
     { name: "Reports", href: "/reports", icon: FileText },
     { name: "Settings", href: "/settings", icon: Settings },
->>>>>>> fe7d0d0025621996eebe245329f92f3452581a23
 ];
 
 interface SidebarProps {

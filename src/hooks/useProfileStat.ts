@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-    fetchLiveDashboardData
+    fetchProfileStatData
 } from '../services/api';
 import { ScoredMetrics } from '../utils/scoring';
 import { Position, ClosedPosition, Activity, UserPnL } from '../types/api';
 
-export interface LiveDashboardState {
+export interface ProfileStatState {
     loading: boolean;
     error: string | null;
     metrics: ScoredMetrics | null;
@@ -16,8 +16,8 @@ export interface LiveDashboardState {
     portfolioValue?: number;
 }
 
-export function useLiveDashboard(walletAddress: string) {
-    const [state, setState] = useState<LiveDashboardState>({
+export function useProfileStat(walletAddress: string) {
+    const [state, setState] = useState<ProfileStatState>({
         loading: true,
         error: null,
         metrics: null,
@@ -35,7 +35,7 @@ export function useLiveDashboard(walletAddress: string) {
 
         try {
             // Skip trades on initial load for better performance
-            const data = await fetchLiveDashboardData(walletAddress, true);
+            const data = await fetchProfileStatData(walletAddress, true);
 
             // Use backend pre-calculated metrics directly (Single Source of Truth)
             const backendMetrics = data.scoring_metrics;
@@ -60,7 +60,7 @@ export function useLiveDashboard(walletAddress: string) {
                 portfolioValue: data.portfolio_value,
             });
         } catch (err: any) {
-            console.error('Error fetching live dashboard data:', err);
+            console.error('Error fetching profile stat data:', err);
             setState(prev => ({
                 ...prev,
                 loading: false,

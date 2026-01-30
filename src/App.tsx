@@ -18,8 +18,7 @@ import { DBWalletDashboard } from './pages/DBWalletDashboard';
 import LiveLeaderboard from './pages/LiveLeaderboard';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
-import { LiveDashboard } from './pages/LiveDashboard';
-import { ActivityPage } from './pages/ActivityPage';
+import { ProfileStat } from './pages/ProfileStat';
 import { useTheme } from './contexts/ThemeContext';
 import { useAuth } from './contexts/AuthContext';
 
@@ -148,10 +147,6 @@ function App() {
             }
           />
           <Route
-            path="/activity"
-            element={<ActivityPage />}
-          />
-          <Route
             path="/wallet-dashboard"
             element={
               <>
@@ -188,10 +183,10 @@ function App() {
             }
           />
           <Route
-            path="/live-dashboard"
+            path="/profile-stat"
             element={
               <>
-                <LiveDashboard />
+                <ProfileStat />
               </>
             }
           />

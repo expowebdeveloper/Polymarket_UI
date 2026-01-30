@@ -11,11 +11,11 @@ const getApiBaseUrl = (): string => {
   // In production (Vercel), you MUST set VITE_BACKEND_API environment variable
   // CRITICAL: Without this, API calls will go to the frontend domain and fail with 405
   if (import.meta.env.PROD) {
-    return 'http://127.0.0.1:8000';
+    return 'https://backend.polyrating.com';
   }
 
   // Development fallback
-  return 'http://127.0.0.1:8000';
+  return 'http://localhost:8000';
 };
 
 export const API_BASE_URL = getApiBaseUrl();

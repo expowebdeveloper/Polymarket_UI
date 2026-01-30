@@ -3,7 +3,7 @@ import { Search, Wallet, TrendingUp, TrendingDown, Trophy, Fish, Flame, ChevronD
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { BarChart, Bar, Cell, PieChart, Pie, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { useLiveDashboard } from '../hooks/useLiveDashboard';
+import { useProfileStat } from '../hooks/useProfileStat';
 import { useTradeFilter, TradeFilter } from '../hooks/useTradeFilter';
 import { resolveWalletOrUser, fetchUserLeaderboardData } from '../services/api';
 import { getVolumeRank } from '../utils/rankUtils';
@@ -86,13 +86,13 @@ const getBadgeInfo = (score: number) => {
     };
 };
 
-export function LiveDashboard() {
+export function ProfileStat() {
     const [walletInput, setWalletInput] = useState('');
     const [activeWallet, setActiveWallet] = useState('');
     const [userProfile, setUserProfile] = useState<UserLeaderboardData | null>(null);
     const [theme] = useState<"dark" | "light">("dark"); // Default to dark, removed toggle
     const [showAdvanced, setShowAdvanced] = useState(false);
-    const [activeTab, setActiveTab] = useState<'history' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('active_positions');
+    const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('active_positions');
     const [distributionMetric, setDistributionMetric] = useState<'count' | 'capital'>('count');
 
     // Pagination states
@@ -112,7 +112,7 @@ export function LiveDashboard() {
         userPnL,
         portfolioValue,
         refresh
-    } = useLiveDashboard(activeWallet);
+    } = useProfileStat(activeWallet);
 
     // Trade filtering with caching
     const {
@@ -123,14 +123,14 @@ export function LiveDashboard() {
         fetchTrades
     } = useTradeFilter(activeWallet);
 
-    // Fetch user profile data and initial trades when wallet changes
+    // Fetch user profile data when wallet changes
     useEffect(() => {
         if (activeWallet) {
             fetchUserLeaderboardData(activeWallet, 'overall')
                 .then(data => setUserProfile(data))
                 .catch(err => console.error('Failed to fetch user profile:', err));
 
-            // Default to Recent 10 trades
+            // Fetch default recent 10 trades
             fetchTrades('recent10');
         }
     }, [activeWallet, fetchTrades]);
@@ -635,9 +635,9 @@ export function LiveDashboard() {
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 mt-6">
                             <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
-                                <p className="text-xs text-slate-300 mb-0.5">Balance</p>
+                                <p className="text-xs text-slate-300 mb-0.5">Active Positions Value</p>
                                 <p className="text-base font-bold text-emerald-300">{formatCurrency(balance)}</p>
-                                <p className="text-[10px] text-slate-400 mt-0.5">Positions + Cash</p>
+                                <p className="text-[10px] text-slate-400 mt-0.5">Current Value</p>
                             </div>
                             <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
                                 <p className="text-xs text-slate-300 mb-0.5">Total PNL</p>
@@ -649,11 +649,11 @@ export function LiveDashboard() {
                             </div>
                             <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
                                 <p className="text-xs text-slate-300 mb-0.5">Predictions</p>
-                                <p className="text-base font-bold text-emerald-300">{totalPredictions}</p>
+                                <p className="text-base font-bold text-emerald-300">{metrics.total_trades}</p>
                             </div>
                             <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
                                 <p className="text-xs text-slate-300 mb-0.5">Total Trades</p>
-                                <p className="text-base font-bold text-emerald-300">{metrics.total_trades}</p>
+                                <p className="text-base font-bold text-emerald-300">{totalPredictions}</p>
                             </div>
                             <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
                                 <p className="text-xs text-slate-300 mb-0.5">Biggest Win</p>
@@ -804,16 +804,16 @@ export function LiveDashboard() {
                                     <p className="text-lg font-bold text-white">{metrics.closed_positions || 0}</p>
                                 </div>
                                 <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
-                                    <p className="text-xs text-slate-400 uppercase mb-1">Confidence Score</p>
+                                    <p className="text-xs text-slate-400 uppercase mb-1">All-time PnL Rank</p>
                                     <p className="text-lg font-bold text-emerald-400">
-                                        {metrics.confidence_score ?
-                                            (metrics.confidence_score <= 1 ? `${(metrics.confidence_score * 100).toFixed(1)}%` : `${metrics.confidence_score.toFixed(1)}%`)
-                                            : 'N/A'}
+                                        {metrics.pnl_rank ? `#${metrics.pnl_rank}` : 'N/A'}
                                     </p>
                                 </div>
                                 <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
-                                    <p className="text-xs text-slate-400 uppercase mb-1">Risk Score</p>
-                                    <p className="text-lg font-bold text-white">{(metrics.score_risk || metrics.risk_score || 0).toFixed(2)}</p>
+                                    <p className="text-xs text-slate-400 uppercase mb-1">All-time Vol Rank</p>
+                                    <p className="text-lg font-bold text-white">
+                                        {metrics.volume_rank ? `#${metrics.volume_rank}` : 'N/A'}
+                                    </p>
                                 </div>
                                 <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
                                     <p className="text-xs text-slate-400 uppercase mb-1">Total Buy Stake</p>
@@ -1178,6 +1178,7 @@ export function LiveDashboard() {
                                         <table className="w-full">
                                             <thead>
                                                 <tr className="border-b border-slate-800 text-slate-400 text-sm">
+                                                    <th className="text-left py-3 px-4 font-medium">Date</th>
                                                     <th className="text-left py-3 px-4 font-medium">Market</th>
                                                     <th className="text-left py-3 px-4 font-medium">Outcome</th>
                                                     <th className="text-left py-3 px-4 font-medium">Size</th>
@@ -1191,6 +1192,9 @@ export function LiveDashboard() {
                                                     .slice((closedPositionsPage - 1) * itemsPerPage, closedPositionsPage * itemsPerPage)
                                                     .map((position, idx) => (
                                                         <tr key={idx} className="hover:bg-slate-800/30">
+                                                            <td className="py-3 px-4 text-slate-300 text-sm whitespace-nowrap">
+                                                                {formatDate((position as any).timestamp || (position as any).created_at)}
+                                                            </td>
                                                             <td className="py-3 px-4 text-white font-medium max-w-xs truncate">
                                                                 {position.title || position.slug || 'Market'}
                                                             </td>
@@ -1229,6 +1233,48 @@ export function LiveDashboard() {
                                             >
                                                 Next
                                             </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'performance' && (
+                                <div className="space-y-6">
+                                    <div className="bg-slate-800/30 border border-emerald-500/20 rounded-2xl p-6">
+                                        <h4 className="text-emerald-400 font-bold mb-4 flex items-center gap-2">
+                                            <TrendingUp className="h-4 w-4" />
+                                            7-Day Profit Trend
+                                        </h4>
+                                        <div className="h-[200px] w-full">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={profitTrend}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                                                    <XAxis dataKey="day" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                                                    <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
+                                                    <Tooltip
+                                                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
+                                                        formatter={(value: any) => [formatCurrency(value), 'Daily PnL']}
+                                                    />
+                                                    <Bar dataKey="profit" radius={[4, 4, 0, 0]}>
+                                                        {profitTrend.map((entry, index) => (
+                                                            <Cell key={`cell-${index}`} fill={entry.profit >= 0 ? '#10b981' : '#f43f5e'} />
+                                                        ))}
+                                                    </Bar>
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-6">
+                                            <p className="text-sm text-slate-400 mb-1">Primary Edge</p>
+                                            <p className="text-lg font-medium text-white">{primaryEdge}</p>
+                                        </div>
+                                        <div className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-6">
+                                            <p className="text-sm text-slate-400 mb-1">Trading Efficiency</p>
+                                            <p className="text-lg font-medium text-white">
+                                                {((metrics.streaks.total_wins / (metrics.total_trades || 1)) * 100).toFixed(1)}% hit rate
+                                            </p>
                                         </div>
                                     </div>
                                 </div>

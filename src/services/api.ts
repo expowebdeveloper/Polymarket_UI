@@ -325,7 +325,7 @@ export async function fetchBiggestWinners(
 export async function fetchDailyVolumeLeaderboard(
     limit: number = 50,
     offset: number = 0,
-    orderBy: 'PNL' | 'VOL' = 'VOL'
+    orderBy: 'PNL' | 'VOL' | 'ROI' | 'WIN_RATE' | 'SCORE' = 'VOL'
 ): Promise<LeaderboardResponse> {
     const endpoint = API_ENDPOINTS.leaderboard.dailyVolume;
     const url = `${endpoint}?limit=${limit}&offset=${offset}&order_by=${orderBy}`;
@@ -341,7 +341,7 @@ export async function fetchDailyVolumeLeaderboard(
 export async function fetchWeeklyVolumeLeaderboard(
     limit: number = 50,
     offset: number = 0,
-    orderBy: 'PNL' | 'VOL' = 'VOL'
+    orderBy: 'PNL' | 'VOL' | 'ROI' | 'WIN_RATE' | 'SCORE' = 'VOL'
 ): Promise<LeaderboardResponse> {
     const endpoint = API_ENDPOINTS.leaderboard.weeklyVolume;
     const url = `${endpoint}?limit=${limit}&offset=${offset}&order_by=${orderBy}`;
@@ -357,12 +357,28 @@ export async function fetchWeeklyVolumeLeaderboard(
 export async function fetchMonthlyVolumeLeaderboard(
     limit: number = 50,
     offset: number = 0,
-    orderBy: 'PNL' | 'VOL' = 'VOL'
+    orderBy: 'PNL' | 'VOL' | 'ROI' | 'WIN_RATE' | 'SCORE' = 'VOL'
 ): Promise<LeaderboardResponse> {
     const endpoint = API_ENDPOINTS.leaderboard.monthlyVolume;
     const url = `${endpoint}?limit=${limit}&offset=${offset}&order_by=${orderBy}`;
     return fetchApi<LeaderboardResponse>(url, 30000, 'GET');
 }
+
+/**
+ * Fetch leaderboard entries from database (calculated scores)
+ * @param limit - Maximum number of entries
+ * @param offset - Offset for pagination
+ * @param orderBy - Order by metric ('SCORE', 'PNL', etc.)
+ */
+export async function fetchLeaderboardEntries(
+    limit: number = 50,
+    offset: number = 0,
+    orderBy: 'PNL' | 'VOL' | 'ROI' | 'WIN_RATE' | 'SCORE' = 'SCORE'
+): Promise<LeaderboardResponse> {
+    const url = `/leaderboard/entries?limit=${limit}&offset=${offset}&order_by=${orderBy}`;
+    return fetchApi<LeaderboardResponse>(url, 30000, 'GET');
+}
+
 
 /**
  * Fetch markets from the API
@@ -589,12 +605,12 @@ export async function fetchDBDashboard(walletAddress: string): Promise<any> {
 }
 
 /**
- * Fetch comprehensive dashboard data directly from live APIs (via backend aggregation)
+ * Fetch comprehensive profile statistics directly from live APIs (via backend aggregation)
  * @param walletAddress - Wallet address
  * @param skipTrades - Skip fetching trade history for faster initial load
  */
-export async function fetchLiveDashboardData(walletAddress: string, skipTrades: boolean = false): Promise<any> {
-    const url = `/dashboard/live/${walletAddress}${skipTrades ? '?skip_trades=true' : ''}`;
+export async function fetchProfileStatData(walletAddress: string, skipTrades: boolean = false): Promise<any> {
+    const url = `/dashboard/profile-stat/${walletAddress}${skipTrades ? '?skip_trades=true' : ''}`;
     return fetchApi<any>(url, 120000);
 }
 
@@ -604,7 +620,7 @@ export async function fetchLiveDashboardData(walletAddress: string, skipTrades: 
  * @param filter - Filter type: "recent10", "7days", "30days", "1year", "all"
  */
 export async function fetchFilteredTrades(walletAddress: string, filter: string = "all"): Promise<{ trades: any[], count: number, filter: string }> {
-    return fetchApi<{ trades: any[], count: number, filter: string }>(`/dashboard/live/${walletAddress}/trades?filter=${filter}`, 60000);
+    return fetchApi<{ trades: any[], count: number, filter: string }>(`/dashboard/profile-stat/${walletAddress}/trades?filter=${filter}`, 60000);
 }
 
 /**
