@@ -215,7 +215,7 @@ interface MarketDistributionPanelProps {
 
 export function MarketDistributionPanel({ marketDistribution, activities = [], positions = [], closedPositions = [] }: MarketDistributionPanelProps) {
   const [metric, setMetric] = useState<Metric>("roi");
-  const [rightMetric, setRightMetric] = useState<RightMetric>("volume");
+  const [rightMetric, setRightMetric] = useState<RightMetric>("pnl"); // Default to PNL since volume is in pie chart
   const [seriesSeed, setSeriesSeed] = useState(1);
 
   // Calculate volume per category from activities, positions, and closed positions
@@ -256,8 +256,6 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
 
   // Transform real data to component format
   const markets: MarketDatum[] = useMemo(() => {
-    const totalCapital = marketDistribution.reduce((sum, m) => sum + m.capital, 0) || 1;
-
     return marketDistribution.map((m) => {
       const normalizedKey = normalizeCategory(m.category);
       const volume = volumeByCategory.get(normalizedKey) || 0;
@@ -294,9 +292,14 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
   }, [sortedRanked, metric]);
 
   const allocationSorted = useMemo(
-    () => [...markets].sort((a, b) => b.allocationPct - a.allocationPct),
+    () => [...markets].sort((a, b) => b.volume - a.volume),
     [markets]
   );
+
+  // Calculate total volume for the pie chart center
+  const totalVolume = useMemo(() => {
+    return markets.reduce((sum, m) => sum + m.volume, 0);
+  }, [markets]);
 
   const rightSeries = useMemo(() => {
     // Fixed order bars based on CATEGORY_ORDER
@@ -338,7 +341,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
         <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6">
           <div>
             <p className="text-white font-semibold">Volume by Category</p>
-            <p className="text-xs text-slate-400 mt-1">Capital allocation (colors match the right chart)</p>
+            <p className="text-xs text-slate-400 mt-1">Total invested volume from Polymarket</p>
           </div>
 
           {/* donut */}
@@ -349,20 +352,24 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
               data={allocationSorted.map((m) => ({
                 key: m.key,
                 label: m.label,
-                value: m.allocationPct,
+                value: m.volume,
               }))}
+              totalVolume={totalVolume}
             />
 
             {/* legend under pie */}
             <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2">
-              {allocationSorted.map((m) => (
-                <div key={m.key} className="flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: colorForKey(m.key) }} />
-                  <p className="text-xs text-slate-300 truncate">
-                    {m.label} <span className="text-slate-500">{m.allocationPct.toFixed(1)}%</span>
-                  </p>
-                </div>
-              ))}
+              {allocationSorted.map((m) => {
+                const volumePct = totalVolume > 0 ? (m.volume / totalVolume) * 100 : 0;
+                return (
+                  <div key={m.key} className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: colorForKey(m.key) }} />
+                    <p className="text-xs text-slate-300 truncate">
+                      {m.label} <span className="text-emerald-400 font-medium">{formatMoneyCompact(m.volume)}</span> <span className="text-slate-500">({volumePct.toFixed(1)}%)</span>
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -399,22 +406,13 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
         <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6">
           <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
             <div>
-              <p className="text-white font-semibold">Total Market Volume/PNL by Category</p>
+              <p className="text-white font-semibold">PNL / Win Rate by Category</p>
               <p className="text-xs text-slate-400 mt-1">
-                {rightMetric === "volume" ? "Total Volume by Category" : rightMetric === "pnl" ? "Total PNL by Category" : "Win Rate % by Category"}
+                {rightMetric === "pnl" ? "Total PNL by Category" : "Win Rate % by Category"}
               </p>
             </div>
 
             <div className="inline-flex items-center rounded-xl bg-slate-950/50 border border-slate-800 p-1 gap-1">
-              <MetricPill
-                active={rightMetric === "volume"}
-                onClick={() => {
-                  setRightMetric("volume");
-                  setSeriesSeed((s) => s + 1);
-                }}
-              >
-                Volume
-              </MetricPill>
               <MetricPill
                 active={rightMetric === "pnl"}
                 onClick={() => {
@@ -568,18 +566,18 @@ function VolumeBarChart({
   const max = Math.max(...data.map((d) => d.value), 1);
 
   const width = 720;
-  const h = Math.max(240, height);
+  const h = Math.max(280, height);
   const padL = 76;
   const padR = 18;
   const padT = 20;
-  const padB = 62;
+  const padB = 90; // Increased for rotated labels
 
   const chartW = width - padL - padR;
   const chartH = h - padT - padB;
 
   const ticks = niceTicks(0, max, 5);
-  const barGap = 18;
-  const barW = Math.max(24, Math.floor((chartW - barGap * (data.length - 1)) / data.length));
+  const barGap = 12; // Reduced gap
+  const barW = Math.max(20, Math.floor((chartW - barGap * (data.length - 1)) / data.length));
 
   return (
     <div className="w-full rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-950/25 to-slate-900/15 p-4">
@@ -590,7 +588,7 @@ function VolumeBarChart({
           return (
             <g key={t}>
               <line x1={padL} y1={y} x2={width - padR} y2={y} stroke="rgba(148,163,184,0.18)" strokeWidth={1} />
-              <text x={padL - 12} y={y + 6} fontSize={18} fill="rgba(148,163,184,0.85)" textAnchor="end">
+              <text x={padL - 12} y={y + 6} fontSize={14} fill="rgba(148,163,184,0.85)" textAnchor="end">
                 {axisFormatter ? axisFormatter(t) : formatAxisMoney(t)}
               </text>
             </g>
@@ -604,16 +602,23 @@ function VolumeBarChart({
           const y = padT + chartH - barH;
           return (
             <g key={d.key}>
-              <rect x={x} y={y} width={barW} height={barH} rx={10} fill={colorForKey(d.key)} opacity={0.92} />
-              <rect x={x} y={y} width={barW} height={barH} rx={10} fill="url(#barGlow)" opacity={0.35} />
+              <rect x={x} y={y} width={barW} height={barH} rx={6} fill={colorForKey(d.key)} opacity={0.92} />
+              <rect x={x} y={y} width={barW} height={barH} rx={6} fill="url(#barGlow)" opacity={0.35} />
 
-              {/* X labels */}
-              <text x={x + barW / 2} y={h - 22} fontSize={18} fill="rgba(226,232,240,0.9)" textAnchor="middle">
+              {/* X labels - rotated 45 degrees */}
+              <text
+                x={x + barW / 2}
+                y={padT + chartH + 12}
+                fontSize={11}
+                fill="rgba(226,232,240,0.9)"
+                textAnchor="start"
+                transform={`rotate(45 ${x + barW / 2} ${padT + chartH + 12})`}
+              >
                 {d.label}
               </text>
 
               {/* value labels (top) */}
-              <text x={x + barW / 2} y={y - 10} fontSize={14} fill="rgba(148,163,184,0.9)" textAnchor="middle">
+              <text x={x + barW / 2} y={y - 8} fontSize={10} fill="rgba(148,163,184,0.9)" textAnchor="middle">
                 {valueFormatter(d.value)}
               </text>
             </g>
@@ -668,10 +673,12 @@ function DonutChart({
   data,
   size,
   thickness,
+  totalVolume,
 }: {
   data: { key: string; label: string; value: number }[];
   size: number;
   thickness: number;
+  totalVolume?: number;
 }) {
   const radius = (size - thickness) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -725,9 +732,9 @@ function DonutChart({
       {/* Center label */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-xs text-slate-500">Allocation</p>
-          <p className="text-2xl font-extrabold text-white tabular-nums">100%</p>
-          <p className="text-xs text-slate-500">across markets</p>
+          <p className="text-xs text-slate-500">Total Volume</p>
+          <p className="text-2xl font-extrabold text-emerald-400 tabular-nums">{formatMoneyCompact(totalVolume || 0)}</p>
+          <p className="text-xs text-slate-500">invested</p>
         </div>
       </div>
     </div>
