@@ -196,7 +196,15 @@ export async function fetchActivityForWallet(
     if (type) url += `&type=${type}`;
     if (limit) url += `&limit=${limit}`;
     if (offset) url += `&offset=${offset}`;
+    if (offset) url += `&offset=${offset}`;
     return fetchApi<ActivitiesResponse>(url, 30000);
+}
+
+/**
+ * Fetch global recent activity (for initial load)
+ */
+export async function fetchGlobalActivity(): Promise<any[]> {
+    return fetchApi<any[]>('/activity/global', 10000);
 }
 
 /**

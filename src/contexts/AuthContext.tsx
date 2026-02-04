@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { login as loginApi, register as registerApi, type AuthResponse, type UserResponse } from '../services/api';
-import { fetchLiveLeaderboard } from '../services/api';
+
 
 interface AuthContextType {
     user: UserResponse | null;
@@ -57,14 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(userData);
             localStorage.setItem('auth_user', JSON.stringify(userData));
 
-            // Immediately call live leaderboard after login
-            try {
-                await fetchLiveLeaderboard('day', 'PNL', 100, 0);
-                console.log('✅ Live leaderboard called after login');
-            } catch (error) {
-                console.error('Failed to call live leaderboard after login:', error);
-                // Don't fail login if leaderboard call fails
-            }
+
         } catch (error) {
             console.error('Login error:', error);
             throw error;
@@ -73,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const register = async (email: string, name: string, password: string) => {
         try {
-            const userData: UserResponse = await registerApi({ email, name, password });
+            await registerApi({ email, name, password });
 
             // After registration, automatically login
             await login(email, password);

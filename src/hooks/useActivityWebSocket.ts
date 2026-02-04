@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { API_BASE_URL } from '../config';
 
 export interface Activity {
     id: string;
@@ -51,14 +52,38 @@ export function useActivityWebSocket() {
         }
     }, [activities]);
 
+    // Initial fetch from API (Fallback/Fast-Load)
+    useEffect(() => {
+        const fetchInitial = async () => {
+            try {
+                const { fetchGlobalActivity } = await import('../services/api');
+                const data = await fetchGlobalActivity();
+                if (Array.isArray(data) && data.length > 0) {
+                    setActivities(prev => {
+                        const existingIds = new Set(prev.map(a => a.id));
+                        const newOnes = (data as Activity[]).filter(a => !existingIds.has(a.id));
+                        if (newOnes.length === 0) return prev;
+                        return [...newOnes, ...prev].sort((a, b) => b.timestamp - a.timestamp).slice(0, 2000);
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to fetch initial activity from API:', error);
+            }
+        };
+        fetchInitial();
+    }, []);
+
     const connect = useCallback(() => {
         if (reconnectTimeout.current) {
             clearTimeout(reconnectTimeout.current);
         }
 
         try {
-            // Use env var for production, fallback to local for dev
-            const wsUrl = import.meta.env.VITE_WS_URL || 'ws://127.0.0.1:8000/ws/activity';
+
+            // Derive WS URL from API_BASE_URL to match environment (local vs production)
+            const wsProtocol = API_BASE_URL.startsWith('https') ? 'wss' : 'ws';
+            const wsBase = API_BASE_URL.replace(/^https?:\/\//, '');
+            const wsUrl = `${wsProtocol}://${wsBase}/ws/activity`;
             // Use local variable to avoid closure staleness on 'ws.current' if possible, 
             // but updating ref is standard pattern.
             const socket = new WebSocket(wsUrl);
@@ -104,7 +129,8 @@ export function useActivityWebSocket() {
             };
 
             socket.onerror = (error) => {
-                console.error('❌ WebSocket error:', error);
+                // Log as info/warning instead of error since we have auto-reconnect
+                console.log('⚠️ WebSocket connection issue (will retry):', error);
                 setIsConnected(false);
             };
 

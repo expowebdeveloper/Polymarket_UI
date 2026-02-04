@@ -6,8 +6,8 @@ import { useTheme } from '../contexts/ThemeContext';
 export function ActivityFeed() {
     const { activities, isConnected } = useActivityWebSocket();
     const { theme } = useTheme();
-    // Hardcoded to >$1000 as requested
-    const minAmount = 1000;
+    // Hardcoded to >$100 as requested
+    const minAmount = 100;
     const [lastFlashedAt, setLastFlashedAt] = useState(0);
     const [tick, setTick] = useState(0);
 
@@ -54,9 +54,8 @@ export function ActivityFeed() {
 
         return localFeed.filter(a => {
             const age = nowSec - a.timestamp;
-            // User requested 5-minute retention (300s)
-            // Removed amount check (show all > $0)
-            return age >= -10 && age <= 300;
+            // User requested 5-minute retention (300s) + min Amount ($100)
+            return age >= -10 && age <= 300 && (a.amount_usd || 0) >= minAmount;
         });
     }, [localFeed, minAmount, tick]);
 
