@@ -213,52 +213,16 @@ interface MarketDistributionPanelProps {
   }>;
 }
 
+
 export function MarketDistributionPanel({ marketDistribution, activities = [], positions = [], closedPositions = [] }: MarketDistributionPanelProps) {
   const [metric, setMetric] = useState<Metric>("roi");
   const [rightMetric, setRightMetric] = useState<RightMetric>("pnl"); // Default to PNL since volume is in pie chart
-  const [seriesSeed, setSeriesSeed] = useState(1);
 
-  // Calculate volume per category from activities, positions, and closed positions
-  const volumeByCategory = useMemo(() => {
-    const volumeMap = new Map<string, number>();
-
-    // From activities
-    activities.forEach((activity) => {
-      const category = normalizeCategory((activity as any).category || activity.title || activity.slug || "other");
-      const size = parseFloat(String(activity.usdc_size || activity.usdcSize || 0));
-      if (size > 0) {
-        volumeMap.set(category, (volumeMap.get(category) || 0) + size);
-      }
-    });
-
-    // From active positions (initial_value is the stake/volume)
-    positions.forEach((pos) => {
-      const category = normalizeCategory((pos as any).category || pos.title || pos.slug || "other");
-      const value = parseFloat(String(pos.initial_value || 0));
-      if (value > 0) {
-        volumeMap.set(category, (volumeMap.get(category) || 0) + value);
-      }
-    });
-
-    // From closed positions (total_bought * avg_price is the stake/volume)
-    closedPositions.forEach((pos) => {
-      const category = normalizeCategory((pos as any).category || pos.title || pos.slug || "other");
-      const size = parseFloat(String((pos as any).total_bought || pos.size || 0));
-      const price = parseFloat(String((pos as any).avg_price || 0));
-      const value = size * price;
-      if (value > 0) {
-        volumeMap.set(category, (volumeMap.get(category) || 0) + value);
-      }
-    });
-
-    return volumeMap;
-  }, [activities, positions, closedPositions]);
 
   // Transform real data to component format
   const markets: MarketDatum[] = useMemo(() => {
     return marketDistribution.map((m) => {
       const normalizedKey = normalizeCategory(m.category);
-      const volume = volumeByCategory.get(normalizedKey) || 0;
 
       return {
         key: normalizedKey,
@@ -269,14 +233,15 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
         riskScore: m.risk_score || 0,
         trades: m.trades_count || 0,
         capital: m.capital || 0,
-        volume: volume,
+        volume: m.capital || 0, // Use backend's capital as volume (already correctly calculated)
         pnl: m.total_pnl || 0,
       };
-    });
-  }, [marketDistribution, volumeByCategory]);
+    }).filter(m => m.capital > 0 || m.trades > 0 || Math.abs(m.pnl) > 0 || m.volume > 0);
+  }, [marketDistribution]);
 
   const sortedRanked = useMemo(() => {
     const arr = [...markets];
+
     if (metric === "roi") arr.sort((a, b) => b.roiPct - a.roiPct);
     else if (metric === "win") arr.sort((a, b) => b.winRatePct - a.winRatePct);
     else arr.sort((a, b) => a.riskScore - b.riskScore); // lower risk better
@@ -315,9 +280,8 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
     // If no data, return empty array
     if (base.length === 0) return [];
 
-    // demo randomize on toggle (seed changes)
-    return randomizeSeries(base, seriesSeed);
-  }, [markets, rightMetric, seriesSeed]);
+    return base;
+  }, [markets, rightMetric]);
 
   if (markets.length === 0) {
     return (
@@ -417,7 +381,6 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
                 active={rightMetric === "pnl"}
                 onClick={() => {
                   setRightMetric("pnl");
-                  setSeriesSeed((s) => s + 1);
                 }}
               >
                 PNL
@@ -426,7 +389,6 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
                 active={rightMetric === "winrate"}
                 onClick={() => {
                   setRightMetric("winrate");
-                  setSeriesSeed((s) => s + 1);
                 }}
               >
                 Win Rate
@@ -781,22 +743,4 @@ function niceTicks(min: number, max: number, count: number) {
   return ticks;
 }
 
-function mulberry32(seed: number) {
-  let a = seed >>> 0;
-  return function () {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
-function randomizeSeries(items: { key: string; label: string; value: number }[], seed: number) {
-  const rnd = mulberry32(seed);
-  return items.map((it) => {
-    // +/- 15% jitter (deterministic per seed)
-    const factor = 0.85 + rnd() * 0.3;
-    return { ...it, value: Math.max(0, it.value * factor) };
-  });
-}
