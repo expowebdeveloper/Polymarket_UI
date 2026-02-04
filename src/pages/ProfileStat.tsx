@@ -5,7 +5,7 @@ import { ErrorMessage } from '../components/ErrorMessage';
 import { BarChart, Bar, Cell, PieChart, Pie, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useProfileStat } from '../hooks/useProfileStat';
 import { useTradeFilter, TradeFilter } from '../hooks/useTradeFilter';
-import { resolveWalletOrUser, fetchUserLeaderboardData } from '../services/api';
+import { resolveWalletOrUser, fetchUserLeaderboardData, fetchMarketDistribution } from '../services/api';
 import { getVolumeRank } from '../utils/rankUtils';
 import { getStreakBadge } from '../utils/streakUtils';
 import type { UserLeaderboardData } from '../types/api';
@@ -101,6 +101,8 @@ export function ProfileStat() {
     const [closedPositionsPage, setClosedPositionsPage] = useState(1);
 
     const itemsPerPage = 20;
+    const [apiDistribution, setApiDistribution] = useState<any[]>([]);
+    const [loadingDistribution, setLoadingDistribution] = useState(false);
 
     const {
         loading,
@@ -133,7 +135,21 @@ export function ProfileStat() {
             // Fetch default recent 10 trades
             fetchTrades('recent10');
         }
+    
     }, [activeWallet, fetchTrades]);
+
+    // Fetch API distribution when tab is active
+    useEffect(() => {
+        if (activeWallet && activeTab === 'distribution' && apiDistribution.length === 0 && !loadingDistribution) {
+            setLoadingDistribution(true);
+            fetchMarketDistribution(activeWallet)
+                .then(data => {
+                    setApiDistribution(data.market_distribution || []);
+                })
+                .catch(err => console.error("Failed to fetch market distribution:", err))
+                .finally(() => setLoadingDistribution(false));
+        }
+    }, [activeWallet, activeTab, apiDistribution.length, loadingDistribution]);
 
     const handleWalletSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -1281,12 +1297,18 @@ export function ProfileStat() {
                             )}
 
                             {activeTab === 'distribution' && (
-                                <MarketDistributionPanel
-                                    marketDistribution={marketDistribution}
-                                    activities={activities}
-                                    positions={positions}
-                                    closedPositions={closedPositions}
-                                />
+                                loadingDistribution ? (
+                                    <div className="h-[300px] flex items-center justify-center">
+                                        <LoadingSpinner message="Fetching market distribution from API..." />
+                                    </div>
+                                ) : (
+                                    <MarketDistributionPanel
+                                        marketDistribution={apiDistribution.length > 0 ? apiDistribution : []}
+                                        activities={activities}
+                                        positions={positions}
+                                        closedPositions={closedPositions}
+                                    />
+                                )
                             )}
 
 

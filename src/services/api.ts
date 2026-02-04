@@ -828,3 +828,11 @@ export async function logout(): Promise<{ message: string, success: boolean }> {
 export async function fetchUserPnL(walletAddress: string): Promise<any> {
     return fetchApi<any>(`/pnl?user_address=${walletAddress}`, 30000);
 }
+
+/**
+ * Fetch market distribution from API-based endpoint
+ * @param walletAddress - Wallet address
+ */
+export async function fetchMarketDistribution(walletAddress: string): Promise<any> {
+    return fetchApi<any>(`/dashboard/market-distribution/${walletAddress}`, 60000);
+}
