@@ -5,36 +5,18 @@ import {
     LayoutDashboard,
     Trophy,
     LineChart,
-    Layers,
-    FileText,
-    Settings,
     ChevronLeft,
-    User,
-    ScatterChart,
-    Search,
     Moon,
     Sun,
-    Database,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useTheme } from '../contexts/ThemeContext';
 
 const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Global Leaderboard", href: "/leaderboard", icon: Trophy },
-    { name: "DB Leaderboard", href: "/db-leaderboard", icon: Trophy },
-    { name: "Live Leaderboard", href: "/leaderboard/live", icon: ScatterChart },
-    { name: "All Leaderboards", href: "/leaderboard/all", icon: Trophy },
-    { name: "View All Leaderboards", href: "/leaderboard/view-all", icon: Trophy },
-    { name: "Markets", href: "/markets", icon: LineChart },
-    { name: "Live Markets", href: "/markets/live", icon: ScatterChart },
-    { name: "Traders", href: "/traders", icon: User },
-    { name: "Wallet Dashboard", href: "/wallet-dashboard", icon: Search },
     { name: "Profile Stat", href: "/profile-stat", icon: LayoutDashboard },
-    // { name: "DB Wallet Dashboard", href: "/db-wallet-dashboard", icon: Database },
-    { name: "Whale Tracker", href: "/whale-tracker", icon: Layers },
-    { name: "Reports", href: "/reports", icon: FileText },
-    { name: "Settings", href: "/settings", icon: Settings },
+    { name: "Market", href: "/markets", icon: LineChart, badge: "Coming Soon", disabled: true },
+    { name: "Leaderboard", href: "/leaderboard", icon: Trophy, badge: "Coming Soon", disabled: true },
 ];
 
 interface SidebarProps {
@@ -70,26 +52,52 @@ export function Sidebar({ collapsed, onSetCollapsed }: SidebarProps) {
                 </h1>
 
                 <div className="space-y-3">
-                    {navItems.map((item) => (
-                        <NavLink
-                            key={item.name}
-                            to={item.href}
-                            className={({ isActive }) =>
-                                `flex items-center gap-3 p-2 rounded-lg transition 
-                ${isActive
-                                    ? "bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white"
-                                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40"
-                                }`
-                            }
-                        >
-                            <item.icon className="w-5 h-5" />
+                    {navItems.map((item) => {
+                        const content = (
+                            <>
+                                <item.icon className="w-5 h-5 shrink-0" />
 
-                            {/* Hide text when collapsed */}
-                            {!collapsed && (
-                                <span className="text-sm font-medium">{item.name}</span>
-                            )}
-                        </NavLink>
-                    ))}
+                                {/* Hide text when collapsed */}
+                                {!collapsed && (
+                                    <div className="flex items-center justify-between w-full">
+                                        <span className="text-sm font-medium">{item.name}</span>
+                                        {item.badge && (
+                                            <span className="text-[10px] bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 px-1.5 py-0.5 rounded-full whitespace-nowrap ml-2">
+                                                {item.badge}
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+                            </>
+                        );
+
+                        if (/* @ts-ignore */ item.disabled) {
+                            return (
+                                <div
+                                    key={item.name}
+                                    className={`flex items-center gap-3 p-2 rounded-lg transition relative group cursor-not-allowed opacity-60 text-slate-400 dark:text-slate-500`}
+                                >
+                                    {content}
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <NavLink
+                                key={item.name}
+                                to={item.href}
+                                className={({ isActive }) =>
+                                    `flex items-center gap-3 p-2 rounded-lg transition relative group
+                ${isActive
+                                        ? "bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white"
+                                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40"
+                                    }`
+                                }
+                            >
+                                {content}
+                            </NavLink>
+                        );
+                    })}
                 </div>
 
                 {/* Theme Toggle */}
