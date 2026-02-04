@@ -15,15 +15,16 @@ interface DashboardStats {
   total_sells: string;
 }
 
+import { API_BASE_URL } from '../config';
+
 export function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchStats = async () => {
     try {
-      // Use env var or default to local
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
-      const res = await fetch(`${baseUrl}/dashboard/stats`);
+      // Use centralized API config
+      const res = await fetch(`${API_BASE_URL}/dashboard/stats`);
       if (res.ok) {
         const data = await res.json();
         setStats(data);
@@ -57,7 +58,7 @@ export function Dashboard() {
   };
 
   return (
-    <div className=" overflow-hidden bg-white dark:bg-slate-900 text-slate-900 dark:text-white p-6 font-sans" style={{ maxHeight: "100vh" }}>
+    <div className=" overflow-hidden bg-white dark:bg-slate-900 text-slate-900 dark:text-white p-6 font-sans">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-6">
         <div>
@@ -203,7 +204,7 @@ function StatCard({ label, value, subtext, icon, wide }: any) {
           {icon}
           {label}
         </div>
-        <div className="text-xl md:text-2xl lg:text-3xl font-mono text-white tracking-tight">
+        <div className="text-xl lg:text-2xl xxl:text-3xl font-mono text-white tracking-tight">
           {value}
         </div>
       </div>
@@ -218,8 +219,7 @@ function StatCard({ label, value, subtext, icon, wide }: any) {
 
 function SplitStatCard({ label, value, ratio, color, icon }: any) {
   return (
-    <div className="bg-[#0A0A0A] border border-zinc-800 rounded-xl p-5 flex flex-col justify-between 
-            shadow-[-1px_1px_10px_1px_#b1b3b9] hover:shadow-[-1px_1px_10px_1px_#1e53be]
+    <div className="bg-[#0A0A0A] border border-zinc-800 rounded-xl p-5 flex flex-col justify-between shadow-[-1px_1px_10px_1px_#b1b3b9] hover:shadow-[-1px_1px_10px_1px_#1e53be]
             transition-all duration-300">
       <div className="flex items-center justify-between text-zinc-500 mb-2 text-xs font-medium tracking-wide uppercase">
         <div className="flex items-center gap-2">
@@ -230,7 +230,7 @@ function SplitStatCard({ label, value, ratio, color, icon }: any) {
           {ratio}
         </div>
       </div>
-      <div className={`text-xl md:text-2xl font-mono ${color} tracking-tight`}>
+      <div className={`text-xl xxl:text-2xl font-mono ${color} tracking-tight`}>
         {value}
       </div>
     </div>
