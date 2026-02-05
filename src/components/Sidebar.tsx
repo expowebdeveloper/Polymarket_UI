@@ -8,6 +8,7 @@ import {
     ChevronLeft,
     Moon,
     Sun,
+    ExternalLink,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useTheme } from '../contexts/ThemeContext';
@@ -18,6 +19,9 @@ const navItems = [
     { name: "Profile Stat", href: "/profile-stat", icon: LayoutDashboard },
     { name: "Market", href: "/markets", icon: LineChart, badge: "Coming Soon", disabled: true },
     { name: "Leaderboard", href: "/leaderboard", icon: Trophy, badge: "Coming Soon", disabled: true },
+    { name: "Whales/insiders", href: "/Whales/insiders", icon: LineChart, badge: "Coming Soon", disabled: true },
+    { name: "Powly AI(COMING SOON)", href: "/reports", icon: LineChart, badge: "Coming Soon", disabled: true },
+
 ];
 
 interface SidebarProps {
@@ -30,7 +34,7 @@ export function Sidebar({ collapsed, onSetCollapsed }: SidebarProps) {
 
     return (
         <div
-            className={`fixed top-0 left-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 h-screen p-4 transition-all duration-300 mt-4 rounded-lg
+            className={`fixed top-0 left-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 h-screen p-4 transition-all duration-300 mt-4 rounded-lg top-4 h-[calc(100vh-32px)]
     ${collapsed ? "w-20" : "w-64"} 
   `}
         >
@@ -47,7 +51,7 @@ export function Sidebar({ collapsed, onSetCollapsed }: SidebarProps) {
             </button>
 
             {/* NAVIGATION */}
-            <div>
+            <div className="flex flex-col h-full">
                 <div className="mb-2 flex items-center justify-center">
                     <img
                         src={logo}
@@ -127,6 +131,26 @@ export function Sidebar({ collapsed, onSetCollapsed }: SidebarProps) {
                             </>
                         )}
                     </button>
+                </div>
+
+                {/* Poly Rating on X */}
+                <div className="mt-auto pt-6 border-t border-slate-200 dark:border-slate-800">
+                    <a
+                        href="https://x.com/poly_rating"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 p-2 rounded-lg transition  text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40"
+                    >
+                        <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                        </svg>
+                        {!collapsed && (
+                            <>
+                                <span className="text-sm font-medium">@poly_rating</span>
+                                <ExternalLink className="w-4 h-2 ml-auto opacity-60" />
+                            </>
+                        )}
+                    </a>
                 </div>
             </div>
 
