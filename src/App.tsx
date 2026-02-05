@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { TradingHeader } from './components/TradingHeader';
+import { Footer } from './components/Footer';
 import { Dashboard } from './pages/Dashboard';
 import { Leaderboard } from './pages/Leaderboard';
 import { Markets } from './pages/Markets';
@@ -42,158 +43,161 @@ function App() {
 
   // Protected layout component
   const ProtectedLayout = () => (
-    <div className="flex">
+    <div className="flex min-h-screen">
       <Sidebar collapsed={collapsed} onSetCollapsed={setCollapsed} />
-      <div className={`${collapsed ? 'pl-[100px]' : 'pl-[280px]'} flex-1 px-4 py-4 transition-all duration-300`}>
-        <Routes>
-          <Route path="/dashboard" element={<Dashboard onSelectSymbol={setSelectedSymbol} />} />
-          <Route
-            path="/leaderboard"
-            element={
-              <>
-                <TradingHeader title="Leaderboard" />
-                <Leaderboard />
-              </>
-            }
-          />
-          <Route
-            path="/leaderboard/all"
-            element={
-              <>
-                <TradingHeader title="All Leaderboards" />
-                <LeaderboardViewAll />
-              </>
-            }
-          />
-          <Route
-            path="/leaderboard/view-all"
-            element={
-              <>
-                <TradingHeader title="View All Leaderboards" />
-                <LeaderboardViewAll />
-              </>
-            }
-          />
-          <Route
-            path="/markets"
-            element={
-              <>
-                <TradingHeader title="Markets" />
-                <Markets />
-              </>
-            }
-          />
-          <Route
-            path="/markets/live"
-            element={
-              <>
-                <TradingHeader title="Live Markets" />
-                <Markets defaultStatus="live" />
-              </>
-            }
-          />
-          <Route
-            path="/markets/:marketSlug"
-            element={
-              <>
-                <TradingHeader title="Market Details" />
-                <MarketDetailPage />
-              </>
-            }
-          />
-          <Route
-            path="/traders"
-            element={
-              <>
-                <TradingHeader title="Traders" />
-                <Traders />
-              </>
-            }
-          />
-          <Route
-            path="/traders/:wallet"
-            element={
-              <>
-                <TradingHeader title="Trader Profile" />
-                <TraderProfile />
-              </>
-            }
-          />
-          <Route
-            path="/whale-tracker"
-            element={
-              <>
-                <TradingHeader title="Whale Tracker" />
-                <WhaleTracker />
-              </>
-            }
-          />
-          <Route
-            path="/reports"
-            element={
-              <>
-                <TradingHeader title="Reports" />
-                <Reports />
-              </>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <>
-                <TradingHeader title="Settings" />
-                <Settings />
-              </>
-            }
-          />
-          <Route
-            path="/wallet-dashboard"
-            element={
-              <>
-                <TradingHeader title="Wallet Dashboard" />
-                <WalletDashboard />
-              </>
-            }
-          />
-          <Route
-            path="/db-leaderboard"
-            element={
-              <>
-                <TradingHeader title="DB Leaderboard" />
-                <DatabaseLeaderboard />
-              </>
-            }
-          />
-          <Route
-            path="/db-wallet-dashboard"
-            element={
-              <>
-                <TradingHeader title="DB Wallet Dashboard" />
-                <DBWalletDashboard />
-              </>
-            }
-          />
-          <Route
-            path="/leaderboard/live"
-            element={
-              <>
-                <TradingHeader title="Live Leaderboard" />
-                <LiveLeaderboard />
-              </>
-            }
-          />
-          <Route
-            path="/profile-stat"
-            element={
-              <>
-                <ProfileStat />
-              </>
-            }
-          />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+      <div className={`${collapsed ? 'pl-[100px]' : 'pl-[280px]'} flex-1 flex flex-col transition-all duration-300`}>
+        <div className="flex-1 px-4 py-4">
+          <Routes>
+            <Route path="/dashboard" element={<Dashboard onSelectSymbol={setSelectedSymbol} />} />
+            <Route
+              path="/leaderboard"
+              element={
+                <>
+                  <TradingHeader title="Leaderboard" />
+                  <Leaderboard />
+                </>
+              }
+            />
+            <Route
+              path="/leaderboard/all"
+              element={
+                <>
+                  <TradingHeader title="All Leaderboards" />
+                  <LeaderboardViewAll />
+                </>
+              }
+            />
+            <Route
+              path="/leaderboard/view-all"
+              element={
+                <>
+                  <TradingHeader title="View All Leaderboards" />
+                  <LeaderboardViewAll />
+                </>
+              }
+            />
+            <Route
+              path="/markets"
+              element={
+                <>
+                  <TradingHeader title="Markets" />
+                  <Markets />
+                </>
+              }
+            />
+            <Route
+              path="/markets/live"
+              element={
+                <>
+                  <TradingHeader title="Live Markets" />
+                  <Markets defaultStatus="live" />
+                </>
+              }
+            />
+            <Route
+              path="/markets/:marketSlug"
+              element={
+                <>
+                  <TradingHeader title="Market Details" />
+                  <MarketDetailPage />
+                </>
+              }
+            />
+            <Route
+              path="/traders"
+              element={
+                <>
+                  <TradingHeader title="Traders" />
+                  <Traders />
+                </>
+              }
+            />
+            <Route
+              path="/traders/:wallet"
+              element={
+                <>
+                  <TradingHeader title="Trader Profile" />
+                  <TraderProfile />
+                </>
+              }
+            />
+            <Route
+              path="/whale-tracker"
+              element={
+                <>
+                  <TradingHeader title="Whale Tracker" />
+                  <WhaleTracker />
+                </>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <>
+                  <TradingHeader title="Reports" />
+                  <Reports />
+                </>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <>
+                  <TradingHeader title="Settings" />
+                  <Settings />
+                </>
+              }
+            />
+            <Route
+              path="/wallet-dashboard"
+              element={
+                <>
+                  <TradingHeader title="Wallet Dashboard" />
+                  <WalletDashboard />
+                </>
+              }
+            />
+            <Route
+              path="/db-leaderboard"
+              element={
+                <>
+                  <TradingHeader title="DB Leaderboard" />
+                  <DatabaseLeaderboard />
+                </>
+              }
+            />
+            <Route
+              path="/db-wallet-dashboard"
+              element={
+                <>
+                  <TradingHeader title="DB Wallet Dashboard" />
+                  <DBWalletDashboard />
+                </>
+              }
+            />
+            <Route
+              path="/leaderboard/live"
+              element={
+                <>
+                  <TradingHeader title="Live Leaderboard" />
+                  <LiveLeaderboard />
+                </>
+              }
+            />
+            <Route
+              path="/profile-stat"
+              element={
+                <>
+                  <ProfileStat />
+                </>
+              }
+            />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </div>
+        <Footer />
       </div>
-    </div >
+    </div>
   );
 
   return (

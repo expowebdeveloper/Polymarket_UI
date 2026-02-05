@@ -217,6 +217,7 @@ export interface EnhancedProfileStatsResponse {
     totalPnl: number;
     roi: number;
     winRate: number;
+    isBadgeHolder?: boolean;
 }
 
 export interface UserPnL {
@@ -257,6 +258,11 @@ export interface LeaderboardEntry {
     score_pnl?: number;
     score_risk?: number;
     final_score?: number;
+    user_tag?: {
+        title: string;
+        emoji: string;
+        style: string;
+    };
     // Intermediate values for leaderboard sorting
     W_shrunk?: number;
     roi_shrunk?: number;

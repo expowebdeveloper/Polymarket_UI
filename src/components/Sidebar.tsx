@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useTheme } from '../contexts/ThemeContext';
+import logo from '../assets/logo.png';
 
 const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -47,8 +48,16 @@ export function Sidebar({ collapsed, onSetCollapsed }: SidebarProps) {
 
             {/* NAVIGATION */}
             <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent mb-10">
-                    Poly
+                <div className="mb-2 flex items-center justify-center">
+                    <img
+                        src={logo}
+                        alt="Polyrating Logo"
+                        className={`transition-all duration-300 ${collapsed ? 'w-10 h-10' : 'w-32 h-auto'}`}
+                    />
+
+                </div>
+                <h1 className="text-2xl font-bold text-white text-center mb-10">
+                    Poly<span className="bg-gradient-to-r from-emerald-400 to-cyan-400 text-transparent bg-clip-text">rating</span>
                 </h1>
 
                 <div className="space-y-3">

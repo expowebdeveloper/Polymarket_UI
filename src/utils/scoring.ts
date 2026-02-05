@@ -22,6 +22,12 @@ export interface ScoredMetrics {
     confidence_score: number;
     roi_score: number;
     pnl_score: number;
+    is_badge_holder?: boolean;
+    user_tag?: {
+        title: string;
+        emoji: string;
+        style: string;
+    };
     streaks: {
         longest_streak: number;
         current_streak: number;

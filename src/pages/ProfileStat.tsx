@@ -135,7 +135,7 @@ export function ProfileStat() {
             // Fetch default recent 10 trades
             fetchTrades('recent10');
         }
-    
+
     }, [activeWallet, fetchTrades]);
 
     // Fetch API distribution when tab is active
@@ -646,6 +646,20 @@ export function ProfileStat() {
                                     }
                                     return null;
                                 })()}
+                                {metrics.is_badge_holder && (
+                                    <span className="px-6 py-2 rounded-full text-sm border font-bold bg-gradient-to-r from-purple-500/10 to-amber-500/10 text-transparent bg-clip-text border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.4)] animate-pulse">
+                                        <span className="bg-gradient-to-r from-purple-400 to-amber-400 bg-clip-text">
+                                            🏅 Polymarket Badge Holder
+                                        </span>
+                                    </span>
+                                )}
+                                {metrics.user_tag && (
+                                    <span className={`px-6 py-2 rounded-full text-sm border font-bold ${metrics.user_tag.style}`}>
+                                        <span className="bg-gradient-to-r from-current to-current bg-clip-text">
+                                            {metrics.user_tag.emoji} {metrics.user_tag.title}
+                                        </span>
+                                    </span>
+                                )}
                             </div>
                         </div>
 
