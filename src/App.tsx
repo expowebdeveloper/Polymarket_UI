@@ -208,11 +208,13 @@ function App() {
         <Route path="/register" element={<Register />} />
 
         {/* Protected routes */}
-        {isAuthenticated ? (
+        {/* Login requirement commented out - allow access without auth */}
+        {/* {isAuthenticated ? (
           <Route path="*" element={<ProtectedLayout />} />
         ) : (
           <Route path="*" element={<Navigate to="/login" replace />} />
-        )}
+        )} */}
+        <Route path="*" element={<ProtectedLayout />} />
       </Routes>
     </div>
   );

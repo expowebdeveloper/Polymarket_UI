@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, Wallet, TrendingUp, TrendingDown, Trophy, Fish, Flame, ChevronDown, ChevronUp, Activity as ActivityIcon, RefreshCw } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, Trophy, Fish, Flame, ChevronDown, ChevronUp, Activity as ActivityIcon, RefreshCw, Target, ArrowRight } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { BarChart, Bar, Cell, PieChart, Pie, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
@@ -92,11 +92,12 @@ export function ProfileStat() {
     const [userProfile, setUserProfile] = useState<UserLeaderboardData | null>(null);
     const [theme] = useState<"dark" | "light">("dark"); // Default to dark, removed toggle
     const [showAdvanced, setShowAdvanced] = useState(false);
-    const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('active_positions');
+    const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('distribution');
     const [distributionMetric, setDistributionMetric] = useState<'count' | 'capital'>('count');
 
     // Pagination states
     const [historyPage, setHistoryPage] = useState(1);
+    const [activityPage, setActivityPage] = useState(1);
     const [activePositionsPage, setActivePositionsPage] = useState(1);
     const [closedPositionsPage, setClosedPositionsPage] = useState(1);
 
@@ -781,8 +782,8 @@ export function ProfileStat() {
 
                         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors group">
                             <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 rounded-lg bg-orange-500/10 text-orange-400 group-hover:scale-110 transition-transform">
-                                    <Fish className="h-5 w-5" />
+                                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
+                                    <Target className="h-5 w-5" />
                                 </div>
                                 <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Unrealized</p>
                             </div>
@@ -794,8 +795,8 @@ export function ProfileStat() {
 
                         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors group">
                             <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 rounded-lg bg-teal-500/10 text-teal-400 group-hover:scale-110 transition-transform">
-                                    <Wallet className="h-5 w-5" />
+                                <div className="p-2 rounded-lg bg-red-500/10 text-red-400 group-hover:scale-110 transition-transform">
+                                    <ArrowRight className="h-5 w-5" />
                                 </div>
                                 <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Realized</p>
                             </div>
@@ -840,7 +841,7 @@ export function ProfileStat() {
                                     </p>
                                 </div>
                                 <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
-                                    <p className="text-xs text-slate-400 uppercase mb-1">All-time Vol Rank</p>
+                                    <p className="text-xs text-slate-400 uppercase mb-1">All-time Volume Rank</p>
                                     <p className="text-lg font-bold text-white">
                                         {metrics.volume_rank ? `#${metrics.volume_rank}` : 'N/A'}
                                     </p>
@@ -1008,10 +1009,11 @@ export function ProfileStat() {
                     <div className="bg-slate-900/40 border border-slate-800 rounded-3xl overflow-hidden mb-12">
                         <div className="flex border-b border-slate-800 p-2 gap-2 overflow-x-auto scrollbar-hide">
                             {[
-                                { id: 'history', label: 'Trade History' },
+                                { id: 'distribution', label: 'Distribution' },
+                                { id: 'activity', label: 'Activity' },
                                 { id: 'active_positions', label: 'Active Positions' },
                                 { id: 'closed_positions', label: 'Closed Positions' },
-                                { id: 'distribution', label: 'Distribution' }
+                                { id: 'history', label: 'Trade History' }
                             ].map((tab) => (
                                 <button
                                     key={tab.id}
@@ -1136,6 +1138,104 @@ export function ProfileStat() {
                                                 </div>
                                             </div>
                                         </>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeTab === 'activity' && (
+                                <div>
+                                    <h3 className="text-lg font-semibold text-white mb-4">Wallet Activity</h3>
+                                    {activities && activities.length > 0 ? (
+                                        <>
+                                            <div className="space-y-3 mb-4">
+                                                {activities
+                                                    .slice((activityPage - 1) * itemsPerPage, activityPage * itemsPerPage)
+                                                    .map((activity, idx) => {
+                                                        const activityDate = activity.timestamp
+                                                            ? new Date(activity.timestamp * 1000).toLocaleString()
+                                                            : 'N/A';
+                                                        const getActivityTypeColor = (type: string) => {
+                                                            switch (type) {
+                                                                case 'TRADE': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+                                                                case 'REDEEM': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+                                                                case 'REWARD': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+                                                                default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+                                                            }
+                                                        };
+                                                        return (
+                                                            <div key={idx} className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
+                                                                <div className="flex items-start justify-between mb-2">
+                                                                    <div className="flex-1">
+                                                                        <div className="flex items-center gap-2 mb-1">
+                                                                            <span className={`px-2 py-1 rounded text-xs font-medium border ${getActivityTypeColor(activity.type || 'UNKNOWN')}`}>
+                                                                                {activity.type || 'UNKNOWN'}
+                                                                            </span>
+                                                                            {(activity as any).title && (
+                                                                                <span className="text-white font-medium text-sm">{(activity as any).title}</span>
+                                                                            )}
+                                                                        </div>
+                                                                        {(activity as any).slug && (
+                                                                            <p className="text-slate-400 text-xs mb-1">{(activity as any).slug}</p>
+                                                                        )}
+                                                                        {(activity as any).outcome && (
+                                                                            <p className="text-slate-300 text-sm">Outcome: {(activity as any).outcome}</p>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="text-right">
+                                                                        {activity.usdc_size && (
+                                                                            <p className={`text-lg font-bold ${(activity.type === 'REWARD' || activity.type === 'REDEEM')
+                                                                                ? 'text-emerald-400'
+                                                                                : (activity as any).side === 'SELL'
+                                                                                    ? 'text-emerald-400'
+                                                                                    : 'text-blue-400'
+                                                                                }`}>
+                                                                                {(activity as any).side === 'SELL' ? '+' : activity.type === 'REWARD' || activity.type === 'REDEEM' ? '+' : ''}
+                                                                                {formatCurrency(activity.usdc_size)}
+                                                                            </p>
+                                                                        )}
+                                                                        <p className="text-slate-500 text-xs mt-1">{activityDate}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-center gap-4 text-xs text-slate-400 mt-2">
+                                                                    {activity.size && <span>Size: {formatSize(activity.size)}</span>}
+                                                                    {activity.price && <span>Price: ${Number(activity.price).toFixed(4)}</span>}
+                                                                    {activity.transaction_hash && (
+                                                                        <span className="truncate max-w-[200px]" title={activity.transaction_hash}>
+                                                                            TX: {activity.transaction_hash.slice(0, 10)}...
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                            </div>
+                                            <div className="flex items-center justify-between mt-4">
+                                                <div className="text-slate-400 text-sm">
+                                                    Showing {(activityPage - 1) * itemsPerPage + 1} to {Math.min(activityPage * itemsPerPage, activities.length)} of {activities.length} activities
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => setActivityPage(prev => Math.max(1, prev - 1))}
+                                                        disabled={activityPage === 1}
+                                                        className={`px-4 py-2 rounded text-sm font-medium transition ${activityPage === 1 ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}
+                                                    >
+                                                        Previous
+                                                    </button>
+                                                    <span className="px-4 py-2 text-slate-300 text-sm">
+                                                        Page {activityPage} of {Math.ceil(activities.length / itemsPerPage) || 1}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => setActivityPage(prev => Math.min(Math.ceil(activities.length / itemsPerPage), prev + 1))}
+                                                        disabled={activityPage >= Math.ceil(activities.length / itemsPerPage)}
+                                                        className={`px-4 py-2 rounded text-sm font-medium transition ${activityPage >= Math.ceil(activities.length / itemsPerPage) ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}
+                                                    >
+                                                        Next
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <p className="text-slate-400 text-center py-8">No activity data available</p>
                                     )}
                                 </div>
                             )}

@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from "react";
 
-type Metric = "roi" | "win" | "risk";
-type RightMetric = "volume" | "pnl" | "winrate";
+type RightMetric = "pnl";
 
 type MarketDatum = {
   key: string;
@@ -215,8 +214,6 @@ interface MarketDistributionPanelProps {
 
 
 export function MarketDistributionPanel({ marketDistribution, activities = [], positions = [], closedPositions = [] }: MarketDistributionPanelProps) {
-  const [metric, setMetric] = useState<Metric>("roi");
-  const [rightMetric, setRightMetric] = useState<RightMetric>("pnl"); // Default to PNL since volume is in pie chart
 
 
   // Transform real data to component format
@@ -239,27 +236,16 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
     }).filter(m => m.capital > 0 || m.trades > 0 || Math.abs(m.pnl) > 0 || m.volume > 0);
   }, [marketDistribution]);
 
-  const sortedRanked = useMemo(() => {
-    const arr = [...markets];
-
-    if (metric === "roi") arr.sort((a, b) => b.roiPct - a.roiPct);
-    else if (metric === "win") arr.sort((a, b) => b.winRatePct - a.winRatePct);
-    else arr.sort((a, b) => a.riskScore - b.riskScore); // lower risk better
-    return arr;
-  }, [markets, metric]);
-
-  const headline = useMemo(() => {
-    const top = sortedRanked[0];
-    if (!top) return "Market distribution";
-    if (metric === "roi") return `Primary edge in ${top.label} markets with high ROI and low risk.`;
-    if (metric === "win") return `Primary edge in ${top.label} markets with strong win rate.`;
-    return `Lowest risk exposure concentrated in ${top.label}.`;
-  }, [sortedRanked, metric]);
-
   const allocationSorted = useMemo(
     () => [...markets].sort((a, b) => b.volume - a.volume),
     [markets]
   );
+
+  const headline = useMemo(() => {
+    const top = allocationSorted[0];
+    if (!top) return "Market distribution";
+    return `Primary volume concentrated in ${top.label} markets.`;
+  }, [allocationSorted]);
 
   // Calculate total volume for the pie chart center
   const totalVolume = useMemo(() => {
@@ -267,21 +253,15 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
   }, [markets]);
 
   const rightSeries = useMemo(() => {
-    // Fixed order bars based on CATEGORY_ORDER
     const byKey = new Map(markets.map((m) => [m.key, m]));
-    const base = CATEGORY_ORDER.map((k) => byKey.get(k))
+    return CATEGORY_ORDER.map((k) => byKey.get(k))
       .filter(Boolean)
       .map((m) => ({
         key: m!.key,
         label: m!.label,
-        value: rightMetric === "volume" ? m!.volume : rightMetric === "pnl" ? m!.pnl : m!.winRatePct,
+        value: m!.pnl,
       }));
-
-    // If no data, return empty array
-    if (base.length === 0) return [];
-
-    return base;
-  }, [markets, rightMetric]);
+  }, [markets]);
 
   if (markets.length === 0) {
     return (
@@ -308,8 +288,8 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
             <p className="text-xs text-slate-400 mt-1">Total invested volume from Polymarket</p>
           </div>
 
-          {/* donut */}
-          <div className="mt-6 flex flex-col items-center">
+          {/* donut + category-by-volume list (side by side, not below chart) */}
+          <div className="mt-6 flex flex-row items-start justify-center gap-6">
             <DonutChart
               size={240}
               thickness={32}
@@ -320,9 +300,8 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
               }))}
               totalVolume={totalVolume}
             />
-
-            {/* legend under pie */}
-            <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2">
+            {/* category by volume list - beside pie, not below */}
+            <div className="flex flex-col gap-2 min-w-[180px]">
               {allocationSorted.map((m) => {
                 const volumePct = totalVolume > 0 ? (m.volume / totalVolume) * 100 : 0;
                 return (
@@ -336,78 +315,27 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
               })}
             </div>
           </div>
-
-          {/* Ranked List - moved here from middle card */}
-          <div className="mt-8 pt-6 border-t border-slate-800">
-            <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
-              <div>
-                <p className="text-white/95 font-semibold">Ranked by Category</p>
-                <p className="text-xs text-slate-400 mt-1">Sorted by selected metric</p>
-              </div>
-
-              <div className="inline-flex items-center rounded-xl bg-slate-950/50 border border-slate-800 p-1 gap-1">
-                <MetricPill active={metric === "roi"} onClick={() => setMetric("roi")}>
-                  ROI %
-                </MetricPill>
-                <MetricPill active={metric === "win"} onClick={() => setMetric("win")}>
-                  Win Rate
-                </MetricPill>
-                <MetricPill active={metric === "risk"} onClick={() => setMetric("risk")}>
-                  Risk
-                </MetricPill>
-              </div>
-            </div>
-
-            <div className="space-y-3 max-h-[500px] overflow-y-auto">
-              {sortedRanked.map((m) => (
-                <MarketRowCompact key={m.key} market={m} metric={metric} />
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* RIGHT CARD - Bar Chart */}
         <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6">
-          <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
-            <div>
-              <p className="text-white font-semibold">PNL / Win Rate by Category</p>
-              <p className="text-xs text-slate-400 mt-1">
-                {rightMetric === "pnl" ? "Total PNL by Category" : "Win Rate % by Category"}
-              </p>
-            </div>
-
-            <div className="inline-flex items-center rounded-xl bg-slate-950/50 border border-slate-800 p-1 gap-1">
-              <MetricPill
-                active={rightMetric === "pnl"}
-                onClick={() => {
-                  setRightMetric("pnl");
-                }}
-              >
-                PNL
-              </MetricPill>
-              <MetricPill
-                active={rightMetric === "winrate"}
-                onClick={() => {
-                  setRightMetric("winrate");
-                }}
-              >
-                Win Rate
-              </MetricPill>
-            </div>
+          <div className="mb-4">
+            <p className="text-white font-semibold">PNL by Category</p>
+            <p className="text-xs text-slate-400 mt-1">Total PNL by Category</p>
           </div>
 
           <div className="mt-4">
             <VolumeBarChart
               data={rightSeries}
               height={280}
-              ariaLabel={rightMetric}
-              valueFormatter={rightMetric === "winrate" ? (v) => `${v.toFixed(1)}%` : formatMoneyCompact}
-              axisFormatter={rightMetric === "winrate" ? (v) => `${Math.round(v)}%` : formatAxisMoney}
+              ariaLabel="PNL"
+              valueFormatter={formatMoneyCompact}
+              axisFormatter={formatAxisMoney}
             />
           </div>
 
           <div className="mt-4">
-            <LegendList items={rightSeries} valueFormatter={rightMetric === "winrate" ? (v) => `${v.toFixed(1)}%` : formatMoneyCompact} />
+            <LegendList items={rightSeries} valueFormatter={formatMoneyCompact} />
           </div>
         </div>
       </div>
@@ -416,94 +344,6 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
 }
 
 // ---------- Components ----------
-function MetricPill({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={
-        active
-          ? "px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/20 text-emerald-200 border border-emerald-500/30 shadow-[0_0_25px_rgba(16,185,129,0.18)]"
-          : "px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-900/50"
-      }
-    >
-      {children}
-    </button>
-  );
-}
-
-function MarketRowCompact({ market, metric }: { market: MarketDatum; metric: Metric }) {
-  const label = metric === "roi" ? "ROI %" : metric === "win" ? "Win Rate" : "Risk";
-
-  const rightText =
-    metric === "roi"
-      ? formatSignedPct(market.roiPct)
-      : metric === "win"
-        ? `${market.winRatePct.toFixed(1)}%`
-        : market.riskScore.toFixed(2);
-
-  const progress = useMemo(() => {
-    if (metric === "roi") return clamp((market.roiPct + 10) / 70, 0, 1);
-    if (metric === "win") return clamp(market.winRatePct / 100, 0, 1);
-    return clamp(1 - market.riskScore / 0.6, 0, 1);
-  }, [metric, market.roiPct, market.winRatePct, market.riskScore]);
-
-  const isNegative = metric === "roi" && market.roiPct < 0;
-  const isBadRisk = metric === "risk" && market.riskScore >= 0.35;
-
-  return (
-    <div className="rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-950/30 to-slate-900/20 p-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: colorForKey(market.key) }} />
-          <div className="min-w-0">
-            <p className="text-sm text-white font-medium truncate">{market.label}</p>
-            <p className="text-[11px] text-slate-500">{label}</p>
-          </div>
-        </div>
-
-        <div className="text-right shrink-0">
-          <p
-            className={
-              "text-sm font-semibold tabular-nums " +
-              (isNegative ? "text-rose-400" : isBadRisk ? "text-amber-300" : "text-emerald-300")
-            }
-          >
-            {rightText}
-          </p>
-          <p className="text-[11px] text-slate-500 tabular-nums">
-            {metric === "roi" ? "ROI" : metric === "win" ? "Win" : "Risk"}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-2">
-        <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
-          <div
-            className={
-              "h-full rounded-full transition-all duration-700 " +
-              (isNegative ? "bg-rose-500/70" : isBadRisk ? "bg-amber-400/70" : "bg-emerald-400/70")
-            }
-            style={{ width: `${Math.round(progress * 100)}%` }}
-          />
-        </div>
-
-        <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
-          <span>{market.trades} trades</span>
-          <span className="tabular-nums">{formatMoneyCompact(market.capital)}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function VolumeBarChart({
   data,
   height = 320,
@@ -525,33 +365,47 @@ function VolumeBarChart({
     );
   }
 
-  const max = Math.max(...data.map((d) => d.value), 1);
+  const rawMin = Math.min(...data.map((d) => d.value), 0);
+  const rawMax = Math.max(...data.map((d) => d.value), 0);
+  const hasNegatives = rawMin < 0;
+  const max = Math.max(Math.abs(rawMin), Math.abs(rawMax), 1);
 
   const width = 720;
   const h = Math.max(280, height);
   const padL = 76;
   const padR = 18;
   const padT = 20;
-  const padB = 90; // Increased for rotated labels
+  const padB = 90;
 
   const chartW = width - padL - padR;
   const chartH = h - padT - padB;
 
-  const ticks = niceTicks(0, max, 5);
-  const barGap = 12; // Reduced gap
+  // Zero baseline: when we have negatives, zero is at mid-height
+  const zeroY = hasNegatives ? padT + chartH / 2 : padT + chartH;
+  const scale = chartH / 2 / max;
+
+  const ticks = hasNegatives ? niceTicks(-max, max, 5) : niceTicks(0, max, 5);
+  const barGap = 12;
   const barW = Math.max(20, Math.floor((chartW - barGap * (data.length - 1)) / data.length));
+
+  const fmt = axisFormatter ?? formatAxisMoney;
 
   return (
     <div className="w-full rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-950/25 to-slate-900/15 p-4">
       <svg width="100%" height={h} viewBox={`0 0 ${width} ${h}`} role="img" aria-label={ariaLabel}>
+        {/* zero line when we have negatives */}
+        {hasNegatives && (
+          <line x1={padL} y1={zeroY} x2={width - padR} y2={zeroY} stroke="rgba(148,163,184,0.4)" strokeWidth={1} strokeDasharray="4 4" />
+        )}
+
         {/* grid + y-axis labels */}
         {ticks.map((t) => {
-          const y = padT + chartH - (t / (ticks[ticks.length - 1] || 1)) * chartH;
+          const y = zeroY - (t / max) * (chartH / 2);
           return (
             <g key={t}>
               <line x1={padL} y1={y} x2={width - padR} y2={y} stroke="rgba(148,163,184,0.18)" strokeWidth={1} />
               <text x={padL - 12} y={y + 6} fontSize={14} fill="rgba(148,163,184,0.85)" textAnchor="end">
-                {axisFormatter ? axisFormatter(t) : formatAxisMoney(t)}
+                {fmt(t)}
               </text>
             </g>
           );
@@ -560,14 +414,14 @@ function VolumeBarChart({
         {/* bars */}
         {data.map((d, i) => {
           const x = padL + i * (barW + barGap);
-          const barH = (d.value / max) * chartH;
-          const y = padT + chartH - barH;
+          const barH = Math.abs(d.value) * scale;
+          const isNeg = d.value < 0;
+          const y = isNeg ? zeroY : zeroY - barH;
           return (
             <g key={d.key}>
               <rect x={x} y={y} width={barW} height={barH} rx={6} fill={colorForKey(d.key)} opacity={0.92} />
               <rect x={x} y={y} width={barW} height={barH} rx={6} fill="url(#barGlow)" opacity={0.35} />
 
-              {/* X labels - rotated 45 degrees */}
               <text
                 x={x + barW / 2}
                 y={padT + chartH + 12}
@@ -579,8 +433,14 @@ function VolumeBarChart({
                 {d.label}
               </text>
 
-              {/* value labels (top) */}
-              <text x={x + barW / 2} y={y - 8} fontSize={10} fill="rgba(148,163,184,0.9)" textAnchor="middle">
+              {/* value labels: above bar for positive, below for negative */}
+              <text
+                x={x + barW / 2}
+                y={isNeg ? y + barH + 14 : y - 8}
+                fontSize={10}
+                fill={isNeg ? "rgba(244,63,94,0.9)" : "rgba(148,163,184,0.9)"}
+                textAnchor="middle"
+              >
                 {valueFormatter(d.value)}
               </text>
             </g>
@@ -606,11 +466,12 @@ function LegendList({
   valueFormatter?: (v: number) => string;
 }) {
   const total = useMemo(() => items.reduce((acc, it) => acc + it.value, 0) || 1, [items]);
+  const showPct = items.every((it) => it.value >= 0) && total > 0;
 
   return (
     <div className="space-y-3">
       {items.map((it) => {
-        const pct = (it.value / total) * 100;
+        const pct = showPct ? ((it.value / total) * 100) : 0;
         return (
           <div
             key={it.key}
@@ -621,8 +482,8 @@ function LegendList({
               <p className="text-base text-white/90 font-medium truncate">{it.label}</p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-slate-200 tabular-nums">{valueFormatter(it.value)}</p>
-              <p className="text-xs text-slate-500 tabular-nums">{pct.toFixed(0)}%</p>
+              <p className={`text-sm tabular-nums ${it.value >= 0 ? "text-slate-200" : "text-rose-400"}`}>{valueFormatter(it.value)}</p>
+              {showPct && <p className="text-xs text-slate-500 tabular-nums">{pct.toFixed(0)}%</p>}
             </div>
           </div>
         );
@@ -704,15 +565,6 @@ function DonutChart({
 }
 
 // ---------- Helpers ----------
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n));
-}
-
-function formatSignedPct(v: number) {
-  const sign = v > 0 ? "+" : "";
-  return `${sign}${v.toFixed(1)}%`;
-}
-
 function formatMoneyCompact(value: number) {
   const abs = Math.abs(value);
   const sign = value < 0 ? "-" : "";
@@ -724,9 +576,10 @@ function formatMoneyCompact(value: number) {
 
 function formatAxisMoney(v: number) {
   const abs = Math.abs(v);
-  if (abs >= 1_000_000) return `$${Math.round(abs / 1_000_000)}M`;
-  if (abs >= 1_000) return `$${Math.round(abs / 1_000)}k`;
-  return `$${Math.round(abs)}`;
+  const sign = v < 0 ? "-" : "";
+  if (abs >= 1_000_000) return `${sign}$${Math.round(abs / 1_000_000)}M`;
+  if (abs >= 1_000) return `${sign}$${Math.round(abs / 1_000)}k`;
+  return `${sign}$${Math.round(abs)}`;
 }
 
 function niceTicks(min: number, max: number, count: number) {

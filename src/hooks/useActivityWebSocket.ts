@@ -52,26 +52,7 @@ export function useActivityWebSocket() {
         }
     }, [activities]);
 
-    // Initial fetch from API (Fallback/Fast-Load)
-    useEffect(() => {
-        const fetchInitial = async () => {
-            try {
-                const { fetchGlobalActivity } = await import('../services/api');
-                const data = await fetchGlobalActivity();
-                if (Array.isArray(data) && data.length > 0) {
-                    setActivities(prev => {
-                        const existingIds = new Set(prev.map(a => a.id));
-                        const newOnes = (data as Activity[]).filter(a => !existingIds.has(a.id));
-                        if (newOnes.length === 0) return prev;
-                        return [...newOnes, ...prev].sort((a, b) => b.timestamp - a.timestamp).slice(0, 2000);
-                    });
-                }
-            } catch (error) {
-                console.error('Failed to fetch initial activity from API:', error);
-            }
-        };
-        fetchInitial();
-    }, []);
+    // Rely on WebSocket initial_activity_batch for initial data (avoids duplicate GET /activity/global on every load)
 
     const connect = useCallback(() => {
         if (reconnectTimeout.current) {

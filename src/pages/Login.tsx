@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 export function Login() {
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    // const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const { login } = useAuth();
@@ -16,7 +16,7 @@ export function Login() {
         setIsLoading(true);
 
         try {
-            await login(email, password);
+            await login(email, '' /* password - commented out */);
             navigate('/dashboard');
         } catch (err: any) {
             setError(err.message || 'Login failed. Please check your credentials.');
@@ -59,7 +59,8 @@ export function Login() {
                         />
                     </div>
 
-                    <div>
+                    {/* Password field commented out */}
+                    {/* <div>
                         <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                             Password
                         </label>
@@ -72,7 +73,7 @@ export function Login() {
                             className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                             placeholder="••••••••"
                         />
-                    </div>
+                    </div> */}
 
                     <button
                         type="submit"

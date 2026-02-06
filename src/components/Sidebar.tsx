@@ -20,7 +20,7 @@ const navItems = [
     { name: "Market", href: "/markets", icon: LineChart, badge: "Coming Soon", disabled: true },
     { name: "Leaderboard", href: "/leaderboard", icon: Trophy, badge: "Coming Soon", disabled: true },
     { name: "Whales/insiders", href: "/Whales/insiders", icon: LineChart, badge: "Coming Soon", disabled: true },
-    { name: "Powly AI(COMING SOON)", href: "/reports", icon: LineChart, badge: "Coming Soon", disabled: true },
+    { name: "Powly AI", href: "/reports", icon: LineChart, badge: "Coming Soon", disabled: true },
 
 ];
 
@@ -34,7 +34,7 @@ export function Sidebar({ collapsed, onSetCollapsed }: SidebarProps) {
 
     return (
         <div
-            className={`fixed top-0 left-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 h-screen p-4 transition-all duration-300 mt-4 rounded-lg top-4 h-[calc(100vh-32px)]
+            className={`fixed top-0 left-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 transition-all duration-300 rounded-lg top-4 h-[calc(100vh-32px)]
     ${collapsed ? "w-20" : "w-64"} 
   `}
         >
@@ -61,7 +61,8 @@ export function Sidebar({ collapsed, onSetCollapsed }: SidebarProps) {
 
                 </div>
                 <h1 className="text-2xl font-bold text-white text-center mb-10">
-                    Poly<span className="bg-gradient-to-r from-emerald-400 to-cyan-400 text-transparent bg-clip-text">rating</span>
+                {collapsed ? <span>P<span className="bg-gradient-to-r from-emerald-400 to-cyan-400 text-transparent bg-clip-text">R</span></span> : <span className="text-white">Poly<span className="bg-gradient-to-r from-emerald-400 to-cyan-400 text-transparent bg-clip-text">Rating</span></span>} 
+                    
                 </h1>
 
                 <div className="space-y-3">
