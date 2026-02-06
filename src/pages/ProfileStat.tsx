@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Wallet, TrendingUp, TrendingDown, Trophy, Fish, Flame, ChevronDown, ChevronUp, Activity as ActivityIcon, RefreshCw, Target, ArrowRight } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
@@ -94,14 +94,15 @@ export function ProfileStat() {
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('distribution');
     const [distributionMetric, setDistributionMetric] = useState<'count' | 'capital'>('count');
+    const [searchError, setSearchError] = useState<string | null>(null);
 
     // Pagination states
     const [historyPage, setHistoryPage] = useState(1);
-    const [activityPage, setActivityPage] = useState(1);
     const [activePositionsPage, setActivePositionsPage] = useState(1);
     const [closedPositionsPage, setClosedPositionsPage] = useState(1);
 
     const itemsPerPage = 20;
+    const activityFetchAttempted = useRef<string | null>(null);
     const [apiDistribution, setApiDistribution] = useState<any[]>([]);
     const [loadingDistribution, setLoadingDistribution] = useState(false);
 
@@ -114,8 +115,18 @@ export function ProfileStat() {
         activities,
         userPnL,
         portfolioValue,
-        refresh
+        refresh,
+        refreshWithTrades,
     } = useProfileStat(activeWallet);
+
+    // Activity limited to last 7 days
+    const activitiesLast7Days = useMemo(() => {
+        if (!activities || activities.length === 0) return [];
+        const sevenDaysAgoSec = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
+        return activities
+            .filter((a) => (a.timestamp ?? 0) >= sevenDaysAgoSec)
+            .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+    }, [activities]);
 
     // Trade filtering with caching
     const {
@@ -139,6 +150,20 @@ export function ProfileStat() {
 
     }, [activeWallet, fetchTrades]);
 
+    // Reset activity fetch flag when wallet changes
+    useEffect(() => {
+        activityFetchAttempted.current = null;
+    }, [activeWallet]);
+
+    // Fetch activities when Activity tab is selected and activities is empty
+    useEffect(() => {
+        const key = `${activeWallet}-activity`;
+        if (activeWallet && activeTab === 'activity' && (!activities || activities.length === 0) && !loading && activityFetchAttempted.current !== key) {
+            activityFetchAttempted.current = key;
+            refreshWithTrades();
+        }
+    }, [activeWallet, activeTab, activities, loading, refreshWithTrades]);
+
     // Fetch API distribution when tab is active
     useEffect(() => {
         if (activeWallet && activeTab === 'distribution' && apiDistribution.length === 0 && !loadingDistribution) {
@@ -154,31 +179,20 @@ export function ProfileStat() {
 
     const handleWalletSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setSearchError(null);
 
-        // Basic local validation (just checks if empty)
         if (!walletInput.trim()) return;
 
         try {
-            // Resolve Wallet/User
             const resolution = await resolveWalletOrUser(walletInput);
             const resolvedAddress = resolution.wallet_address;
 
             setActiveWallet(resolvedAddress);
-            // Reset pages when changing wallet
             setHistoryPage(1);
             setActivePositionsPage(1);
             setClosedPositionsPage(1);
-
-            // If it was a username, we could update the input, but keeping the username might be nicer for the user?
-            // Actually, showing the resolved address clarifies what's happening.
-            // But let's stick to setting the active wallet which drives the dashboard.
-
-        } catch (e) {
-            // Handle error (user not found)
-            console.error("User or wallet not found");
-            // Ideally show a toast or error message here
-            // For now, let's just not set the active wallet if it fails
-            // You might want to add a local error state to show in the UI
+        } catch {
+            setSearchError("User or wallet not found. Try a full wallet address (0x...), Polymarket username, or X username (with or without @).");
         }
     };
 
@@ -584,9 +598,9 @@ export function ProfileStat() {
                                 <Search className="h-4 w-4 text-emerald-400" />
                                 <input
                                     className="w-full bg-transparent outline-none text-sm placeholder:text-slate-500"
-                                    placeholder="Search by wallet (0x...) or username"
+                                    placeholder="Search by wallet (0x...), username, or X username (@handle)"
                                     value={walletInput}
-                                    onChange={(e) => setWalletInput(e.target.value)}
+                                    onChange={(e) => { setWalletInput(e.target.value); setSearchError(null); }}
                                 />
                             </div>
 
@@ -598,6 +612,9 @@ export function ProfileStat() {
                             )}
                         </form>
                     </div>
+                    {searchError && (
+                        <p className="mt-2 text-sm text-rose-400" role="alert">{searchError}</p>
+                    )}
                 </div>
             </div>
 
@@ -605,7 +622,7 @@ export function ProfileStat() {
                 <div className="flex flex-col items-center justify-center p-20 text-center">
                     <Wallet className="h-20 w-20 text-emerald-500/20 mb-4" />
                     <h2 className="text-2xl font-bold mb-2">Live API Dashboard</h2>
-                    <p className="text-slate-400 max-w-md">Enter a wallet address or username above to calculate real-time metrics directly from Polymarket APIs.</p>
+                    <p className="text-slate-400 max-w-md">Enter a wallet address, Polymarket username, or X username (@handle) above to calculate real-time metrics directly from Polymarket APIs.</p>
                 </div>
             )}
 
@@ -814,7 +831,6 @@ export function ProfileStat() {
                             className="flex items-center justify-between w-full px-6 py-3 bg-slate-900/40 border border-slate-800 rounded-2xl hover:bg-slate-900/60 transition-all group"
                         >
                             <div className="flex items-center gap-2">
-                                <div className="p-1 px-2 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">EXTRA</div>
                                 <span className="text-sm font-semibold text-slate-300">Advanced Scoring & Metrics</span>
                             </div>
                             {showAdvanced ? <ChevronUp className="h-5 w-5 text-slate-500 group-hover:text-emerald-400" /> : <ChevronDown className="h-5 w-5 text-slate-500 group-hover:text-emerald-400" />}
@@ -1144,12 +1160,11 @@ export function ProfileStat() {
 
                             {activeTab === 'activity' && (
                                 <div>
-                                    <h3 className="text-lg font-semibold text-white mb-4">Wallet Activity</h3>
-                                    {activities && activities.length > 0 ? (
+                                    <h3 className="text-lg font-semibold text-white mb-4">Wallet Activity (last 7 days)</h3>
+                                    {activitiesLast7Days.length > 0 ? (
                                         <>
                                             <div className="space-y-3 mb-4">
-                                                {activities
-                                                    .slice((activityPage - 1) * itemsPerPage, activityPage * itemsPerPage)
+                                                {activitiesLast7Days
                                                     .map((activity, idx) => {
                                                         const activityDate = activity.timestamp
                                                             ? new Date(activity.timestamp * 1000).toLocaleString()
@@ -1209,33 +1224,14 @@ export function ProfileStat() {
                                                         );
                                                     })}
                                             </div>
-                                            <div className="flex items-center justify-between mt-4">
-                                                <div className="text-slate-400 text-sm">
-                                                    Showing {(activityPage - 1) * itemsPerPage + 1} to {Math.min(activityPage * itemsPerPage, activities.length)} of {activities.length} activities
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => setActivityPage(prev => Math.max(1, prev - 1))}
-                                                        disabled={activityPage === 1}
-                                                        className={`px-4 py-2 rounded text-sm font-medium transition ${activityPage === 1 ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}
-                                                    >
-                                                        Previous
-                                                    </button>
-                                                    <span className="px-4 py-2 text-slate-300 text-sm">
-                                                        Page {activityPage} of {Math.ceil(activities.length / itemsPerPage) || 1}
-                                                    </span>
-                                                    <button
-                                                        onClick={() => setActivityPage(prev => Math.min(Math.ceil(activities.length / itemsPerPage), prev + 1))}
-                                                        disabled={activityPage >= Math.ceil(activities.length / itemsPerPage)}
-                                                        className={`px-4 py-2 rounded text-sm font-medium transition ${activityPage >= Math.ceil(activities.length / itemsPerPage) ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}
-                                                    >
-                                                        Next
-                                                    </button>
-                                                </div>
+                                            <div className="text-slate-400 text-sm mt-4">
+                                                Showing {activitiesLast7Days.length} activities from the last 7 days
                                             </div>
                                         </>
                                     ) : (
-                                        <p className="text-slate-400 text-center py-8">No activity data available</p>
+                                        <p className="text-slate-400 text-center py-8">
+                                            {loading ? 'Loading activities...' : (activities?.length ? 'No activity in the last 7 days' : 'No activity data available')}
+                                        </p>
                                     )}
                                 </div>
                             )}

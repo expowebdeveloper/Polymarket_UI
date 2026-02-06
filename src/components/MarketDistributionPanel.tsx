@@ -237,7 +237,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
   }, [marketDistribution]);
 
   const allocationSorted = useMemo(
-    () => [...markets].sort((a, b) => b.volume - a.volume),
+    () => [...markets].filter((m) => m.volume > 0.001).sort((a, b) => b.volume - a.volume),
     [markets]
   );
 
@@ -260,7 +260,8 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
         key: m!.key,
         label: m!.label,
         value: m!.pnl,
-      }));
+      }))
+      .filter((d) => Math.abs(d.value) > 0.001); // hide zero PNL categories
   }, [markets]);
 
   if (markets.length === 0) {
@@ -288,8 +289,8 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
             <p className="text-xs text-slate-400 mt-1">Total invested volume from Polymarket</p>
           </div>
 
-          {/* donut + category-by-volume list (side by side, not below chart) */}
-          <div className="mt-6 flex flex-row items-start justify-center gap-6">
+          {/* donut chart centered, categories below */}
+          <div className="mt-6 flex flex-col items-center">
             <DonutChart
               size={240}
               thickness={32}
@@ -300,16 +301,23 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
               }))}
               totalVolume={totalVolume}
             />
-            {/* category by volume list - beside pie, not below */}
-            <div className="flex flex-col gap-2 min-w-[180px]">
+            {/* category list - below pie chart, card design */}
+            <div className="mt-6 w-full space-y-3">
               {allocationSorted.map((m) => {
                 const volumePct = totalVolume > 0 ? (m.volume / totalVolume) * 100 : 0;
                 return (
-                  <div key={m.key} className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: colorForKey(m.key) }} />
-                    <p className="text-xs text-slate-300 truncate">
-                      {m.label} <span className="text-emerald-400 font-medium">{formatMoneyCompact(m.volume)}</span> <span className="text-slate-500">({volumePct.toFixed(1)}%)</span>
-                    </p>
+                  <div
+                    key={m.key}
+                    className="flex items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-950/35 to-slate-900/20 px-5 py-4"
+                  >
+                    <div className="flex items-center gap-4 min-w-0">
+                      <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: colorForKey(m.key) }} />
+                      <p className="text-base text-white/90 font-medium truncate">{m.label}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm tabular-nums text-emerald-400 font-medium">{formatMoneyCompact(m.volume)}</p>
+                      <p className="text-xs text-slate-500 tabular-nums">({volumePct.toFixed(1)}%)</p>
+                    </div>
                   </div>
                 );
               })}

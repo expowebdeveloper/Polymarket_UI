@@ -97,8 +97,7 @@ export function WalletDashboard() {
         // BUT that might be confusing. Let's just use resolvedAddress for fetching data.
 
       } catch (e) {
-        // If resolution fails (404), stop here
-        throw new Error("User or wallet not found");
+        throw new Error("User or wallet not found. Try a full wallet address (0x...), Polymarket username, or X username (with or without @).");
       }
 
       // First sync trades to ensure fresh data
@@ -641,7 +640,7 @@ export function WalletDashboard() {
               <Search className="h-4 w-4 text-emerald-400" />
               <input
                 className="w-full bg-transparent outline-none text-sm placeholder:text-slate-500"
-                placeholder="Search by wallet (0x...) or username"
+                placeholder="Search by wallet (0x...), username, or X username (@handle)"
                 value={walletAddress}
                 onChange={(e) => setWalletAddress(e.target.value)}
                 onKeyDown={(e) => {

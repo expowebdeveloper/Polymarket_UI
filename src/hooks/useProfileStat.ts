@@ -28,14 +28,13 @@ export function useProfileStat(walletAddress: string) {
         portfolioValue: undefined,
     });
 
-    const fetchData = useCallback(async () => {
+    const fetchData = useCallback(async (includeTrades: boolean = false) => {
         if (!walletAddress) return;
 
         setState(prev => ({ ...prev, loading: true, error: null }));
 
         try {
-            // Skip trades on initial load for better performance
-            const data = await fetchProfileStatData(walletAddress, true);
+            const data = await fetchProfileStatData(walletAddress, !includeTrades);
 
             // Use backend pre-calculated metrics directly (Single Source of Truth)
             const backendMetrics = data.scoring_metrics;
@@ -73,8 +72,11 @@ export function useProfileStat(walletAddress: string) {
         fetchData();
     }, [fetchData]);
 
+    const refreshWithTrades = useCallback(() => fetchData(true), [fetchData]);
+
     return {
         ...state,
-        refresh: fetchData
+        refresh: () => fetchData(false),
+        refreshWithTrades,
     };
 }

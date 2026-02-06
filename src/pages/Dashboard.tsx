@@ -6,21 +6,15 @@ import {
   ArrowUpRight,
   BarChart3,
   Boxes,
+  ChevronDown,
+  ChevronUp,
   DollarSign,
   Globe,
+  Info,
   Layers,
   ShieldCheck,
   Users,
 } from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { API_BASE_URL } from "../config";
 import { useActivityWebSocket, type Activity as WsActivity } from "../hooks/useActivityWebSocket";
 
@@ -28,6 +22,7 @@ import { useActivityWebSocket, type Activity as WsActivity } from "../hooks/useA
 // Types
 // -----------------------------
 interface DashboardStats {
+  period?: string;
   total_volume: string;
   tvl: string;
   open_interest: string;
@@ -58,6 +53,65 @@ type ActivityItem = {
   sizeUSD: number;
   trader: string;
 };
+
+/** Data source and time interval for each dashboard metric (from backend/API). */
+const DATA_SOURCES_INTERVALS: Array<{
+  field: string;
+  source: string;
+  endpoint: string;
+  timeInterval: string;
+  notes?: string;
+}> = [
+  {
+    field: "Total Volume",
+    source: "Polymarket Gamma API",
+    endpoint: "gamma-api.polymarket.com/events/pagination",
+    timeInterval: "All-time (cumulative)",
+    notes: "Sum of each market's lifetime volume; top 1000 active markets. Fallback: /events if pagination empty.",
+  },
+  {
+    field: "Total Value Locked (TVL)",
+    source: "Polymarket Gamma API",
+    endpoint: "gamma-api.polymarket.com/events/pagination",
+    timeInterval: "Current snapshot",
+    notes: "Sum of liquidity across same events (active markets).",
+  },
+  {
+    field: "Open Interest",
+    source: "Polymarket Data API",
+    endpoint: "data-api.polymarket.com/oi",
+    timeInterval: "Current snapshot",
+    notes: "Sum of open interest across all markets (USDC).",
+  },
+  {
+    field: "Total Markets",
+    source: "Polymarket Gamma API",
+    endpoint: "gamma-api.polymarket.com/events/pagination",
+    timeInterval: "Current count",
+    notes: "Active markets only (active=true, closed=false). Resolved/closed excluded.",
+  },
+  {
+    field: "Total Traders",
+    source: "Polymarket Data API (Leaderboard)",
+    endpoint: "data-api.polymarket.com/v1/leaderboard",
+    timeInterval: "All-time",
+    notes: "timePeriod=all; count of unique addresses on leaderboard. Fallback: our DB (scraped count) if API fails.",
+  },
+  {
+    field: "Total Trades",
+    source: "Polymarket Data API",
+    endpoint: "data-api.polymarket.com/trades",
+    timeInterval: "Most recent ~4,000 trades",
+    notes: "Paginated offsets 0–3000 (API cap), no date filter; order is newest first. Fallback: our DB (all-time count) if API fails.",
+  },
+  {
+    field: "Buy Ratio / Sell Ratio",
+    source: "Same as Total Trades",
+    endpoint: "data-api.polymarket.com/trades",
+    timeInterval: "Same as Total Trades",
+    notes: "Derived from same /trades response (buys and sells counts).",
+  },
+];
 
 // -----------------------------
 // Helpers
@@ -127,7 +181,7 @@ function GlowBg() {
       <div className="absolute -top-52 left-1/2 h-[520px] w-[760px] -translate-x-1/2 rounded-full bg-cyan-400/5 blur-[190px]" />
       <div className="absolute top-1/3 -left-52 h-[420px] w-[420px] rounded-full bg-purple-500/4 blur-[200px]" />
       <div className="absolute bottom-1/4 -right-56 h-[460px] w-[460px] rounded-full bg-blue-500/4 blur-[220px]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0)_0%,rgba(0,0,0,0.80)_70%,rgba(0,0,0,0.97)_100%)]" />
+      <div className="absolute inset-0 " />
     </div>
   );
 }
@@ -194,7 +248,7 @@ function ActivitySideBadge({ side }: { side: "BUY" | "SELL" }) {
 
 function ActivityRow({ item }: { item: ActivityItem }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.05] p-3">
+    <div className="flex items-center justify-between gap-3 rounded-xl border p-3">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <ActivitySideBadge side={item.side} />
@@ -214,63 +268,13 @@ function ActivityRow({ item }: { item: ActivityItem }) {
   );
 }
 
-function VolumeChart({ series }: { series: { t: string; v: number }[] }) {
-  return (
-    <div className="h-[220px] w-full text-white">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={series} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-          <defs>
-            <linearGradient id="volFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="currentColor" stopOpacity={0.35} />
-              <stop offset="100%" stopColor="currentColor" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.10)" />
-          <XAxis
-            dataKey="t"
-            tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }}
-            axisLine={{ stroke: "rgba(255,255,255,0.12)" }}
-            tickLine={{ stroke: "rgba(255,255,255,0.12)" }}
-          />
-          <YAxis
-            tick={{ fill: "rgba(255,255,255,0.55)", fontSize: 12 }}
-            axisLine={{ stroke: "rgba(255,255,255,0.12)" }}
-            tickLine={{ stroke: "rgba(255,255,255,0.12)" }}
-            width={34}
-            tickFormatter={(n) => `${Number(n).toFixed(1)}B`}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "rgba(0, 0, 0, 0.92)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: 14,
-              color: "rgba(255,255,255,0.92)",
-            }}
-            labelStyle={{ color: "rgba(255,255,255,0.7)" }}
-            formatter={(value: number) => [`${Number(value).toFixed(2)}B`, "Volume"]}
-          />
-          <Area
-            type="monotone"
-            dataKey="v"
-            stroke="currentColor"
-            fill="url(#volFill)"
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 4 }}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
 // -----------------------------
 // Dashboard
 // -----------------------------
 export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }) {
-  const [range, setRange] = useState<"24h" | "7d" | "30d">("24h");
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dataSourcesOpen, setDataSourcesOpen] = useState(false);
   const { activities: wsActivities, isConnected } = useActivityWebSocket();
 
   const fetchStats = async (signal?: AbortSignal) => {
@@ -302,15 +306,6 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
   const totalTrades = useMemo(() => parseNum(stats?.total_trades), [stats?.total_trades]);
   const totalBuys = useMemo(() => parseNum(stats?.total_buys), [stats?.total_buys]);
   const totalSells = useMemo(() => parseNum(stats?.total_sells), [stats?.total_sells]);
-
-  const volumeSeries = useMemo(() => {
-    const vB = volumeNum / 1e9;
-    const labels = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"];
-    return labels.map((t, i) => ({
-      t,
-      v: Number((vB * (0.82 + (0.18 * i) / (labels.length - 1))).toFixed(2)),
-    }));
-  }, [volumeNum]);
 
   const overview = useMemo<OverviewMetric[]>(() => {
     const vol = volumeNum;
@@ -422,7 +417,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
   }, [activityList]);
 
   return (
-    <div className="relative min-h-screen bg-[#000000] text-white">
+    <div className="relative min-h-screen text-white">
       <GlowBg />
 
       <div className="relative mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 lg:px-8">
@@ -452,21 +447,6 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
             transition={{ duration: 0.45, delay: 0.08 }}
             className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end"
           >
-            {/* <div className="flex rounded-lg border border-white/10 bg-white/5 p-0.5">
-              {(["24h", "7d", "30d"] as const).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setRange(r)}
-                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                    range === r ? "bg-white/15 text-white" : "text-white/70 hover:text-white"
-                  }`}
-                >
-                  {r}
-                </button>
-              ))}
-            </div> */}
-
             <div className="flex items-center gap-2">
               <span className="relative inline-flex items-center gap-2 rounded-lg border border-cyan-400/30 bg-white/10 px-2.5 py-1 text-xs font-medium text-white/90 shadow-[0_0_20px_rgba(34,211,238,0.40)]">
                 <span className="absolute inset-0 animate-pulse rounded-lg bg-cyan-400/10 blur-md" />
@@ -503,25 +483,21 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                   <div className="absolute -top-20 left-10 h-64 w-64 rounded-full bg-cyan-400/10 blur-3xl" />
                   <div className="absolute -bottom-24 right-10 h-72 w-72 rounded-full bg-blue-400/10 blur-3xl" />
                 </div>
-                <div className="relative p-5 pb-2">
+                <div className="relative p-5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <h2 className="text-base font-semibold text-white/85">Market Volume Trend</h2>
+                      <h2 className="text-base font-semibold text-white/85">Market Overview</h2>
                       <div className="mt-1 text-xs text-white/55">
-                        Total traded volume • Range: {range.toUpperCase()}
+                        Total traded volume from Polymarket API • Live stats below
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="rounded-md border border-white/10 bg-white/10 px-2 py-0.5 text-xs text-white/80">
+                      <span className="rounded-md border border-white/10 bg-white/10 px-3 py-1.5 text-sm font-semibold text-white/90">
                         {loading ? "…" : formatUSD(volumeNum)}
                       </span>
                     </div>
                   </div>
-                </div>
-                <div className="relative px-5 pb-5">
-                  <VolumeChart series={volumeSeries} />
-
-                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div className="rounded-xl border border-white/10 bg-white/[0.05] p-3">
                       <div className="text-xs text-white/55">Buy Activity (feed)</div>
                       <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/10">
@@ -560,9 +536,9 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.45, delay: 0.1 }}
             >
-              <div className="relative h-full overflow-hidden rounded-xl border border-white/10 bg-white/[0.06] shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_30px_110px_rgba(0,0,0,0.80)]">
+              <div className="relative h-full overflow-hidden rounded-xl bg-white/[0.04] shadow-none">
                 <div className="absolute inset-0">
-                  <div className="absolute -top-28 right-0 h-80 w-80 rounded-full bg-purple-400/10 blur-3xl" />
+                  <div className="absolute -top-28 right-0 h-80 w-80 rounded-full bg-cyan-400/8 blur-3xl" />
                 </div>
                 <div className="relative p-5 pb-2">
                   <div className="flex items-center justify-between">
@@ -570,7 +546,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                       <h2 className="text-base font-semibold text-white/90">Live Market Activity</h2>
                       <div className="mt-1 text-xs text-white/55">Last 5m global feed • auto-refresh</div>
                     </div>
-                    <span className="relative inline-flex items-center gap-2 rounded-lg border border-cyan-400/25 bg-white/10 px-2 py-0.5 text-xs font-medium text-white/90 shadow-[0_0_18px_rgba(34,211,238,0.30)]">
+                    <span className="relative inline-flex items-center gap-2 rounded-lg border border-cyan-400/25 bg-cyan-500/10 px-2 py-0.5 text-xs font-medium text-white/90 shadow-[0_0_18px_rgba(34,211,238,0.30)]">
                       <span className="absolute inset-0 animate-pulse rounded-lg bg-cyan-400/10 blur-md" />
                       <span className="relative inline-flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.9)]" />
@@ -579,7 +555,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                     </span>
                   </div>
                 </div>
-                <div className="relative max-h-[480px] overflow-y-auto p-5 pt-2 custom-scrollbar">
+                <div className="relative max-h-[680px] overflow-y-auto p-5 pt-2 custom-scrollbar-activity">
                   <div className="flex flex-col gap-3">
                     {activityList.length === 0 ? (
                       <div className="py-8 text-center text-sm text-white/55">
@@ -595,7 +571,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                   <div className="flex items-center justify-between text-xs text-white/55">
                     <div className="inline-flex items-center gap-2">
                       <span
-                        className={`h-1.5 w-1.5 rounded-full ${isConnected ? "bg-emerald-400" : "bg-amber-400 animate-pulse"}`}
+                        className={`h-1.5 w-1.5 rounded-full ${isConnected ? "bg-cyan-400" : "bg-amber-400 animate-pulse"}`}
                       />
                       {isConnected ? "Live stream active" : "Reconnecting…"}
                     </div>
@@ -607,7 +583,54 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
           </div>
         </div>
 
-        <div className="mt-8 flex flex-col items-start justify-between gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-xs text-white/55 sm:flex-row sm:items-center">
+        {/* Data sources & time intervals — expandable reference */}
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.04] overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setDataSourcesOpen((o) => !o)}
+            className="flex w-full items-center justify-between gap-2 p-4 text-left text-sm font-medium text-white/90 hover:bg-white/5 transition-colors"
+          >
+            <span className="inline-flex items-center gap-2">
+              <Info className="h-4 w-4 text-white/70" />
+              Data source & time interval for each metric (API detail)
+            </span>
+            {dataSourcesOpen ? (
+              <ChevronUp className="h-4 w-4 text-white/60" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-white/60" />
+            )}
+          </button>
+          {dataSourcesOpen && (
+            <div className="border-t border-white/10 p-4">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-white/80">
+                  <thead>
+                    <tr className="border-b border-white/15 text-white/70">
+                      <th className="pb-2 pr-4 text-left font-medium">Metric</th>
+                      <th className="pb-2 pr-4 text-left font-medium">Source</th>
+                      <th className="pb-2 pr-4 text-left font-medium">Endpoint</th>
+                      <th className="pb-2 pr-4 text-left font-medium">Time interval</th>
+                      <th className="pb-2 text-left font-medium">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {DATA_SOURCES_INTERVALS.map((row) => (
+                      <tr key={row.field} className="border-b border-white/10 last:border-0">
+                        <td className="py-2.5 pr-4 font-medium text-white/90">{row.field}</td>
+                        <td className="py-2.5 pr-4">{row.source}</td>
+                        <td className="py-2.5 pr-4 font-mono text-[11px] text-cyan-200/90">{row.endpoint}</td>
+                        <td className="py-2.5 pr-4">{row.timeInterval}</td>
+                        <td className="py-2.5 text-white/60">{row.notes ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6 flex flex-col items-start justify-between gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-xs text-white/55 sm:flex-row sm:items-center">
           <div className="flex items-center gap-2">
             <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-white/10">
               <ShieldCheck className="h-4 w-4 text-white/80" />
@@ -624,6 +647,9 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+        .custom-scrollbar-activity::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar-activity::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar-activity::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
       `}</style>
     </div>
   );

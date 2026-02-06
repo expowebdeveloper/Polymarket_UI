@@ -20,8 +20,7 @@ const navItems = [
     { name: "Market", href: "/markets", icon: LineChart, badge: "Coming Soon", disabled: true },
     { name: "Leaderboard", href: "/leaderboard", icon: Trophy, badge: "Coming Soon", disabled: true },
     { name: "Whales/insiders", href: "/Whales/insiders", icon: LineChart, badge: "Coming Soon", disabled: true },
-    { name: "Powly AI", href: "/reports", icon: LineChart, badge: "Coming Soon", disabled: true },
-
+    { name: "Powly AI", href: "/reports", icon: LineChart, badge: "Coming Soon", disabled: true, useLogo: true },
 ];
 
 interface SidebarProps {
@@ -69,7 +68,12 @@ export function Sidebar({ collapsed, onSetCollapsed }: SidebarProps) {
                     {navItems.map((item) => {
                         const content = (
                             <>
-                                <item.icon className="w-5 h-5 shrink-0" />
+                                {/* @ts-ignore */}
+                                {item.useLogo ? (
+                                    <img src={logo} alt="" className="w-7 h-7 shrink-0 object-contain" />
+                                ) : (
+                                    <item.icon className="w-5 h-5 shrink-0" />
+                                )}
 
                                 {/* Hide text when collapsed */}
                                 {!collapsed && (
@@ -115,7 +119,7 @@ export function Sidebar({ collapsed, onSetCollapsed }: SidebarProps) {
                 </div>
 
                 {/* Theme Toggle */}
-                <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-800">
+                {/* <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-800">
                     <button
                         onClick={toggleTheme}
                         className="flex items-center gap-3 p-2 rounded-lg transition w-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40"
@@ -132,7 +136,7 @@ export function Sidebar({ collapsed, onSetCollapsed }: SidebarProps) {
                             </>
                         )}
                     </button>
-                </div>
+                </div> */}
 
                 {/* Poly Rating on X */}
                 <div className="mt-auto pt-6 border-t border-slate-200 dark:border-slate-800">
