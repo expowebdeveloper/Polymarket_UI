@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { fetchFilteredTrades } from '../services/api';
 import { UserPnL } from '../types/api';
 
-export type TradeFilter = 'recent10' | '7days' | '30days' | '1year' | 'all';
+export type TradeFilter = 'recent10' | '7days' | '30days' | 'all';
 
 interface TradeCache {
     [key: string]: {

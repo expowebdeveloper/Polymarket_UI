@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, Wallet, TrendingUp, TrendingDown, Trophy, Fish, Flame, ChevronDown, ChevronUp, Activity as ActivityIcon, RefreshCw, Target, ArrowRight } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
@@ -87,6 +88,7 @@ const getBadgeInfo = (score: number) => {
 };
 
 export function ProfileStat() {
+    const [searchParams] = useSearchParams();
     const [walletInput, setWalletInput] = useState('');
     const [activeWallet, setActiveWallet] = useState('');
     const [userProfile, setUserProfile] = useState<UserLeaderboardData | null>(null);
@@ -136,6 +138,15 @@ export function ProfileStat() {
         currentFilter,
         fetchTrades
     } = useTradeFilter(activeWallet);
+
+    // Prefill wallet from URL ?wallet=0x... (e.g. from Dashboard biggest winner link)
+    useEffect(() => {
+        const walletFromUrl = searchParams.get('wallet');
+        if (walletFromUrl && walletFromUrl.startsWith('0x') && walletFromUrl.length === 42) {
+            setWalletInput(walletFromUrl);
+            setActiveWallet(walletFromUrl);
+        }
+    }, [searchParams]);
 
     // Fetch user profile data when wallet changes
     useEffect(() => {
@@ -501,47 +512,33 @@ export function ProfileStat() {
         }, 0);
     }, [positions]);
 
-    // Calculate Total Gains (sum of all positive realized PnL from closed positions)
+    // Total Gains / Total Losses: use API values from Polymarket closed positions (single source of truth)
     const totalGains = useMemo(() => {
+        if (metrics?.total_gains !== undefined && metrics.total_gains !== null) return metrics.total_gains;
         return closedPositions.reduce((sum, pos) => {
             const pnl = parseFloat(String(pos.realized_pnl || 0));
             return sum + (pnl > 0 ? pnl : 0);
         }, 0);
-    }, [closedPositions]);
+    }, [metrics?.total_gains, closedPositions]);
 
-    // Calculate Total Losses (sum of all negative realized PnL from closed positions, displayed as positive)
     const totalLosses = useMemo(() => {
+        if (metrics?.total_losses !== undefined && metrics.total_losses !== null) return metrics.total_losses;
         return Math.abs(closedPositions.reduce((sum, pos) => {
             const pnl = parseFloat(String(pos.realized_pnl || 0));
             return sum + (pnl < 0 ? pnl : 0);
         }, 0));
-    }, [closedPositions]);
+    }, [metrics?.total_losses, closedPositions]);
 
-    // Calculate Balance (Active positions current value + Cash)
-    // Balance = portfolio_value (which includes both active positions value and cash)
-    // If portfolio_value is not available, fall back to sum of current_value from active positions
+    // Balance = portfolio value from Polymarket Data API (/value?user=...) — total wallet value
     const balance = useMemo(() => {
-        if (portfolioValue !== undefined && portfolioValue !== null) {
-            return portfolioValue;
-        }
-
-        // Fallback: sum of current_value from active positions
-        return positions.reduce((sum, pos) => {
-            return sum + (parseFloat(String(pos.current_value || 0)));
-        }, 0);
+        if (portfolioValue !== undefined && portfolioValue !== null) return portfolioValue;
+        return positions.reduce((sum, pos) => parseFloat(String(pos.current_value || 0)) + sum, 0);
     }, [positions, portfolioValue]);
 
     // Calculate total predictions (unique positions/markets)
     const totalPredictions = useMemo(() => {
         return closedPositions.length + positions.length;
     }, [closedPositions.length, positions.length]);
-
-    // Calculate cash from cashPnl in positions (from Polymarket API)
-    const cash = useMemo(() => {
-        return positions.reduce((sum, pos) => {
-            return sum + (parseFloat(String(pos.cash_pnl || 0)));
-        }, 0);
-    }, [positions]);
 
     const [showCopied, setShowCopied] = useState(false);
 
@@ -683,9 +680,9 @@ export function ProfileStat() {
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 mt-6">
                             <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
-                                <p className="text-xs text-slate-300 mb-0.5">Active Positions Value</p>
+                                <p className="text-xs text-slate-300 mb-0.5">Balance</p>
                                 <p className="text-base font-bold text-emerald-300">{formatCurrency(balance)}</p>
-                                <p className="text-[10px] text-slate-400 mt-0.5">Current Value</p>
+                                <p className="text-[10px] text-slate-400 mt-0.5">Portfolio value (Polymarket API)</p>
                             </div>
                             <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
                                 <p className="text-xs text-slate-300 mb-0.5">Total PNL</p>
@@ -908,7 +905,7 @@ export function ProfileStat() {
 
                             {/* Filter Buttons */}
                             <div className="flex flex-wrap gap-2 mb-4">
-                                {(['recent10', '7days', '30days', '1year', 'all'] as TradeFilter[]).map((filter) => (
+                                {(['recent10', '7days', '30days', 'all'] as TradeFilter[]).map((filter) => (
                                     <button
                                         key={filter}
                                         onClick={() => fetchTrades(filter)}
@@ -920,8 +917,7 @@ export function ProfileStat() {
                                     >
                                         {filter === 'recent10' ? 'Recent 10' :
                                             filter === '7days' ? '7 Days' :
-                                                filter === '30days' ? '30 Days' :
-                                                    filter === '1year' ? '1 Year' : 'All Trades'}
+                                                filter === '30days' ? '30 Days' : 'All Trades'}
                                     </button>
                                 ))}
                             </div>
@@ -1014,8 +1010,8 @@ export function ProfileStat() {
                                         <p className="text-sm text-slate-400">Balance</p>
                                         <Wallet className="h-4 w-4 text-blue-400" />
                                     </div>
-                                    <p className="text-xl font-bold text-white">{formatCurrency(balance + cash)}</p>
-                                    <p className="text-xs text-slate-500 mt-1">Portfolio value + Cash</p>
+                                    <p className="text-xl font-bold text-white">{formatCurrency(balance)}</p>
+                                    <p className="text-xs text-slate-500 mt-1">Portfolio value (Polymarket API)</p>
                                 </div>
                             </div>
                         </div>
@@ -1049,7 +1045,7 @@ export function ProfileStat() {
                                 <div>
                                     {/* Filter Buttons */}
                                     <div className="flex flex-wrap gap-2 mb-6">
-                                        {(['recent10', '7days', '30days', '1year', 'all'] as TradeFilter[]).map((filter) => (
+                                        {(['recent10', '7days', '30days', 'all'] as TradeFilter[]).map((filter) => (
                                             <button
                                                 key={filter}
                                                 onClick={() => fetchTrades(filter)}
@@ -1061,8 +1057,7 @@ export function ProfileStat() {
                                             >
                                                 {filter === 'recent10' ? 'Recent 10' :
                                                     filter === '7days' ? '7 Days' :
-                                                        filter === '30days' ? '30 Days' :
-                                                            filter === '1year' ? '1 Year' : 'All Trades'}
+                                                        filter === '30days' ? '30 Days' : 'All Trades'}
                                             </button>
                                         ))}
                                     </div>

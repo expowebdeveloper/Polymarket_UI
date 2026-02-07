@@ -6,13 +6,11 @@ import {
   ArrowUpRight,
   BarChart3,
   Boxes,
-  ChevronDown,
-  ChevronUp,
   DollarSign,
   Globe,
-  Info,
   Layers,
   ShieldCheck,
+  Trophy,
   Users,
 } from "lucide-react";
 import { API_BASE_URL } from "../config";
@@ -21,8 +19,23 @@ import { useActivityWebSocket, type Activity as WsActivity } from "../hooks/useA
 // -----------------------------
 // Types
 // -----------------------------
+interface BiggestWinnerMonth {
+  user: string;
+  userName?: string;
+  xUsername?: string;
+  profileImage?: string;
+  pnl: number;
+  vol: number;
+  rank?: number;
+  roi?: number;
+  winRate?: number;
+  totalTrades?: number;
+}
+
 interface DashboardStats {
   period?: string;
+  biggest_winner_month?: BiggestWinnerMonth | null;
+  biggest_winners_month?: BiggestWinnerMonth[];
   total_volume: string;
   tvl: string;
   open_interest: string;
@@ -53,65 +66,6 @@ type ActivityItem = {
   sizeUSD: number;
   trader: string;
 };
-
-/** Data source and time interval for each dashboard metric (from backend/API). */
-const DATA_SOURCES_INTERVALS: Array<{
-  field: string;
-  source: string;
-  endpoint: string;
-  timeInterval: string;
-  notes?: string;
-}> = [
-  {
-    field: "Total Volume",
-    source: "Polymarket Gamma API",
-    endpoint: "gamma-api.polymarket.com/events/pagination",
-    timeInterval: "All-time (cumulative)",
-    notes: "Sum of each market's lifetime volume; top 1000 active markets. Fallback: /events if pagination empty.",
-  },
-  {
-    field: "Total Value Locked (TVL)",
-    source: "Polymarket Gamma API",
-    endpoint: "gamma-api.polymarket.com/events/pagination",
-    timeInterval: "Current snapshot",
-    notes: "Sum of liquidity across same events (active markets).",
-  },
-  {
-    field: "Open Interest",
-    source: "Polymarket Data API",
-    endpoint: "data-api.polymarket.com/oi",
-    timeInterval: "Current snapshot",
-    notes: "Sum of open interest across all markets (USDC).",
-  },
-  {
-    field: "Total Markets",
-    source: "Polymarket Gamma API",
-    endpoint: "gamma-api.polymarket.com/events/pagination",
-    timeInterval: "Current count",
-    notes: "Active markets only (active=true, closed=false). Resolved/closed excluded.",
-  },
-  {
-    field: "Total Traders",
-    source: "Polymarket Data API (Leaderboard)",
-    endpoint: "data-api.polymarket.com/v1/leaderboard",
-    timeInterval: "All-time",
-    notes: "timePeriod=all; count of unique addresses on leaderboard. Fallback: our DB (scraped count) if API fails.",
-  },
-  {
-    field: "Total Trades",
-    source: "Polymarket Data API",
-    endpoint: "data-api.polymarket.com/trades",
-    timeInterval: "Most recent ~4,000 trades",
-    notes: "Paginated offsets 0–3000 (API cap), no date filter; order is newest first. Fallback: our DB (all-time count) if API fails.",
-  },
-  {
-    field: "Buy Ratio / Sell Ratio",
-    source: "Same as Total Trades",
-    endpoint: "data-api.polymarket.com/trades",
-    timeInterval: "Same as Total Trades",
-    notes: "Derived from same /trades response (buys and sells counts).",
-  },
-];
 
 // -----------------------------
 // Helpers
@@ -274,7 +228,6 @@ function ActivityRow({ item }: { item: ActivityItem }) {
 export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dataSourcesOpen, setDataSourcesOpen] = useState(false);
   const { activities: wsActivities, isConnected } = useActivityWebSocket();
 
   const fetchStats = async (signal?: AbortSignal) => {
@@ -433,7 +386,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                 <Globe className="h-5 w-5 text-white/85" />
               </div>
               <div>
-                <h1 className="text-3xl font-semibold tracking-tight">Polymarket Overview</h1>
+                <h1 className="text-3xl font-semibold tracking-tight">Market Overview</h1>
                 <p className="mt-1 text-sm text-white/60">
                   Track activity in real-time and analyze growth.
                 </p>
@@ -470,165 +423,123 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
 
         <div className="my-6 h-px bg-white/10" />
 
-        {/* Main grid */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          <div className="lg:col-span-8">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, delay: 0.06 }}
-            >
-              <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.06] shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_30px_110px_rgba(0,0,0,0.80)]">
-                <div className="absolute inset-0">
-                  <div className="absolute -top-20 left-10 h-64 w-64 rounded-full bg-cyan-400/10 blur-3xl" />
-                  <div className="absolute -bottom-24 right-10 h-72 w-72 rounded-full bg-blue-400/10 blur-3xl" />
-                </div>
-                <div className="relative p-5">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <h2 className="text-base font-semibold text-white/85">Market Overview</h2>
-                      <div className="mt-1 text-xs text-white/55">
-                        Total traded volume from Polymarket API • Live stats below
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-md border border-white/10 bg-white/10 px-3 py-1.5 text-sm font-semibold text-white/90">
-                        {loading ? "…" : formatUSD(volumeNum)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <div className="rounded-xl border border-white/10 bg-white/[0.05] p-3">
-                      <div className="text-xs text-white/55">Buy Activity (feed)</div>
-                      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/10">
-                        <div
-                          className="h-full rounded-full bg-cyan-400/80 transition-all duration-500"
-                          style={{ width: `${buyRatioPct}%` }}
-                        />
-                      </div>
-                      <div className="mt-2 text-sm font-semibold text-white">{buyRatioPct.toFixed(0)}%</div>
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-white/[0.05] p-3">
-                      <div className="text-xs text-white/55">Avg Trade Size (feed)</div>
-                      <div className="mt-2 text-sm font-semibold text-white">{formatUSD(avgTradeSize)}</div>
-                      <div className="mt-1 text-xs text-white/55">Live feed sample</div>
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-white/[0.05] p-3">
-                      <div className="text-xs text-white/55">Network</div>
-                      <div className="mt-2 text-sm font-semibold text-white">Polygon</div>
-                      <div className="mt-1 text-xs text-white/55">fast finality</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {overview.map((m, idx) => (
-                <StatCard key={m.label} m={m} index={idx} />
-              ))}
-            </div>
+        {/* 1. All metrics at top - full width */}
+        <section className="mb-8">
+          <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-white/60">Market metrics</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {overview.map((m, idx) => (
+              <StatCard key={m.label} m={m} index={idx} />
+            ))}
           </div>
+        </section>
 
-          <div id="activity" className="lg:col-span-4">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, delay: 0.1 }}
-            >
-              <div className="relative h-full overflow-hidden rounded-xl bg-white/[0.04] shadow-none">
-                <div className="absolute inset-0">
-                  <div className="absolute -top-28 right-0 h-80 w-80 rounded-full bg-cyan-400/8 blur-3xl" />
-                </div>
-                <div className="relative p-5 pb-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-base font-semibold text-white/90">Live Market Activity</h2>
-                      <div className="mt-1 text-xs text-white/55">Last 5m global feed • auto-refresh</div>
-                    </div>
-                    <span className="relative inline-flex items-center gap-2 rounded-lg border border-cyan-400/25 bg-cyan-500/10 px-2 py-0.5 text-xs font-medium text-white/90 shadow-[0_0_18px_rgba(34,211,238,0.30)]">
-                      <span className="absolute inset-0 animate-pulse rounded-lg bg-cyan-400/10 blur-md" />
-                      <span className="relative inline-flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.9)]" />
-                        {isConnected ? "Live" : "Reconnecting"}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-                <div className="relative max-h-[680px] overflow-y-auto p-5 pt-2 custom-scrollbar-activity">
-                  <div className="flex flex-col gap-3">
-                    {activityList.length === 0 ? (
-                      <div className="py-8 text-center text-sm text-white/55">
-                        Waiting for trades &gt;$100…
-                      </div>
-                    ) : (
-                      activityList.map((a) => <ActivityRow key={a.id} item={a} />)
-                    )}
-                  </div>
+        <div className="my-6 h-px bg-white/10" />
 
-                  <div className="my-4 h-px bg-white/10" />
-
-                  <div className="flex items-center justify-between text-xs text-white/55">
-                    <div className="inline-flex items-center gap-2">
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${isConnected ? "bg-cyan-400" : "bg-amber-400 animate-pulse"}`}
-                      />
-                      {isConnected ? "Live stream active" : "Reconnecting…"}
-                    </div>
-                    <div className="text-white/60">Status: {isConnected ? "OK" : "…"}</div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-
-        {/* Data sources & time intervals — expandable reference */}
-        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.04] overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setDataSourcesOpen((o) => !o)}
-            className="flex w-full items-center justify-between gap-2 p-4 text-left text-sm font-medium text-white/90 hover:bg-white/5 transition-colors"
+        {/* 2. Below: Biggest winners + Live market activity - side by side, equal prominence */}
+        <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* Biggest winners of the month */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.06 }}
+            className="flex flex-col"
           >
-            <span className="inline-flex items-center gap-2">
-              <Info className="h-4 w-4 text-white/70" />
-              Data source & time interval for each metric (API detail)
-            </span>
-            {dataSourcesOpen ? (
-              <ChevronUp className="h-4 w-4 text-white/60" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-white/60" />
-            )}
-          </button>
-          {dataSourcesOpen && (
-            <div className="border-t border-white/10 p-4">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-white/80">
-                  <thead>
-                    <tr className="border-b border-white/15 text-white/70">
-                      <th className="pb-2 pr-4 text-left font-medium">Metric</th>
-                      <th className="pb-2 pr-4 text-left font-medium">Source</th>
-                      <th className="pb-2 pr-4 text-left font-medium">Endpoint</th>
-                      <th className="pb-2 pr-4 text-left font-medium">Time interval</th>
-                      <th className="pb-2 text-left font-medium">Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {DATA_SOURCES_INTERVALS.map((row) => (
-                      <tr key={row.field} className="border-b border-white/10 last:border-0">
-                        <td className="py-2.5 pr-4 font-medium text-white/90">{row.field}</td>
-                        <td className="py-2.5 pr-4">{row.source}</td>
-                        <td className="py-2.5 pr-4 font-mono text-[11px] text-cyan-200/90">{row.endpoint}</td>
-                        <td className="py-2.5 pr-4">{row.timeInterval}</td>
-                        <td className="py-2.5 text-white/60">{row.notes ?? "—"}</td>
-                      </tr>
+            <div className="flex h-full max-h-[680px] flex-col rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-orange-500/5 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_25px_70px_rgba(0,0,0,0.5)] overflow-hidden">
+              <div className="flex items-center gap-2 border-b border-amber-500/20 bg-amber-500/10 px-5 py-4">
+                <Trophy className="h-5 w-5 text-amber-400 shrink-0" />
+                <h2 className="text-base font-semibold text-white/95">Biggest winners of the month</h2>
+              </div>
+              <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar-activity p-4">
+                {stats?.biggest_winners_month && stats.biggest_winners_month.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    {stats.biggest_winners_month.map((w, idx) => (
+                      <a
+                        key={w.user || idx}
+                        href={w.user ? `/profile-stat?wallet=${encodeURIComponent(w.user)}` : "#"}
+                        className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.06] p-3 transition-all hover:bg-amber-500/15 hover:border-amber-500/25"
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/25 text-sm font-bold text-amber-300">
+                          {(w.rank != null ? w.rank : idx + 1)}
+                        </span>
+                        {w.profileImage ? (
+                          <img
+                            src={w.profileImage}
+                            alt=""
+                            className="h-9 w-9 shrink-0 rounded-full border border-amber-500/20 object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-medium text-white/60">
+                            {(w.userName || w.xUsername || "?")[0].toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-white">
+                            {w.userName || w.xUsername
+                              ? `@${w.xUsername || w.userName}`
+                              : `${w.user.slice(0, 6)}…${w.user.slice(-4)}`}
+                          </p>
+                          <p className="text-xs font-semibold text-emerald-400">
+                            +{formatUSD(w.pnl)} PnL
+                          </p>
+                        </div>
+                      </a>
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+                ) : (
+                  <div className="flex flex-1 items-center justify-center py-12 text-sm text-white/50">
+                    No leaderboard data available
+                  </div>
+                )}
+              </div>
+              <p className="border-t border-amber-500/10 px-4 py-2.5 text-xs text-white/50">
+                Polymarket leaderboard API • Click to view profile
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Live market activity */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.1 }}
+            className="flex flex-col"
+            id="activity"
+          >
+            <div className="relative flex h-full max-h-[680px] flex-col overflow-hidden rounded-2xl border border-cyan-500/20 bg-white/[0.04] shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_25px_70px_rgba(0,0,0,0.4)]">
+              <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute -top-28 right-0 h-80 w-80 rounded-full bg-cyan-400/8 blur-3xl" />
+              </div>
+              <div className="relative flex items-center justify-between border-b border-white/10 px-5 py-4">
+                <div>
+                  <h2 className="text-base font-semibold text-white/95">Live market activity</h2>
+                  <p className="mt-0.5 text-xs text-white/55">Last 5m global feed • auto-refresh</p>
+                </div>
+                <span className="relative inline-flex items-center gap-2 rounded-lg border border-cyan-400/25 bg-cyan-500/10 px-2.5 py-1 text-xs font-medium text-white/90 shadow-[0_0_18px_rgba(34,211,238,0.25)]">
+                  <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.9)]" />
+                  {isConnected ? "Live" : "Reconnecting"}
+                </span>
+              </div>
+              <div className="relative flex-1 min-h-0 overflow-y-auto p-5 custom-scrollbar-activity">
+                <div className="flex flex-col gap-3">
+                  {activityList.length === 0 ? (
+                    <div className="py-12 text-center text-sm text-white/55">
+                      Waiting for trades &gt;$100…
+                    </div>
+                  ) : (
+                    activityList.map((a) => <ActivityRow key={a.id} item={a} />)
+                  )}
+                </div>
+                <div className="mt-4 flex items-center justify-between text-xs text-white/50">
+                  <span className="inline-flex items-center gap-2">
+                    <span className={`h-1.5 w-1.5 rounded-full ${isConnected ? "bg-cyan-400" : "bg-amber-400 animate-pulse"}`} />
+                    {isConnected ? "Live stream active" : "Reconnecting…"}
+                  </span>
+                  <span>Status: {isConnected ? "OK" : "…"}</span>
+                </div>
               </div>
             </div>
-          )}
-        </div>
+          </motion.div>
+        </section>
 
         <div className="mt-6 flex flex-col items-start justify-between gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-xs text-white/55 sm:flex-row sm:items-center">
           <div className="flex items-center gap-2">
@@ -636,7 +547,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
               <ShieldCheck className="h-4 w-4 text-white/80" />
             </span>
             <span>
-              Volume, TVL, Open Interest, Total Markets: Polymarket API. Total Traders / Total Trades: from API when available, else our DB. Activity feed is live.
+              All metrics: overall (all-time) data from Polymarket APIs. Activity feed is live.
             </span>
           </div>
           <div className="text-white/50">Polymarket • Dashboard</div>

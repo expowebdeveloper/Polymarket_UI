@@ -45,6 +45,10 @@ export interface ScoredMetrics {
     win_score_blended?: number;
     open_positions?: number;
     closed_positions?: number;
+    /** Sum of all positive realized PnL (from Polymarket closed positions). */
+    total_gains?: number;
+    /** Sum of all losing realized PnL as positive number (from Polymarket closed positions). */
+    total_losses?: number;
 }
 
 /**

@@ -625,7 +625,7 @@ export async function fetchProfileStatData(walletAddress: string, skipTrades: bo
 /**
  * Fetch filtered trade history for a wallet
  * @param walletAddress - Wallet address
- * @param filter - Filter type: "recent10", "7days", "30days", "1year", "all"
+ * @param filter - Filter type: "recent10", "7days", "30days", "all" (all return full trade history)
  */
 export async function fetchFilteredTrades(walletAddress: string, filter: string = "all"): Promise<{ trades: any[], count: number, filter: string }> {
     return fetchApi<{ trades: any[], count: number, filter: string }>(`/dashboard/profile-stat/${walletAddress}/trades?filter=${filter}`, 60000);
