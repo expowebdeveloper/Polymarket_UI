@@ -365,9 +365,9 @@ export const DatabaseLeaderboard: React.FC = () => {
                         {selectedChart === 'distribution' && (
                             <div className="h-96">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={chartData.distribution}>
+                                    <BarChart data={chartData.distribution} margin={{ top: 8, right: 8, left: 8, bottom: 32 }}>
                                         <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-                                        <XAxis dataKey="range" stroke={textColor} tick={{ fill: textColor }} />
+                                        <XAxis dataKey="range" stroke={textColor} tick={{ fill: textColor }} tickMargin={10} />
                                         <YAxis stroke={textColor} tick={{ fill: textColor }} />
                                         <Tooltip
                                             contentStyle={{ backgroundColor: bgColor, borderColor: gridColor, color: textColor }}

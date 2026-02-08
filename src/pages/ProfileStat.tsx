@@ -1427,9 +1427,9 @@ export function ProfileStat() {
                                         </h4>
                                         <div className="h-[200px] w-full">
                                             <ResponsiveContainer width="100%" height="100%">
-                                                <BarChart data={profitTrend}>
+                                                <BarChart data={profitTrend} margin={{ top: 8, right: 8, left: 8, bottom: 28 }}>
                                                     <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                                                    <XAxis dataKey="day" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                                                    <XAxis dataKey="day" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickMargin={8} />
                                                     <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
                                                     <Tooltip
                                                         contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}

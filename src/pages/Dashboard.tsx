@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { API_BASE_URL } from "../config";
 import { useActivityWebSocket, type Activity as WsActivity } from "../hooks/useActivityWebSocket";
+import logo from "../assets/logo.png";
 
 // -----------------------------
 // Types
@@ -114,7 +115,9 @@ function parseNum(s: string | undefined): number {
 }
 
 function formatAgo(ts: number) {
-  const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  // API sends Unix timestamp in seconds; normalize to ms for comparison with Date.now()
+  const tsMs = ts > 0 && ts < 1e12 ? ts * 1000 : ts;
+  const s = Math.max(0, Math.floor((Date.now() - tsMs) / 1000));
   if (s < 10) return "just now";
   if (s < 60) return `${s}s ago`;
   const m = Math.floor(s / 60);
@@ -545,8 +548,9 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
     if (currentCount > prevActivityCount.current) {
       const latest = wsActivities.find((a) => (a.amount_usd || 0) >= 100);
       if (latest) {
+        // API timestamp is in seconds
         const time = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(
-          new Date(latest.timestamp)
+          new Date((latest.timestamp > 0 && latest.timestamp < 1e12 ? latest.timestamp * 1000 : latest.timestamp))
         );
         const toast: Toast = {
           id: `${latest.id}-${Date.now()}`,
@@ -684,7 +688,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex items-start gap-4">
             <div className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/[0.06] backdrop-blur-xl">
-              <img src="/polymarket-logo.png" alt="Polymarket" className="h-7 w-7 object-contain" />
+              <img src={logo} alt="Polymarket" className="h-7 w-7 object-contain" />
             </div>
             <div>
               <div className="text-2xl font-semibold tracking-tight text-blue-500">

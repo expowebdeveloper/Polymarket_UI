@@ -383,10 +383,11 @@ function VolumeBarChart({
   const padL = 80;
   const padR = 20;
   const padT = 24;
-  const padB = 96;
+  const padB = 112; // extra bottom space so category labels sit clearly below the bar area
 
   const chartW = width - padL - padR;
   const chartH = h - padT - padB;
+  const labelY = padT + chartH + 28; // category labels well below the bar line to avoid touching
 
   // Zero baseline: only use mid-zero when there are negative values; otherwise positive-only from bottom
   const zeroY = hasNegatives ? padT + chartH / 2 : padT + chartH;
@@ -439,11 +440,11 @@ function VolumeBarChart({
 
               <text
                 x={x + barW / 2}
-                y={padT + chartH + 12}
-                fontSize={11}
+                y={labelY}
+                fontSize={13}
                 fill="rgba(226,232,240,0.9)"
                 textAnchor="start"
-                transform={`rotate(45 ${x + barW / 2} ${padT + chartH + 12})`}
+                transform={`rotate(45 ${x + barW / 2} ${labelY})`}
               >
                 {d.label}
               </text>
@@ -451,8 +452,8 @@ function VolumeBarChart({
               {/* value labels: above bar for positive, below for negative */}
               <text
                 x={x + barW / 2}
-                y={isNeg ? y + barH + 14 : y - 8}
-                fontSize={10}
+                y={isNeg ? y + barH + 16 : y - 10}
+                fontSize={12}
                 fill={isNeg ? "rgba(251,113,133,0.95)" : "rgba(148,163,184,0.9)"}
                 textAnchor="middle"
               >
