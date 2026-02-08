@@ -23,32 +23,23 @@ import { ProfileStat } from './pages/ProfileStat';
 import { useTheme } from './contexts/ThemeContext';
 import { useAuth } from './contexts/AuthContext';
 
-function App() {
-  const [selectedSymbol, setSelectedSymbol] = useState('BTC/USD');
-  const [collapsed, setCollapsed] = useState(false);
-  const { theme } = useTheme();
-  const { isAuthenticated, isLoading } = useAuth();
-
-  // Show loading state while checking authentication
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-slate-600 dark:text-slate-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Protected layout component
-  const ProtectedLayout = () => (
+// Defined outside App so it's stable across re-renders — toggling sidebar no longer remounts route content
+function ProtectedLayout({
+  collapsed,
+  onSetCollapsed,
+  onSelectSymbol,
+}: {
+  collapsed: boolean;
+  onSetCollapsed: (collapsed: boolean) => void;
+  onSelectSymbol: (symbol: string) => void;
+}) {
+  return (
     <div className="flex min-h-screen">
-      <Sidebar collapsed={collapsed} onSetCollapsed={setCollapsed} />
+      <Sidebar collapsed={collapsed} onSetCollapsed={onSetCollapsed} />
       <div className={`${collapsed ? 'pl-[100px]' : 'pl-[280px]'} flex-1 flex flex-col transition-all duration-300`}>
         <div className="flex-1 px-4 py-4">
           <Routes>
-            <Route path="/dashboard" element={<Dashboard onSelectSymbol={setSelectedSymbol} />} />
+            <Route path="/dashboard" element={<Dashboard onSelectSymbol={onSelectSymbol} />} />
             <Route
               path="/leaderboard"
               element={
@@ -199,6 +190,25 @@ function App() {
       </div>
     </div>
   );
+}
+
+function App() {
+  const [selectedSymbol, setSelectedSymbol] = useState('BTC/USD');
+  const [collapsed, setCollapsed] = useState(false);
+  const { theme } = useTheme();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-slate-600 dark:text-slate-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white">
@@ -210,11 +220,11 @@ function App() {
         {/* Protected routes */}
         {/* Login requirement commented out - allow access without auth */}
         {/* {isAuthenticated ? (
-          <Route path="*" element={<ProtectedLayout />} />
+          <Route path="*" element={<ProtectedLayout collapsed={collapsed} onSetCollapsed={setCollapsed} onSelectSymbol={setSelectedSymbol} />} />
         ) : (
           <Route path="*" element={<Navigate to="/login" replace />} />
         )} */}
-        <Route path="*" element={<ProtectedLayout />} />
+        <Route path="*" element={<ProtectedLayout collapsed={collapsed} onSetCollapsed={setCollapsed} onSelectSymbol={setSelectedSymbol} />} />
       </Routes>
     </div>
   );

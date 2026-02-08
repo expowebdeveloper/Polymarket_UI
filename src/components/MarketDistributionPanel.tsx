@@ -280,20 +280,20 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
         <span className="text-slate-500">›</span>
       </div>
 
-      {/* two column layout */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-        {/* LEFT CARD - Donut Chart + Ranked List */}
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6">
+      {/* two column layout: volume slightly smaller, PNL bar chart larger */}
+      <div className="grid grid-cols-1 xl:grid-cols-[0.4fr_0.6fr] gap-5">
+        {/* LEFT CARD - Donut Chart + Ranked List (shrunk) */}
+        <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5">
           <div>
             <p className="text-white font-semibold">Volume by Category</p>
             <p className="text-xs text-slate-400 mt-1">Total invested volume from Polymarket</p>
           </div>
 
           {/* donut chart centered, categories below */}
-          <div className="mt-6 flex flex-col items-center">
+          <div className="mt-4 flex flex-col items-center">
             <DonutChart
-              size={240}
-              thickness={32}
+              size={200}
+              thickness={26}
               data={allocationSorted.map((m) => ({
                 key: m.key,
                 label: m.label,
@@ -302,7 +302,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
               totalVolume={totalVolume}
             />
             {/* category list - below pie chart, card design */}
-            <div className="mt-6 w-full space-y-3">
+            <div className="mt-4 w-full space-y-2">
               {allocationSorted.map((m) => {
                 const volumePct = totalVolume > 0 ? (m.volume / totalVolume) * 100 : 0;
                 return (
@@ -325,24 +325,24 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
           </div>
         </div>
 
-        {/* RIGHT CARD - Bar Chart */}
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6">
-          <div className="mb-4">
+        {/* RIGHT CARD - Bar Chart (larger) */}
+        <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 flex flex-col min-h-0">
+          <div className="mb-2">
             <p className="text-white font-semibold">PNL by Category</p>
             <p className="text-xs text-slate-400 mt-1">Total PNL by Category</p>
           </div>
 
-          <div className="mt-4">
+          <div className="flex-1 min-h-[340px]">
             <VolumeBarChart
               data={rightSeries}
-              height={280}
+              height={380}
               ariaLabel="PNL"
               valueFormatter={formatMoneyCompact}
               axisFormatter={formatAxisMoney}
             />
           </div>
 
-          <div className="mt-4">
+          <div className="mt-3">
             <LegendList items={rightSeries} valueFormatter={formatMoneyCompact} />
           </div>
         </div>
@@ -367,7 +367,7 @@ function VolumeBarChart({
 }) {
   if (data.length === 0) {
     return (
-      <div className="w-full rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-950/25 to-slate-900/15 p-4 h-[320px] flex items-center justify-center">
+      <div className="w-full rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-950/25 to-slate-900/15 p-4 min-h-[320px] flex items-center justify-center">
         <p className="text-slate-400">No data available</p>
       </div>
     );
@@ -378,19 +378,20 @@ function VolumeBarChart({
   const hasNegatives = rawMin < 0;
   const max = Math.max(Math.abs(rawMin), Math.abs(rawMax), 1);
 
-  const width = 720;
-  const h = Math.max(280, height);
-  const padL = 76;
-  const padR = 18;
-  const padT = 20;
-  const padB = 90;
+  const width = 800;
+  const h = Math.max(320, height);
+  const padL = 80;
+  const padR = 20;
+  const padT = 24;
+  const padB = 96;
 
   const chartW = width - padL - padR;
   const chartH = h - padT - padB;
 
-  // Zero baseline: when we have negatives, zero is at mid-height
+  // Zero baseline: only use mid-zero when there are negative values; otherwise positive-only from bottom
   const zeroY = hasNegatives ? padT + chartH / 2 : padT + chartH;
-  const scale = chartH / 2 / max;
+  const scaleRange = hasNegatives ? chartH / 2 : chartH;
+  const scale = scaleRange / max;
 
   const ticks = hasNegatives ? niceTicks(-max, max, 5) : niceTicks(0, max, 5);
   const barGap = 12;
@@ -401,14 +402,14 @@ function VolumeBarChart({
   return (
     <div className="w-full rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-950/25 to-slate-900/15 p-4">
       <svg width="100%" height={h} viewBox={`0 0 ${width} ${h}`} role="img" aria-label={ariaLabel}>
-        {/* zero line when we have negatives */}
+        {/* zero line only when there are negative values */}
         {hasNegatives && (
           <line x1={padL} y1={zeroY} x2={width - padR} y2={zeroY} stroke="rgba(148,163,184,0.4)" strokeWidth={1} strokeDasharray="4 4" />
         )}
 
         {/* grid + y-axis labels */}
         {ticks.map((t) => {
-          const y = zeroY - (t / max) * (chartH / 2);
+          const y = zeroY - (t / max) * scaleRange;
           return (
             <g key={t}>
               <line x1={padL} y1={y} x2={width - padR} y2={y} stroke="rgba(148,163,184,0.18)" strokeWidth={1} />
@@ -425,10 +426,16 @@ function VolumeBarChart({
           const barH = Math.abs(d.value) * scale;
           const isNeg = d.value < 0;
           const y = isNeg ? zeroY : zeroY - barH;
+          const barFill = isNeg ? "url(#negativeBarFill)" : colorForKey(d.key);
           return (
             <g key={d.key}>
-              <rect x={x} y={y} width={barW} height={barH} rx={6} fill={colorForKey(d.key)} opacity={0.92} />
-              <rect x={x} y={y} width={barW} height={barH} rx={6} fill="url(#barGlow)" opacity={0.35} />
+              <rect x={x} y={y} width={barW} height={barH} rx={6} fill={barFill} opacity={isNeg ? 1 : 0.92} />
+              {!isNeg && (
+                <rect x={x} y={y} width={barW} height={barH} rx={6} fill="url(#barGlow)" opacity={0.35} />
+              )}
+              {isNeg && (
+                <rect x={x} y={y} width={barW} height={barH} rx={6} fill="url(#negativeBarGlow)" opacity={0.4} />
+              )}
 
               <text
                 x={x + barW / 2}
@@ -446,7 +453,7 @@ function VolumeBarChart({
                 x={x + barW / 2}
                 y={isNeg ? y + barH + 14 : y - 8}
                 fontSize={10}
-                fill={isNeg ? "rgba(244,63,94,0.9)" : "rgba(148,163,184,0.9)"}
+                fill={isNeg ? "rgba(251,113,133,0.95)" : "rgba(148,163,184,0.9)"}
                 textAnchor="middle"
               >
                 {valueFormatter(d.value)}
@@ -458,6 +465,14 @@ function VolumeBarChart({
         <defs>
           <linearGradient id="barGlow" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="rgba(255,255,255,0.55)" />
+            <stop offset="1" stopColor="rgba(255,255,255,0)" />
+          </linearGradient>
+          <linearGradient id="negativeBarFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="rgba(251,113,133,0.85)" />
+            <stop offset="1" stopColor="rgba(244,63,94,0.95)" />
+          </linearGradient>
+          <linearGradient id="negativeBarGlow" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="rgba(255,255,255,0.25)" />
             <stop offset="1" stopColor="rgba(255,255,255,0)" />
           </linearGradient>
         </defs>

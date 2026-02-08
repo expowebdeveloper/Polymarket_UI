@@ -16,7 +16,7 @@ import logo from '../assets/logo.png';
 
 const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Profile Stat", href: "/profile-stat", icon: LayoutDashboard },
+    { name: "Predictor Rating/Stat", href: "/profile-stat", icon: LayoutDashboard },
     { name: "Market", href: "/markets", icon: LineChart, badge: "Coming Soon", disabled: true },
     { name: "Leaderboard", href: "/leaderboard", icon: Trophy, badge: "Coming Soon", disabled: true },
     { name: "Whales/insiders", href: "/Whales/insiders", icon: LineChart, badge: "Coming Soon", disabled: true },

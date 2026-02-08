@@ -105,8 +105,11 @@ export function ProfileStat() {
 
     const itemsPerPage = 20;
     const activityFetchAttempted = useRef<string | null>(null);
+    const distributionWalletRef = useRef<string>('');
     const [apiDistribution, setApiDistribution] = useState<any[]>([]);
     const [loadingDistribution, setLoadingDistribution] = useState(false);
+    const [activityTabList, setActivityTabList] = useState<any[]>([]);
+    const [activityTabLoading, setActivityTabLoading] = useState(false);
 
     const {
         loading,
@@ -117,18 +120,20 @@ export function ProfileStat() {
         activities,
         userPnL,
         portfolioValue,
+        dataOrigin,
         refresh,
         refreshWithTrades,
     } = useProfileStat(activeWallet);
 
-    // Activity limited to last 7 days
+    // Activity: prefer lightweight tab fetch, else from profile. Limited to last 7 days for display.
+    const activityDisplayList = activityTabList.length > 0 ? activityTabList : (activities || []);
     const activitiesLast7Days = useMemo(() => {
-        if (!activities || activities.length === 0) return [];
+        if (!activityDisplayList.length) return [];
         const sevenDaysAgoSec = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
-        return activities
+        return [...activityDisplayList]
             .filter((a) => (a.timestamp ?? 0) >= sevenDaysAgoSec)
             .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
-    }, [activities]);
+    }, [activityTabList, activities]);
 
     // Trade filtering with caching
     const {
@@ -155,15 +160,22 @@ export function ProfileStat() {
                 .then(data => setUserProfile(data))
                 .catch(err => console.error('Failed to fetch user profile:', err));
 
-            // Fetch default recent 10 trades
-            fetchTrades('recent10');
+            // Fetch all trades for portfolio performance graph and trade history
+            fetchTrades('all');
         }
 
     }, [activeWallet, fetchTrades]);
 
-    // Reset activity fetch flag when wallet changes
+    // Reset activity fetch flag and tab cache when wallet changes
     useEffect(() => {
         activityFetchAttempted.current = null;
+        setActivityTabList([]);
+    }, [activeWallet]);
+
+    // Clear API market distribution when profile/wallet changes so we refetch for the new profile
+    useEffect(() => {
+        setApiDistribution([]);
+        setLoadingDistribution(false);
     }, [activeWallet]);
 
     // Fetch activities when Activity tab is selected and activities is empty
@@ -177,15 +189,20 @@ export function ProfileStat() {
 
     // Fetch API distribution when tab is active
     useEffect(() => {
-        if (activeWallet && activeTab === 'distribution' && apiDistribution.length === 0 && !loadingDistribution) {
-            setLoadingDistribution(true);
-            fetchMarketDistribution(activeWallet)
-                .then(data => {
-                    setApiDistribution(data.market_distribution || []);
-                })
-                .catch(err => console.error("Failed to fetch market distribution:", err))
-                .finally(() => setLoadingDistribution(false));
-        }
+        if (!activeWallet || activeTab !== 'distribution' || apiDistribution.length !== 0 || loadingDistribution) return;
+        const wallet = activeWallet;
+        distributionWalletRef.current = wallet;
+        setLoadingDistribution(true);
+        fetchMarketDistribution(wallet)
+            .then(data => {
+                // Only apply if this response is for the current profile (avoid showing stale data when switching profiles)
+                if (distributionWalletRef.current !== wallet) return;
+                setApiDistribution(data.market_distribution || []);
+            })
+            .catch(err => console.error("Failed to fetch market distribution:", err))
+            .finally(() => {
+                if (distributionWalletRef.current === wallet) setLoadingDistribution(false);
+            });
     }, [activeWallet, activeTab, apiDistribution.length, loadingDistribution]);
 
     const handleWalletSubmit = async (e: React.FormEvent) => {
@@ -486,19 +503,38 @@ export function ProfileStat() {
     }, [closedPositions]);
 
     const performanceGraphData = useMemo(() => {
-        // Use filtered trades if available, otherwise show empty
+        // Use filtered trades if available (from Polymarket API) — only real data, no placeholder
         const tradesData = filteredTrades.length > 0 ? filteredTrades : [];
 
         if (!tradesData || tradesData.length === 0) return [];
 
         // Sort by timestamp
-        return tradesData
-            .sort((a, b) => a.t - b.t)
-            .map(point => ({
-                date: new Date(point.t * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        const sorted = [...tradesData].sort((a, b) => a.t - b.t);
+        return sorted.map(point => {
+            const d = new Date(point.t * 1000);
+            return {
+                date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                dateShort: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                timestamp: point.t,
                 cumulativePnl: point.p,
-            }));
+            };
+        });
     }, [filteredTrades]);
+
+    // Actual date range of the graph data (for labeling — real data only)
+    const performanceGraphRange = useMemo(() => {
+        if (performanceGraphData.length === 0) return null;
+        const first = performanceGraphData[0] as { timestamp?: number };
+        const last = performanceGraphData[performanceGraphData.length - 1] as { timestamp?: number };
+        const firstTs = first?.timestamp ?? 0;
+        const lastTs = last?.timestamp ?? 0;
+        const firstDate = new Date(firstTs * 1000);
+        const lastDate = new Date(lastTs * 1000);
+        const sameYear = firstDate.getFullYear() === lastDate.getFullYear();
+        const firstStr = firstDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: sameYear ? undefined : 'numeric' });
+        const lastStr = lastDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return { firstStr, lastStr, firstDate, lastDate };
+    }, [performanceGraphData]);
 
 
 
@@ -629,6 +665,20 @@ export function ProfileStat() {
             {/* CONTENT */}
             {!loading && activeWallet && metrics && (
                 <div className="px-8 py-6 space-y-6">
+                    {/* Data origin: confirm data is real from Polymarket */}
+                    {dataOrigin?.live && (
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <span className="inline-flex items-center gap-1 text-emerald-400/90">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                                Real data
+                            </span>
+                            <span>from Polymarket API</span>
+                            {dataOrigin.cached_seconds_ago != null && dataOrigin.cached_seconds_ago > 0 && (
+                                <span>· Cached {dataOrigin.cached_seconds_ago}s ago</span>
+                            )}
+                        </div>
+                    )}
+
                     {/* FINAL RATING */}
                     <div className="bg-slate-900/70 border border-emerald-500/40 rounded-3xl shadow-[0_0_60px_rgba(16,185,129,0.35)] p-6">
                         <p className="text-sm uppercase tracking-widest text-emerald-300/80">Final Rating (Live)</p>
@@ -943,46 +993,63 @@ export function ProfileStat() {
                                 </div>
                             )}
 
-                            {/* Graph */}
+                            {/* Graph — only real data from Polymarket API, no placeholder */}
                             {!tradesLoading && !tradesError && currentFilter && performanceGraphData.length > 0 && (
-                                <div className="h-[300px] w-full mt-4">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={performanceGraphData}>
-                                            <defs>
-                                                <linearGradient id="colorPnl" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                                            <XAxis
-                                                dataKey="date"
-                                                stroke="#64748b"
-                                                fontSize={12}
-                                                tickLine={false}
-                                                axisLine={false}
-                                            />
-                                            <YAxis
-                                                stroke="#64748b"
-                                                fontSize={12}
-                                                tickLine={false}
-                                                axisLine={false}
-                                                tickFormatter={(value) => `$${value}`}
-                                            />
-                                            <Tooltip
-                                                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
-                                                itemStyle={{ color: '#10b981' }}
-                                            />
-                                            <Line
-                                                type="monotone"
-                                                dataKey="cumulativePnl"
-                                                stroke="#10b981"
-                                                strokeWidth={3}
-                                                dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#0f172a' }}
-                                                activeDot={{ r: 6, strokeWidth: 0 }}
-                                            />
-                                        </LineChart>
-                                    </ResponsiveContainer>
+                                <>
+                                    <div className="h-[300px] w-full mt-4">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <LineChart data={performanceGraphData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                                                <defs>
+                                                    <linearGradient id="colorPnl" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                                                <XAxis
+                                                    dataKey="dateShort"
+                                                    stroke="#64748b"
+                                                    fontSize={11}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    interval="preserveStartEnd"
+                                                />
+                                                <YAxis
+                                                    stroke="#64748b"
+                                                    fontSize={12}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    tickFormatter={(value) => {
+                                                        if (value == null || Number.isNaN(Number(value))) return '';
+                                                        const n = Number(value);
+                                                        if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+                                                        if (n >= 1e3) return `$${(n / 1e3).toFixed(0)}K`;
+                                                        return `$${Math.round(n)}`;
+                                                    }}
+                                                />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                                                    itemStyle={{ color: '#10b981' }}
+                                                    labelFormatter={(label) => label}
+                                                />
+                                                <Line
+                                                    type="monotone"
+                                                    dataKey="cumulativePnl"
+                                                    stroke="#10b981"
+                                                    strokeWidth={3}
+                                                    dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#0f172a' }}
+                                                    activeDot={{ r: 6, strokeWidth: 0 }}
+                                                />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-2">Source: Polymarket API (real data only)</p>
+                                </>
+                            )}
+                            {!tradesLoading && !tradesError && currentFilter && performanceGraphData.length === 0 && filteredTrades.length === 0 && (
+                                <div className="h-[300px] flex flex-col items-center justify-center text-center px-4 mt-4 rounded-2xl border border-slate-800 bg-slate-900/30">
+                                    <p className="text-slate-400 font-medium">No trade data from Polymarket</p>
+                                    <p className="text-sm text-slate-500 mt-1">This wallet has no PnL history in the API. Chart shows only real data.</p>
                                 </div>
                             )}
                         </div>
@@ -1025,7 +1092,7 @@ export function ProfileStat() {
                                 { id: 'activity', label: 'Activity' },
                                 { id: 'active_positions', label: 'Active Positions' },
                                 { id: 'closed_positions', label: 'Closed Positions' },
-                                { id: 'history', label: 'Trade History' }
+                                // { id: 'history', label: 'Trade History' } // Hidden: trade history tab
                             ].map((tab) => (
                                 <button
                                     key={tab.id}
@@ -1041,9 +1108,9 @@ export function ProfileStat() {
                         </div>
 
                         <div className="p-6">
+                            {/* Trade History tab – commented out, tab hidden above
                             {activeTab === 'history' && (
                                 <div>
-                                    {/* Filter Buttons */}
                                     <div className="flex flex-wrap gap-2 mb-6">
                                         {(['recent10', '7days', '30days', 'all'] as TradeFilter[]).map((filter) => (
                                             <button
@@ -1061,29 +1128,21 @@ export function ProfileStat() {
                                             </button>
                                         ))}
                                     </div>
-
-                                    {/* Loading State */}
                                     {tradesLoading && (
                                         <div className="h-[300px] flex items-center justify-center">
                                             <LoadingSpinner message="Loading trades..." />
                                         </div>
                                     )}
-
-                                    {/* Error State */}
                                     {tradesError && (
                                         <div className="h-[300px] flex items-center justify-center">
                                             <p className="text-red-400">{tradesError}</p>
                                         </div>
                                     )}
-
-                                    {/* Empty State */}
                                     {!tradesLoading && !tradesError && !currentFilter && (
                                         <div className="h-[300px] flex items-center justify-center">
                                             <p className="text-slate-400">Select a filter above to view trade history</p>
                                         </div>
                                     )}
-
-                                    {/* Trade History Table */}
                                     {!tradesLoading && !tradesError && currentFilter && filteredTrades.length > 0 && (
                                         <>
                                             <div className="overflow-x-auto mb-4">
@@ -1121,7 +1180,6 @@ export function ProfileStat() {
                                                     </tbody>
                                                 </table>
                                             </div>
-                                            {/* History Pagination */}
                                             <div className="flex items-center justify-between mt-4">
                                                 <div className="text-slate-400 text-sm">
                                                     Showing {(historyPage - 1) * itemsPerPage + 1} to {Math.min(historyPage * itemsPerPage, filteredTrades.length)} of {filteredTrades.length} trades
@@ -1152,6 +1210,7 @@ export function ProfileStat() {
                                     )}
                                 </div>
                             )}
+                            */}
 
                             {activeTab === 'activity' && (
                                 <div>
@@ -1225,7 +1284,7 @@ export function ProfileStat() {
                                         </>
                                     ) : (
                                         <p className="text-slate-400 text-center py-8">
-                                            {loading ? 'Loading activities...' : (activities?.length ? 'No activity in the last 7 days' : 'No activity data available')}
+                                            {activityTabList.length ? 'No activity in the last 7 days' : (activities?.length ? 'No activity in the last 7 days' : 'No activity data available')}
                                         </p>
                                     )}
                                 </div>

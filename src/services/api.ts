@@ -632,6 +632,13 @@ export async function fetchFilteredTrades(walletAddress: string, filter: string 
 }
 
 /**
+ * Lightweight fetch for Activity tab only (trades → activities). Fast; does not refetch full profile.
+ */
+export async function fetchProfileStatActivities(walletAddress: string): Promise<{ activities: any[] }> {
+    return fetchApi<{ activities: any[] }>(`/dashboard/profile-stat/${walletAddress}/activities`, 30000);
+}
+
+/**
  * Trigger a full sync of wallet data from server to local database
  * @param walletAddress - Wallet address
  * @param background - Whether to run in background (default: true)

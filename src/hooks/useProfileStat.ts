@@ -5,6 +5,12 @@ import {
 import { ScoredMetrics } from '../utils/scoring';
 import { Position, ClosedPosition, Activity, UserPnL } from '../types/api';
 
+export interface DataOrigin {
+    live?: boolean;
+    sources?: string[];
+    cached_seconds_ago?: number;
+}
+
 export interface ProfileStatState {
     loading: boolean;
     error: string | null;
@@ -14,6 +20,7 @@ export interface ProfileStatState {
     activities: Activity[];
     userPnL: UserPnL[];
     portfolioValue?: number;
+    dataOrigin?: DataOrigin | null;
 }
 
 export function useProfileStat(walletAddress: string) {
@@ -57,6 +64,7 @@ export function useProfileStat(walletAddress: string) {
                 activities: data.activities || [],
                 userPnL: data.trade_history?.trades || [],
                 portfolioValue: data.portfolio_value,
+                dataOrigin: data.data_origin ?? null,
             });
         } catch (err: any) {
             console.error('Error fetching profile stat data:', err);
