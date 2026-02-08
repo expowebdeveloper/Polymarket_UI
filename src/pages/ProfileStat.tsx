@@ -160,8 +160,8 @@ export function ProfileStat() {
                 .then(data => setUserProfile(data))
                 .catch(err => console.error('Failed to fetch user profile:', err));
 
-            // Fetch all trades for portfolio performance graph and trade history
-            fetchTrades('all');
+            // Fetch recent trades only on load for fast page render; "All Trades" fetches full history when user clicks it
+            fetchTrades('recent10');
         }
 
     }, [activeWallet, fetchTrades]);
