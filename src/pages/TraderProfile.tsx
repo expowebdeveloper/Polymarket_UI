@@ -7,6 +7,7 @@ import { getVolumeRank } from '../utils/rankUtils';
 import { getStreakBadge } from '../utils/streakUtils';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
+import { SocialLinks } from '../components/SocialLinks';
 import { useTheme } from '../contexts/ThemeContext';
 import type { TraderDetails, UserLeaderboardData, TradeHistoryResponse } from '../types/api';
 
@@ -221,9 +222,21 @@ export function TraderProfile() {
             />
           )}
           <div>
-            <h1 className={`text-2xl font-bold ${textClass}`}>
-              {leaderboardData?.userName || formatWallet(wallet || '')}
-            </h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className={`text-2xl font-bold ${textClass}`}>
+                {leaderboardData?.userName || formatWallet(wallet || '')}
+              </h1>
+              {leaderboardData?.xUsername && (
+                <span className={`${textSecondaryClass} text-sm`}>
+                  @{leaderboardData.xUsername.replace(/^@/, '')}
+                </span>
+              )}
+              <SocialLinks
+                xUsername={leaderboardData?.xUsername}
+                polymarketWallet={leaderboardData?.proxyWallet || wallet}
+                iconSize={18}
+              />
+            </div>
             <p className={`${textSecondaryClass} text-sm`}>
               {leaderboardData?.userName ? formatWallet(wallet || '') : 'Trader Profile'}
             </p>

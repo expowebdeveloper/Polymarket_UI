@@ -649,12 +649,46 @@ export async function syncDBDashboard(walletAddress: string, background: boolean
 
 /**
  * Resolve a search query to a wallet address (search by username/address)
- * @param query - Search query (username or wallet address)
+ * @param query - Search query (username or wallet address); leading/trailing spaces are trimmed
  */
 export async function resolveWalletOrUser(query: string): Promise<{ wallet_address: string, type: 'address' | 'username', name?: string, pseudonym?: string, profile_image?: string }> {
-    return fetchApi<{ wallet_address: string, type: 'address' | 'username', name?: string, pseudonym?: string, profile_image?: string }>(`/dashboard/search/${encodeURIComponent(query)}`, 30000);
-
-
+    const trimmed = (query || '').trim();
+    if (!trimmed) {
+        throw { message: 'Please enter a wallet address, Polymarket username, or X username.', status: 400 } as ApiError;
+    }
+    const endpoint = `/dashboard/search/${encodeURIComponent(trimmed)}`;
+    const url = API_BASE_URL
+        ? `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
+        : endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
+            signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            const detail = typeof data?.detail === 'string' ? data.detail : Array.isArray(data?.detail) ? data.detail.map((d: any) => d?.msg ?? d).join(', ') : null;
+            throw {
+                message: detail || `User or wallet not found (${response.status}). Try a full wallet address (0x...), Polymarket username, or X username (with or without @).`,
+                status: response.status,
+            } as ApiError;
+        }
+        return data as { wallet_address: string; type: 'address' | 'username'; name?: string; pseudonym?: string; profile_image?: string };
+    } catch (err) {
+        clearTimeout(timeoutId);
+        if (err && typeof err === 'object' && 'message' in err && 'status' in err) throw err;
+        if (err instanceof Error && err.name === 'AbortError') {
+            throw { message: 'Request timeout - the server is taking too long to respond.', status: 408 } as ApiError;
+        }
+        throw {
+            message: err instanceof Error ? err.message : 'User or wallet not found. Try a full wallet address (0x...), Polymarket username, or X username (with or without @).',
+            status: undefined,
+        } as ApiError;
+    }
 }
 
 /**

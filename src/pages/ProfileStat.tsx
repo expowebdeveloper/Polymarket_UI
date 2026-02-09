@@ -11,6 +11,7 @@ import { getVolumeRank } from '../utils/rankUtils';
 import { getStreakBadge } from '../utils/streakUtils';
 import type { UserLeaderboardData } from '../types/api';
 import { MarketDistributionPanel } from '../components/MarketDistributionPanel';
+import { SocialLinks } from '../components/SocialLinks';
 
 // Helper function to format currency
 const formatCurrency = (value: number | string | undefined): string => {
@@ -92,7 +93,6 @@ export function ProfileStat() {
     const [walletInput, setWalletInput] = useState('');
     const [activeWallet, setActiveWallet] = useState('');
     const [userProfile, setUserProfile] = useState<UserLeaderboardData | null>(null);
-    const [theme] = useState<"dark" | "light">("dark"); // Default to dark, removed toggle
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('distribution');
     const [distributionMetric, setDistributionMetric] = useState<'count' | 'capital'>('count');
@@ -209,18 +209,20 @@ export function ProfileStat() {
         e.preventDefault();
         setSearchError(null);
 
-        if (!walletInput.trim()) return;
+        const trimmed = walletInput.trim();
+        if (!trimmed) return;
 
         try {
-            const resolution = await resolveWalletOrUser(walletInput);
+            const resolution = await resolveWalletOrUser(trimmed);
             const resolvedAddress = resolution.wallet_address;
 
             setActiveWallet(resolvedAddress);
             setHistoryPage(1);
             setActivePositionsPage(1);
             setClosedPositionsPage(1);
-        } catch {
-            setSearchError("User or wallet not found. Try a full wallet address (0x...), Polymarket username, or X username (with or without @).");
+        } catch (err: any) {
+            const message = err?.message ?? "User or wallet not found. Try a full wallet address (0x...), Polymarket username, or X username (with or without @).";
+            setSearchError(message);
         }
     };
 
@@ -579,7 +581,7 @@ export function ProfileStat() {
     const [showCopied, setShowCopied] = useState(false);
 
     return (
-        <div className={theme === "dark" ? "min-h-screen bg-gradient-to-b from-black via-slate-950 to-black text-white" : "min-h-screen bg-gradient-to-b from-slate-100 via-white to-slate-200 text-slate-900"}>
+        <div className="min-h-screen bg-gradient-to-b from-black via-slate-950 to-black text-white">
             {/* TOP NAV */}
             <div className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur border-b border-slate-800">
                 <div className="flex items-center justify-center px-6 py-6">
@@ -596,14 +598,33 @@ export function ProfileStat() {
                                 />
                             )}
 
-                            {/* Username and Wallet Address */}
+                            {/* Username, X handle, Verified badge and Wallet Address */}
                             {activeWallet && (
                                 <div className="flex flex-col min-w-0">
-                                    {userProfile?.userName && (
-                                        <span className="text-lg font-bold text-white truncate">
-                                            {userProfile.userName}
-                                        </span>
-                                    )}
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        {userProfile?.userName && (
+                                            <span className="text-lg font-bold text-white truncate">
+                                                {userProfile.userName}
+                                            </span>
+                                        )}
+                                        {userProfile?.xUsername && (
+                                            <span className="text-slate-400 text-sm truncate">
+                                                @{userProfile.xUsername.replace(/^@/, '')}
+                                            </span>
+                                        )}
+                                        <SocialLinks
+                                            xUsername={userProfile?.xUsername}
+                                            polymarketWallet={userProfile?.proxyWallet || activeWallet}
+                                            iconSize={18}
+                                            variant="light"
+                                        />
+                                        {userProfile?.verifiedBadge && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/40" title="In X user list / Verified">
+                                                <span className="text-blue-400">✓</span>
+                                                Verified
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="relative group">
                                         <button
                                             type="button"
@@ -711,7 +732,7 @@ export function ProfileStat() {
                                     }
                                     return null;
                                 })()}
-                                {metrics.is_badge_holder && (
+                                {(metrics.is_badge_holder || userProfile?.verifiedBadge) && (
                                     <span className="px-6 py-2 rounded-full text-sm border font-bold bg-gradient-to-r from-purple-500/10 to-amber-500/10 text-transparent bg-clip-text border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.4)] animate-pulse">
                                         <span className="bg-gradient-to-r from-purple-400 to-amber-400 bg-clip-text">
                                             🏅 Polymarket Badge Holder

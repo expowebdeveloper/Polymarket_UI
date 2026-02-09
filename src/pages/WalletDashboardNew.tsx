@@ -63,7 +63,6 @@ export function WalletDashboard() {
   const [walletAddress, setWalletAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution'>('history');
 
@@ -620,13 +619,7 @@ export function WalletDashboard() {
   ];
 
   return (
-    <div
-      className={
-        theme === "dark"
-          ? "min-h-screen bg-gradient-to-b from-black via-slate-950 to-black text-white"
-          : "min-h-screen bg-gradient-to-b from-slate-100 via-white to-slate-200 text-slate-900"
-      }
-    >
+    <div className="min-h-screen bg-gradient-to-b from-black via-slate-950 to-black text-white">
       {/* TOP NAV */}
       <div className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur border-b border-slate-800">
         <div className="flex items-center justify-between px-6 py-4">
@@ -653,12 +646,6 @@ export function WalletDashboard() {
           </div>
 
           <div className="flex items-center gap-4">
-            <button
-              className={`px-3 py-1 rounded ${theme === "dark" ? "text-emerald-400" : "text-emerald-700"}`}
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            >
-              {theme === "dark" ? "🌙 Dark" : "☀️ Light"}
-            </button>
             <Bell className="h-5 w-5 text-slate-400 cursor-pointer" />
             <Settings className="h-5 w-5 text-slate-400 cursor-pointer" />
             <User className="h-5 w-5 text-slate-400 cursor-pointer" />
