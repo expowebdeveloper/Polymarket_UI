@@ -14,6 +14,8 @@ import {
   ArrowDownRight,
   Sparkles,
   Bell,
+  Copy,
+  User,
 } from "lucide-react";
 import { API_BASE_URL } from "../config";
 import { useActivityWebSocket, type Activity as WsActivity } from "../hooks/useActivityWebSocket";
@@ -30,6 +32,11 @@ interface BiggestWinnerMonth {
   pnl: number;
   vol: number;
   rank?: number;
+  /** All-time scoring from profile-stat (when from API) */
+  final_score?: number | null;
+  finalScore?: number | null;
+  win_rate?: number | null;
+  stake_yield?: number | null;
 }
 
 interface DashboardStats {
@@ -281,58 +288,6 @@ function FeedItem({ entry, index }: { entry: ActivityEntry; index: number }) {
   );
 }
 
-function WinnerRow({
-  rank,
-  handle,
-  pnl,
-  profileLink,
-}: {
-  rank: number;
-  handle: string;
-  pnl: string;
-  profileLink?: string;
-}) {
-  const medal = getMedal(rank);
-  const content = (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3">
-      <div className="flex min-w-0 items-center gap-3">
-        {medal ? (
-          <div
-            className={cn(
-              "grid h-8 w-8 place-items-center rounded-lg border text-sm",
-              "backdrop-blur-xl",
-              medal.className
-            )}
-            aria-label={medal.ariaLabel}
-            title={medal.ariaLabel}
-          >
-            <span className="text-base leading-none">{medal.emoji}</span>
-          </div>
-        ) : (
-          <div className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.06] text-sm font-semibold text-white/80">
-            {rank}
-          </div>
-        )}
-        <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-white/90">{handle}</div>
-        </div>
-      </div>
-      <div className="shrink-0 text-right">
-        <div className="text-sm font-semibold text-emerald-200">{pnl}</div>
-        <div className="mt-0.5 text-[11px] text-white/35">PnL</div>
-      </div>
-    </div>
-  );
-  if (profileLink) {
-    return (
-      <a href={profileLink} className="block transition-opacity hover:opacity-90">
-        {content}
-      </a>
-    );
-  }
-  return content;
-}
-
 function PerformerRow({
   name,
   rating,
@@ -468,6 +423,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
   const [topPerformers, setTopPerformers] = useState<TopTrader[]>([]);
   const [topPerformersLoading, setTopPerformersLoading] = useState(true);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const prevActivityCount = useRef(-1);
@@ -648,9 +604,15 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
       handle:
         w.userName || w.xUsername
           ? `@${w.xUsername || w.userName}`
-          : `@${w.user.slice(0, 6)}…${w.user.slice(-4)}`,
-      pnl: `+${formatUSD(w.pnl)} PnL`,
+          : `${w.user.slice(0, 6)}…${w.user.slice(-4)}`,
+      user: w.user,
+      profileImage: w.profileImage,
+      pnl: w.pnl,
+      pnlFormatted: `+${formatUSD(w.pnl)}`,
       profileLink: `/profile-stat?wallet=${encodeURIComponent(w.user)}`,
+      finalScore: w.final_score ?? w.finalScore ?? null,
+      winRate: w.win_rate ?? null,
+      stakeYield: w.stake_yield ?? null,
     }));
   }, [stats?.biggest_winners_month]);
 
@@ -849,35 +811,140 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                   </div>
                 </div>
 
-                <div>
+                <div className="lg:col-span-2">
                   <div className="flex items-center gap-2">
                     <div className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-amber-500/10">
                       <Trophy className="h-5 w-5 text-amber-200" />
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-blue-500">
-                        Top 10 by PnL (DB leaderboard)
+                        Biggest winners of the month
                       </div>
                       <div className="text-xs text-white/45">
-                        First 10 from DB leaderboard · Click to view profile
+                        Top 20 by PnL (API) · Win rate, stake yield &amp; final rating all-time
                       </div>
                     </div>
                   </div>
-                  <div className="mt-4 space-y-3">
+                  <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
                     {winners.length === 0 ? (
-                      <div className="py-4 text-sm text-white/50">
+                      <div className="py-8 text-center text-sm text-white/50">
                         No leaderboard data available
                       </div>
                     ) : (
-                      winners.map((w) => (
-                        <WinnerRow
-                          key={w.rank}
-                          rank={w.rank}
-                          handle={w.handle}
-                          pnl={w.pnl}
-                          profileLink={w.profileLink}
-                        />
-                      ))
+                      <table className="w-full min-w-[640px] border-collapse text-sm">
+                        <thead>
+                          <tr className="border-b border-white/10 text-left text-xs font-semibold uppercase tracking-wider text-white/50">
+                            <th className="py-3 pl-4 pr-2">Trader</th>
+                            <th className="py-3 px-2 text-right">PnL</th>
+                            <th className="py-3 px-2 text-right">Win rate</th>
+                            <th className="py-3 px-2 text-right">Stake yield</th>
+                            <th className="py-3 pl-2 pr-4 text-right">Final rating (all-time)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {winners.map((w) => {
+                            const medal = getMedal(w.rank);
+                            const handleCopyWallet = (e: React.MouseEvent) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(w.user);
+                              setCopiedWallet(w.user);
+                              setTimeout(() => setCopiedWallet(null), 2000);
+                            };
+                            return (
+                            <tr key={w.rank} className="border-b border-white/5 last:border-0">
+                              <td className="py-3 pl-4 pr-2">
+                                <div className="flex items-center gap-3">
+                                  {medal ? (
+                                    <div
+                                      className={cn(
+                                        "grid h-9 w-9 shrink-0 place-items-center rounded-full border text-sm",
+                                        medal.className
+                                      )}
+                                    >
+                                      <span>{medal.emoji}</span>
+                                    </div>
+                                  ) : (
+                                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-xs font-semibold text-white/80">
+                                      {w.rank}
+                                    </div>
+                                  )}
+                                  <a
+                                    href={w.profileLink}
+                                    className="relative flex min-w-0 flex-1 items-center gap-3 transition-opacity hover:opacity-90"
+                                  >
+                                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/5">
+                                      {w.profileImage ? (
+                                        <img
+                                          src={w.profileImage}
+                                          alt=""
+                                          className="h-full w-full object-cover"
+                                          onError={(e) => {
+                                            e.currentTarget.style.display = "none";
+                                            const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+                                            if (fallback) fallback.style.display = "flex";
+                                          }}
+                                        />
+                                      ) : null}
+                                      <div
+                                        className="h-full w-full place-items-center text-white/50"
+                                        style={{
+                                          display: w.profileImage ? "none" : "flex",
+                                        }}
+                                        aria-hidden
+                                      >
+                                        <User className="h-5 w-5" />
+                                      </div>
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="truncate font-medium text-white/90">{w.handle}</div>
+                                      <div className="mt-0.5 flex items-center gap-1.5">
+                                        <span className="max-w-[140px] truncate font-mono text-xs text-white/40" title={w.user}>
+                                          {w.user.slice(0, 6)}…{w.user.slice(-4)}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={handleCopyWallet}
+                                          className="shrink-0 rounded p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white/70"
+                                          title="Copy wallet address"
+                                        >
+                                          {copiedWallet === w.user ? (
+                                            <span className="text-[10px] font-medium text-emerald-400">Copied!</span>
+                                          ) : (
+                                            <Copy className="h-3.5 w-3.5" />
+                                          )}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </a>
+                                </div>
+                              </td>
+                              <td className="py-3 px-2 text-right font-semibold text-emerald-300">
+                                {w.pnlFormatted}
+                              </td>
+                              <td className="py-3 px-2 text-right text-white/80">
+                                {w.winRate != null ? `${w.winRate.toFixed(1)}%` : "—"}
+                              </td>
+                              <td className="py-3 px-2 text-right">
+                                {w.stakeYield != null ? (
+                                  <span className={w.stakeYield >= 0 ? "text-emerald-400" : "text-red-400"}>
+                                    {w.stakeYield >= 0 ? "+" : ""}{w.stakeYield.toFixed(1)}%
+                                  </span>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
+                              <td className="py-3 pl-2 pr-4 text-right">
+                                {w.finalScore != null ? (
+                                  <span className="font-semibold text-amber-200/90">{Math.round(w.finalScore)}</span>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
+                            </tr>
+                          ); })}
+                        </tbody>
+                      </table>
                     )}
                   </div>
                 </div>
