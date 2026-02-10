@@ -581,12 +581,19 @@ export function ProfileStat() {
     const [showCopied, setShowCopied] = useState(false);
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-black via-slate-950 to-black text-white">
+        <div className="min-h-screen bg-black text-white">
+            {/* Ambient liquid glow background – matches Dashboard */}
+            <div className="pointer-events-none fixed inset-0 z-0">
+                <div className="absolute inset-0 bg-[radial-gradient(1200px_700px_at_20%_10%,rgba(56,189,248,0.12),transparent_55%),radial-gradient(1000px_600px_at_80%_0%,rgba(99,102,241,0.10),transparent_55%),radial-gradient(900px_600px_at_50%_90%,rgba(16,185,129,0.08),transparent_60%)]" />
+                <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.06),transparent_30%,transparent_70%,rgba(255,255,255,0.04))] opacity-40" />
+                <div className="absolute inset-0 [background-image:radial-gradient(rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.06]" />
+            </div>
+
             {/* TOP NAV */}
-            <div className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur border-b border-slate-800">
+            <div className="sticky top-0 z-30 bg-white/[0.04] backdrop-blur-2xl border-b border-white/10">
                 <div className="flex items-center justify-center px-6 py-6">
                     <div className="w-full max-w-7xl">
-                        <form onSubmit={handleWalletSubmit} className="flex items-center gap-6 bg-slate-900/70 border border-emerald-500/30 rounded-3xl px-8 py-5 shadow-[0_0_35px_rgba(16,185,129,0.2)] transition-all duration-300 hover:shadow-[0_0_45px_rgba(16,185,129,0.25)] hover:border-emerald-500/40">
+                        <form onSubmit={handleWalletSubmit} className="flex items-center gap-6 bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 rounded-3xl px-8 py-5 shadow-[0_16px_60px_-24px_rgba(0,0,0,0.9)] backdrop-blur-2xl transition-all duration-300 hover:border-white/15 hover:shadow-[0_24px_64px_-24px_rgba(0,0,0,0.95)]">
                             {/* Profile Picture */}
                             {activeWallet && userProfile?.profileImage && (
                                 <img
@@ -701,7 +708,10 @@ export function ProfileStat() {
                     )}
 
                     {/* FINAL RATING */}
-                    <div className="bg-slate-900/70 border border-emerald-500/40 rounded-3xl shadow-[0_0_60px_rgba(16,185,129,0.35)] p-6">
+                    <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 rounded-3xl shadow-[0_16px_60px_-24px_rgba(0,0,0,0.9)] backdrop-blur-2xl p-6">
+                        {/* Liquid glow blob */}
+                        <div className="pointer-events-none absolute -top-24 left-1/2 h-40 w-[520px] -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
+                        <div className="pointer-events-none absolute inset-0 rounded-3xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]" />
                         <p className="text-sm uppercase tracking-widest text-emerald-300/80">Final Rating (Live)</p>
                         <div className="flex items-end gap-6">
                             <p className="text-[60px] leading-none font-extrabold bg-gradient-to-r from-emerald-300 to-emerald-500 bg-clip-text text-transparent">
@@ -750,38 +760,39 @@ export function ProfileStat() {
                         </div>
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 mt-6">
-                            <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
+                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
                                 <p className="text-xs text-slate-300 mb-0.5">Balance</p>
                                 <p className="text-base font-bold text-emerald-300">{formatCurrency(balance)}</p>
                                 <p className="text-[10px] text-slate-400 mt-0.5">Portfolio value (Polymarket API)</p>
                             </div>
-                            <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
+                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
                                 <p className="text-xs text-slate-300 mb-0.5">Total PNL</p>
                                 <p className={`text-base font-bold ${metrics.total_pnl >= 0 ? 'text-emerald-300' : 'text-red-400'}`}>{formatCurrency(metrics.total_pnl)}</p>
                             </div>
-                            <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
+                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
                                 <p className="text-xs text-slate-300 mb-0.5">Volume Traded</p>
                                 <p className="text-base font-bold text-emerald-300">{formatCurrency(metrics.total_volume)}</p>
                             </div>
-                            <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
+                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
                                 <p className="text-xs text-slate-300 mb-0.5">Predictions</p>
                                 <p className="text-base font-bold text-emerald-300">{metrics.total_trades}</p>
                             </div>
-                            <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
+                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
                                 <p className="text-xs text-slate-300 mb-0.5">Total Trades</p>
                                 <p className="text-base font-bold text-emerald-300">{totalPredictions}</p>
                             </div>
-                            <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
+                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
                                 <p className="text-xs text-slate-300 mb-0.5">Biggest Win</p>
                                 <p className="text-base font-bold text-emerald-300">{formatCurrency(metrics.largest_win)}</p>
                             </div>
-                            <div className="bg-gradient-to-br from-purple-800/70 to-purple-950/90 border border-purple-600/30 rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center">
+                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
                                 <p className="text-xs text-slate-300 mb-0.5">Worst Loss</p>
                                 <p className="text-base font-bold text-red-400">{formatCurrency(metrics.worst_loss || 0)}</p>
                             </div>
                         </div>
 
-                        <div className="mt-6 rounded-2xl border border-emerald-500/30 bg-slate-950/80 p-6 shadow-[0_0_50px_rgba(16,185,129,0.15)] backdrop-blur-sm">
+                        <div className="relative mt-6 rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-6 shadow-[0_16px_60px_-24px_rgba(0,0,0,0.9)] backdrop-blur-2xl">
+                            <div className="pointer-events-none absolute -top-16 left-1/2 h-28 w-[420px] -translate-x-1/2 rounded-full bg-emerald-500/8 blur-3xl" />
                             <div className="flex items-center justify-between text-center divide-x divide-slate-800">
                                 <div className="flex-1 px-4">
                                     <p className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-center gap-1">
@@ -828,7 +839,7 @@ export function ProfileStat() {
 
                     {/* PRIMARY METRICS GRID */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                        <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors group">
+                        <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-2xl p-4 hover:border-white/15 transition-all group">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:scale-110 transition-transform">
                                     <Trophy className="h-5 w-5" />
@@ -896,7 +907,7 @@ export function ProfileStat() {
                     <div className="flex flex-col gap-4">
                         <button
                             onClick={() => setShowAdvanced(!showAdvanced)}
-                            className="flex items-center justify-between w-full px-6 py-3 bg-slate-900/40 border border-slate-800 rounded-2xl hover:bg-slate-900/60 transition-all group"
+                            className="flex items-center justify-between w-full px-6 py-3 bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 backdrop-blur-xl rounded-2xl hover:bg-white/[0.08] transition-all group"
                         >
                             <div className="flex items-center gap-2">
                                 <span className="text-sm font-semibold text-slate-300">Advanced Scoring & Metrics</span>
@@ -906,47 +917,47 @@ export function ProfileStat() {
 
                         {showAdvanced && (
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                <div className="bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 backdrop-blur-xl rounded-2xl p-4">
                                     <p className="text-xs text-slate-400 uppercase mb-1">Most Traded Category</p>
                                     <p className="text-lg font-bold text-white truncate">{marketDistribution[0]?.category || 'N/A'}</p>
                                 </div>
-                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                <div className="bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 backdrop-blur-xl rounded-2xl p-4">
                                     <p className="text-xs text-slate-400 uppercase mb-1">Active Positions</p>
                                     <p className="text-lg font-bold text-white">{metrics.open_positions || 0}</p>
                                 </div>
-                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                <div className="bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 backdrop-blur-xl rounded-2xl p-4">
                                     <p className="text-xs text-slate-400 uppercase mb-1">Closed Positions</p>
                                     <p className="text-lg font-bold text-white">{metrics.closed_positions || 0}</p>
                                 </div>
-                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                <div className="bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 backdrop-blur-xl rounded-2xl p-4">
                                     <p className="text-xs text-slate-400 uppercase mb-1">All-time PnL Rank</p>
                                     <p className="text-lg font-bold text-emerald-400">
                                         {metrics.pnl_rank ? `#${metrics.pnl_rank}` : 'N/A'}
                                     </p>
                                 </div>
-                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                <div className="bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 backdrop-blur-xl rounded-2xl p-4">
                                     <p className="text-xs text-slate-400 uppercase mb-1">All-time Volume Rank</p>
                                     <p className="text-lg font-bold text-white">
                                         {metrics.volume_rank ? `#${metrics.volume_rank}` : 'N/A'}
                                     </p>
                                 </div>
-                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                <div className="bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 backdrop-blur-xl rounded-2xl p-4">
                                     <p className="text-xs text-slate-400 uppercase mb-1">Total Buy Stake</p>
                                     <p className="text-lg font-bold text-white">{formatCurrency(metrics.total_stakes || metrics.buy_volume || 0)}</p>
                                 </div>
-                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                <div className="bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 backdrop-blur-xl rounded-2xl p-4">
                                     <p className="text-xs text-slate-400 uppercase mb-1">Max Stake</p>
                                     <p className="text-lg font-bold text-white">{formatCurrency(metrics.max_stake)}</p>
                                 </div>
-                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                <div className="bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 backdrop-blur-xl rounded-2xl p-4">
                                     <p className="text-xs text-slate-400 uppercase mb-1">Winning Stake</p>
                                     <p className="text-lg font-bold text-emerald-400">{formatCurrency(metrics.winning_stakes)}</p>
                                 </div>
-                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                <div className="bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 backdrop-blur-xl rounded-2xl p-4">
                                     <p className="text-xs text-slate-400 uppercase mb-1">Losing Stake</p>
                                     <p className="text-lg font-bold text-red-400">{formatCurrency(metrics.losing_stakes)}</p>
                                 </div>
-                                <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl p-4">
+                                <div className="bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 backdrop-blur-xl rounded-2xl p-4">
                                     <p className="text-xs text-slate-400 uppercase mb-1">Average Stake</p>
                                     <p className="text-lg font-bold text-white">
                                         {formatCurrency((metrics.total_stakes || 0) / (metrics.total_trades || 1))}
@@ -958,7 +969,8 @@ export function ProfileStat() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* PERFORMANCE CHART */}
-                        <div className="lg:col-span-2 bg-slate-900/60 border border-slate-800 rounded-3xl p-6">
+                        <div className="lg:col-span-2 relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-3xl p-6">
+                            <div className="pointer-events-none absolute -top-20 left-1/3 h-32 w-[400px] -translate-x-1/2 rounded-full bg-indigo-500/8 blur-3xl" />
                             <div className="flex items-center justify-between mb-6">
                                 <div>
                                     <h3 className="text-lg font-bold">Portfolio Performance</h3>
@@ -1076,24 +1088,25 @@ export function ProfileStat() {
                         </div>
 
                         {/* QUICK STATS */}
-                        <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6">
+                        <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-3xl p-6">
+                            <div className="pointer-events-none absolute -top-16 right-1/4 h-28 w-[320px] rounded-full bg-emerald-500/8 blur-3xl" />
                             <h3 className="text-lg font-bold mb-4">Quick Insights</h3>
                             <div className="space-y-4">
-                                <div className="p-4 rounded-2xl bg-slate-800/50 border border-slate-700/50">
+                                <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl">
                                     <div className="flex items-center justify-between mb-1">
                                         <p className="text-sm text-slate-400">Total Gains</p>
                                         <TrendingUp className="h-4 w-4 text-emerald-400" />
                                     </div>
                                     <p className="text-xl font-bold text-emerald-400">{formatCurrency(totalGains)}</p>
                                 </div>
-                                <div className="p-4 rounded-2xl bg-slate-800/50 border border-slate-700/50">
+                                <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl">
                                     <div className="flex items-center justify-between mb-1">
                                         <p className="text-sm text-slate-400">Total Losses</p>
                                         <TrendingDown className="h-4 w-4 text-red-400" />
                                     </div>
                                     <p className="text-xl font-bold text-red-400">{formatCurrency(totalLosses)}</p>
                                 </div>
-                                <div className="p-4 rounded-2xl bg-slate-800/50 border border-slate-700/50">
+                                <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl">
                                     <div className="flex items-center justify-between mb-1">
                                         <p className="text-sm text-slate-400">Balance</p>
                                         <Wallet className="h-4 w-4 text-blue-400" />
@@ -1106,8 +1119,9 @@ export function ProfileStat() {
                     </div>
 
                     {/* TABS SECTION */}
-                    <div className="bg-slate-900/40 border border-slate-800 rounded-3xl overflow-hidden mb-12">
-                        <div className="flex border-b border-slate-800 p-2 gap-2 overflow-x-auto scrollbar-hide">
+                    <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-3xl overflow-hidden mb-12">
+                        <div className="pointer-events-none absolute -top-16 left-1/2 h-28 w-[420px] -translate-x-1/2 rounded-full bg-cyan-500/8 blur-3xl" />
+                        <div className="flex border-b border-white/10 p-2 gap-2 overflow-x-auto scrollbar-hide">
                             {[
                                 { id: 'distribution', label: 'Distribution' },
                                 { id: 'activity', label: 'Activity' },
