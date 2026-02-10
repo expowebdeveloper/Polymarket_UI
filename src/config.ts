@@ -1,3 +1,4 @@
+// Production domains: Frontend https://polyrating.com | Backend https://backend.polyrating.com
 // Determine API base URL based on environment
 const getApiBaseUrl = (): string => {
   // If explicitly set via environment variable, use it (remove trailing slash)
@@ -8,8 +9,7 @@ const getApiBaseUrl = (): string => {
     return url;
   }
 
-  // In production (Vercel), you MUST set VITE_BACKEND_API environment variable
-  // CRITICAL: Without this, API calls will go to the frontend domain and fail with 405
+  // Production: frontend at polyrating.com → backend at backend.polyrating.com
   if (import.meta.env.PROD) {
     return 'https://backend.polyrating.com';
   }

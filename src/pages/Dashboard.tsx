@@ -37,6 +37,8 @@ interface BiggestWinnerMonth {
   finalScore?: number | null;
   win_rate?: number | null;
   stake_yield?: number | null;
+  /** All-time PnL from leaderboard/profile-stat (full data) */
+  all_time_pnl?: number | null;
 }
 
 interface DashboardStats {
@@ -288,49 +290,6 @@ function FeedItem({ entry, index }: { entry: ActivityEntry; index: number }) {
   );
 }
 
-function PerformerRow({
-  name,
-  rating,
-  note,
-  profileLink,
-}: {
-  name: string;
-  rating: number;
-  note: string;
-  profileLink?: string;
-}) {
-  const content = (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3">
-      <div className="min-w-0">
-        <div className="truncate text-sm font-semibold text-white/90">{name}</div>
-        <div className="mt-0.5 text-xs text-white/45">{note}</div>
-      </div>
-      <span
-        className={cn(
-          "relative inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold",
-          "border-blue-600/40 bg-gradient-to-b from-blue-700/90 to-blue-800/90 text-blue-50",
-          "shadow-[0_0_32px_rgba(37,99,235,0.55)]",
-          "backdrop-blur-xl"
-        )}
-      >
-        <span className="absolute -inset-px rounded-full bg-blue-900/50 blur-md" aria-hidden="true" />
-        <span className="relative tracking-wide">Final rating:</span>
-        <span className="relative ml-1 text-sm font-bold tracking-tight text-blue-100">
-          {Math.round(rating)}
-        </span>
-      </span>
-    </div>
-  );
-  if (profileLink) {
-    return (
-      <a href={profileLink} className="block transition-opacity hover:opacity-90">
-        {content}
-      </a>
-    );
-  }
-  return content;
-}
-
 function BadgeMini({ side }: { side: "BUY" | "SELL" }) {
   const isBuy = side === "BUY";
   return (
@@ -420,8 +379,6 @@ function ToastPopup({ toast, onClose }: { toast: Toast; onClose: (id: string) =>
 export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [topPerformers, setTopPerformers] = useState<TopTrader[]>([]);
-  const [topPerformersLoading, setTopPerformersLoading] = useState(true);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
@@ -430,17 +387,13 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
 
   const { activities: wsActivities, isConnected } = useActivityWebSocket();
 
-  // Fetch dashboard stats (includes top_performers from DB; no separate top-traders call)
+  // Fetch dashboard stats
   const fetchStats = async (signal?: AbortSignal) => {
     try {
       const res = await fetch(`${API_BASE_URL}/dashboard/stats`, { signal });
       if (res.ok) {
         const data = await res.json();
         setStats(data);
-        if (Array.isArray(data?.top_performers)) {
-          setTopPerformers(data.top_performers);
-          setTopPerformersLoading(false);
-        }
       }
     } catch (e) {
       if ((e as Error)?.name === "AbortError") return;
@@ -460,11 +413,6 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
     };
   }, []);
 
-  // If stats loaded but no top_performers in response, stop showing loading for that section
-  useEffect(() => {
-    if (stats && !stats.top_performers) setTopPerformersLoading(false);
-  }, [stats]);
-
   // Last updated when stats refresh
   const lastUpdated = useMemo(() => {
     if (!stats) return "";
@@ -477,10 +425,19 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
     }).format(new Date());
   }, [stats]);
 
-  // Map WS activities to ActivityEntry (last 5, filter by size >= 100 for prominence)
+  // Tick for "ago" updates and fresh-filter recalculation
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => setTick((v) => (v + 1) % 1_000_000), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  // Map WS activities to ActivityEntry (last 5, filter by size >= 100, only last 5 min)
   const activityEntries = useMemo<ActivityEntry[]>(() => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    const freshLimit = nowSec - 300; // Only show trades from last 5 minutes
     return wsActivities
-      .filter((a) => (a.amount_usd || 0) >= 100)
+      .filter((a) => (a.amount_usd || 0) >= 100 && (a.timestamp || 0) >= freshLimit)
       .slice(0, 5)
       .map((a: WsActivity) => ({
         id: a.id,
@@ -491,7 +448,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
         accent: a.side === "BUY" ? "green" : "red",
         ts: a.timestamp,
       }));
-  }, [wsActivities]);
+  }, [wsActivities, tick]);
 
   // Show toast when new activity arrives (connected); skip initial batch
   useEffect(() => {
@@ -525,13 +482,6 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
     }
     prevActivityCount.current = currentCount;
   }, [wsActivities, isConnected]);
-
-  // Tick for "ago" updates
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const t = window.setInterval(() => setTick((v) => (v + 1) % 1_000_000), 1000);
-    return () => window.clearInterval(t);
-  }, []);
 
   const closeToast = (id: string) => setToasts((prev) => prev.filter((t) => t.id !== id));
 
@@ -613,22 +563,9 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
       finalScore: w.final_score ?? w.finalScore ?? null,
       winRate: w.win_rate ?? null,
       stakeYield: w.stake_yield ?? null,
+      allTimePnl: w.all_time_pnl ?? null,
     }));
   }, [stats?.biggest_winners_month]);
-
-  const performers = useMemo(() => {
-    return topPerformers.map((p) => {
-      const addr = p.proxyAddress ?? p.proxy_address ?? "";
-      return {
-        name: p.pseudonym || p.name || p.username
-          ? `@${p.pseudonym || p.name || p.username}`
-          : `@${addr.slice(0, 6)}…${addr.slice(-4)}`,
-        rating: p.finalScore ?? p.final_score ?? 0,
-        note: p.rankingTag ?? p.ranking_tag ?? "Consistent performer",
-        profileLink: addr ? `/profile-stat?wallet=${encodeURIComponent(addr)}` : undefined,
-      };
-    });
-  }, [topPerformers]);
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -775,43 +712,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
             </div>
 
             <GlassCard className="p-5">
-              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <div className="grid h-9 w-9 place-items-center rounded-xl border border-emerald-500/20 bg-emerald-500/10">
-                      <Sparkles className="h-5 w-5 text-emerald-300" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-blue-400">
-                        Top performers (high rating)
-                      </div>
-                      <div className="text-xs text-white/45">
-                        From DB leaderboard · final score 0–100
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-4 space-y-3">
-                    {topPerformersLoading ? (
-                      <div className="py-4 text-sm text-white/50">Loading…</div>
-                    ) : performers.length === 0 ? (
-                      <div className="py-4 text-sm text-white/50">
-                        No DB leaderboard data yet. Sync traders to populate.
-                      </div>
-                    ) : (
-                      performers.map((p) => (
-                        <PerformerRow
-                          key={p.name + p.rating}
-                          name={p.name}
-                          rating={p.rating}
-                          note={p.note}
-                          profileLink={p.profileLink}
-                        />
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                <div className="lg:col-span-2">
+              <div>
                   <div className="flex items-center gap-2">
                     <div className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-amber-500/10">
                       <Trophy className="h-5 w-5 text-amber-200" />
@@ -825,130 +726,143 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                       </div>
                     </div>
                   </div>
-                  <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
+                  <div className="mt-4 overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
                     {winners.length === 0 ? (
-                      <div className="py-8 text-center text-sm text-white/50">
+                      <div className="py-12 text-center text-sm text-white/50">
                         No leaderboard data available
                       </div>
                     ) : (
-                      <table className="w-full min-w-[640px] border-collapse text-sm">
-                        <thead>
-                          <tr className="border-b border-white/10 text-left text-xs font-semibold uppercase tracking-wider text-white/50">
-                            <th className="py-3 pl-4 pr-2">Trader</th>
-                            <th className="py-3 px-2 text-right">PnL</th>
-                            <th className="py-3 px-2 text-right">Win rate</th>
-                            <th className="py-3 px-2 text-right">Stake yield</th>
-                            <th className="py-3 pl-2 pr-4 text-right">Final rating (all-time)</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {winners.map((w) => {
-                            const medal = getMedal(w.rank);
-                            const handleCopyWallet = (e: React.MouseEvent) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              navigator.clipboard.writeText(w.user);
-                              setCopiedWallet(w.user);
-                              setTimeout(() => setCopiedWallet(null), 2000);
-                            };
-                            return (
-                            <tr key={w.rank} className="border-b border-white/5 last:border-0">
-                              <td className="py-3 pl-4 pr-2">
-                                <div className="flex items-center gap-3">
-                                  {medal ? (
-                                    <div
-                                      className={cn(
-                                        "grid h-9 w-9 shrink-0 place-items-center rounded-full border text-sm",
-                                        medal.className
-                                      )}
-                                    >
-                                      <span>{medal.emoji}</span>
-                                    </div>
-                                  ) : (
-                                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-xs font-semibold text-white/80">
-                                      {w.rank}
-                                    </div>
-                                  )}
-                                  <a
-                                    href={w.profileLink}
-                                    className="relative flex min-w-0 flex-1 items-center gap-3 transition-opacity hover:opacity-90"
-                                  >
-                                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/5">
-                                      {w.profileImage ? (
-                                        <img
-                                          src={w.profileImage}
-                                          alt=""
-                                          className="h-full w-full object-cover"
-                                          onError={(e) => {
-                                            e.currentTarget.style.display = "none";
-                                            const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
-                                            if (fallback) fallback.style.display = "flex";
-                                          }}
-                                        />
-                                      ) : null}
-                                      <div
-                                        className="h-full w-full place-items-center text-white/50"
-                                        style={{
-                                          display: w.profileImage ? "none" : "flex",
-                                        }}
-                                        aria-hidden
-                                      >
-                                        <User className="h-5 w-5" />
-                                      </div>
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <div className="truncate font-medium text-white/90">{w.handle}</div>
-                                      <div className="mt-0.5 flex items-center gap-1.5">
-                                        <span className="max-w-[140px] truncate font-mono text-xs text-white/40" title={w.user}>
-                                          {w.user.slice(0, 6)}…{w.user.slice(-4)}
-                                        </span>
-                                        <button
-                                          type="button"
-                                          onClick={handleCopyWallet}
-                                          className="shrink-0 rounded p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white/70"
-                                          title="Copy wallet address"
-                                        >
-                                          {copiedWallet === w.user ? (
-                                            <span className="text-[10px] font-medium text-emerald-400">Copied!</span>
-                                          ) : (
-                                            <Copy className="h-3.5 w-3.5" />
-                                          )}
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </a>
-                                </div>
-                              </td>
-                              <td className="py-3 px-2 text-right font-semibold text-emerald-300">
-                                {w.pnlFormatted}
-                              </td>
-                              <td className="py-3 px-2 text-right text-white/80">
-                                {w.winRate != null ? `${w.winRate.toFixed(1)}%` : "—"}
-                              </td>
-                              <td className="py-3 px-2 text-right">
-                                {w.stakeYield != null ? (
-                                  <span className={w.stakeYield >= 0 ? "text-emerald-400" : "text-red-400"}>
-                                    {w.stakeYield >= 0 ? "+" : ""}{w.stakeYield.toFixed(1)}%
-                                  </span>
-                                ) : (
-                                  "—"
-                                )}
-                              </td>
-                              <td className="py-3 pl-2 pr-4 text-right">
-                                {w.finalScore != null ? (
-                                  <span className="font-semibold text-amber-200/90">{Math.round(w.finalScore)}</span>
-                                ) : (
-                                  "—"
-                                )}
-                              </td>
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[720px] border-collapse text-sm">
+                          <thead>
+                            <tr className="bg-white/[0.04] text-left text-xs font-semibold uppercase tracking-widest text-white/45">
+                              <th className="py-3.5 pl-5 pr-3">Trader</th>
+                              <th className="py-3.5 px-3 text-right tabular-nums">PnL (month)</th>
+                              <th className="py-3.5 px-3 text-right tabular-nums">All-time PnL</th>
+                              <th className="py-3.5 px-3 text-right tabular-nums">Win rate</th>
+                              <th className="py-3.5 px-3 text-right tabular-nums">Stake yield</th>
+                              <th className="py-3.5 pl-3 pr-5 text-right tabular-nums">Final rating</th>
                             </tr>
-                          ); })}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {winners.map((w) => {
+                              const medal = getMedal(w.rank);
+                              const handleCopyWallet = (e: React.MouseEvent) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(w.user);
+                                setCopiedWallet(w.user);
+                                setTimeout(() => setCopiedWallet(null), 2000);
+                              };
+                              return (
+                                <tr
+                                  key={w.rank}
+                                  className="group border-b border-white/5 transition-colors last:border-0 hover:bg-white/[0.04]"
+                                >
+                                  <td className="py-3 pl-5 pr-3">
+                                    <div className="flex items-center gap-3">
+                                      {medal ? (
+                                        <div
+                                          className={cn(
+                                            "grid h-9 w-9 shrink-0 place-items-center rounded-full border text-sm shadow-sm",
+                                            medal.className
+                                          )}
+                                        >
+                                          <span>{medal.emoji}</span>
+                                        </div>
+                                      ) : (
+                                        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-xs font-semibold text-white/70 tabular-nums">
+                                          {w.rank}
+                                        </div>
+                                      )}
+                                      <a
+                                        href={w.profileLink}
+                                        className="relative flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 pr-2 transition-colors hover:bg-white/[0.04]"
+                                      >
+                                        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/5 ring-1 ring-white/5">
+                                          {w.profileImage ? (
+                                            <img
+                                              src={w.profileImage}
+                                              alt=""
+                                              className="h-full w-full object-cover"
+                                              onError={(e) => {
+                                                e.currentTarget.style.display = "none";
+                                                const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+                                                if (fallback) fallback.style.display = "flex";
+                                              }}
+                                            />
+                                          ) : null}
+                                          <div
+                                            className="h-full w-full place-items-center text-white/50"
+                                            style={{
+                                              display: w.profileImage ? "none" : "flex",
+                                            }}
+                                            aria-hidden
+                                          >
+                                            <User className="h-5 w-5" />
+                                          </div>
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                          <div className="truncate font-medium text-white/95">{w.handle}</div>
+                                          <div className="mt-0.5 flex items-center gap-1.5">
+                                            <span className="max-w-[140px] truncate font-mono text-xs text-white/40" title={w.user}>
+                                              {w.user.slice(0, 6)}…{w.user.slice(-4)}
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={handleCopyWallet}
+                                              className="shrink-0 rounded p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white/70"
+                                              title="Copy wallet address"
+                                            >
+                                              {copiedWallet === w.user ? (
+                                                <span className="text-[10px] font-medium text-emerald-400">Copied!</span>
+                                              ) : (
+                                                <Copy className="h-3.5 w-3.5" />
+                                              )}
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </a>
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-3 text-right font-semibold tabular-nums text-emerald-400">
+                                    {w.pnlFormatted}
+                                  </td>
+                                  <td className="py-3 px-3 text-right font-medium tabular-nums text-white/90">
+                                    {w.allTimePnl != null
+                                      ? (w.allTimePnl >= 0 ? "+" : "") + formatUSD(w.allTimePnl)
+                                      : "—"}
+                                  </td>
+                                  <td className="py-3 px-3 text-right tabular-nums text-white/80">
+                                    {w.winRate != null ? `${w.winRate.toFixed(1)}%` : "—"}
+                                  </td>
+                                  <td className="py-3 px-3 text-right tabular-nums">
+                                    {w.stakeYield != null ? (
+                                      <span className={cn("font-medium", w.stakeYield >= 0 ? "text-emerald-400" : "text-red-400")}>
+                                        {w.stakeYield >= 0 ? "+" : ""}{w.stakeYield.toFixed(1)}%
+                                      </span>
+                                    ) : (
+                                      <span className="text-white/50">—</span>
+                                    )}
+                                  </td>
+                                  <td className="py-3 pl-3 pr-5 text-right">
+                                    {w.finalScore != null ? (
+                                      <span className="inline-flex h-7 min-w-[2rem] items-center justify-center rounded-lg bg-amber-500/15 px-2 font-semibold tabular-nums text-amber-200">
+                                        {Math.round(w.finalScore)}
+                                      </span>
+                                    ) : (
+                                      <span className="text-white/50">—</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     )}
                   </div>
                 </div>
-              </div>
             </GlassCard>
           </div>
         </div>

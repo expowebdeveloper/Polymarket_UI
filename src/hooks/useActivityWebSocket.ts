@@ -23,6 +23,12 @@ interface WebSocketMessage {
 }
 
 const STORAGE_KEY = 'polymarket_activities_v2';
+const FRESH_WINDOW_SEC = 300; // Only keep trades from last 5 minutes
+
+function isFresh(timestamp: number): boolean {
+    const nowSec = Math.floor(Date.now() / 1000);
+    return (timestamp || 0) >= nowSec - FRESH_WINDOW_SEC;
+}
 
 export function useActivityWebSocket() {
     const [activities, setActivities] = useState<Activity[]>(() => {
@@ -30,7 +36,8 @@ export function useActivityWebSocket() {
             const stored = localStorage.getItem(STORAGE_KEY);
             if (stored) {
                 const parsed = JSON.parse(stored);
-                return Array.isArray(parsed) ? parsed : [];
+                const list = Array.isArray(parsed) ? parsed : [];
+                return list.filter((a: Activity) => isFresh(a.timestamp));
             }
         } catch (error) {
             console.error('Failed to load activities from storage:', error);
@@ -85,26 +92,28 @@ export function useActivityWebSocket() {
 
                 if (message.type === 'initial_activity_batch' && Array.isArray(message.data)) {
                     setActivities(prev => {
-                        // Merge and sort
-                        const existingIds = new Set(prev.map(a => a.id));
-                        const newOnes = (message.data as Activity[]).filter(a => !existingIds.has(a.id));
-                        if (newOnes.length === 0) return prev;
+                        const freshPrev = prev.filter(a => isFresh(a.timestamp));
+                        const existingIds = new Set(freshPrev.map(a => a.id));
+                        const newOnes = (message.data as Activity[]).filter(a => isFresh(a.timestamp) && !existingIds.has(a.id));
+                        if (newOnes.length === 0) return freshPrev;
 
-                        return [...newOnes, ...prev].sort((a, b) => b.timestamp - a.timestamp).slice(0, 2000);
+                        return [...newOnes, ...freshPrev].sort((a, b) => b.timestamp - a.timestamp).slice(0, 2000);
                     });
                 } else if (message.type === 'new_activity_batch' && Array.isArray(message.data)) {
                     setActivities(prev => {
-                        const existingIds = new Set(prev.map(a => a.id));
-                        const newOnes = (message.data as Activity[]).filter(a => !existingIds.has(a.id));
-                        if (newOnes.length === 0) return prev;
+                        const freshPrev = prev.filter(a => isFresh(a.timestamp));
+                        const existingIds = new Set(freshPrev.map(a => a.id));
+                        const newOnes = (message.data as Activity[]).filter(a => isFresh(a.timestamp) && !existingIds.has(a.id));
+                        if (newOnes.length === 0) return freshPrev;
 
-                        return [...newOnes, ...prev].slice(0, 2000);
+                        return [...newOnes, ...freshPrev].slice(0, 2000);
                     });
                 } else if (message.type === 'new_activity' && message.data && !Array.isArray(message.data)) {
                     setActivities(prev => {
                         const act = message.data as Activity;
+                        if (!isFresh(act.timestamp)) return prev.filter(a => isFresh(a.timestamp));
                         if (prev.some(a => a.id === act.id)) return prev;
-                        return [act, ...prev].slice(0, 2000);
+                        return [act, ...prev.filter(a => isFresh(a.timestamp))].slice(0, 2000);
                     });
                 }
             };
