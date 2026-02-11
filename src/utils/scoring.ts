@@ -314,8 +314,8 @@ export function calculateLiveMetrics(
         buy_volume: buyVolume,
         sell_volume: sellVolume,
         final_score: confidence_score * (
-            0.225 * win_score * 100 +
-            0.225 * roi_score * 100 +
+            0.30 * win_score * 100 +
+            0.15 * roi_score * 100 +
             0.50 * pnl_score * 100 +
             0.05 * (1 - risk_score) * 100
         ),

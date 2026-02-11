@@ -111,8 +111,8 @@ const TradeHistory: React.FC = () => {
                                     {formatNumber(tradeHistory.overall_metrics.total_pnl)}
                                 </div>
                                 <div className="text-xs text-gray-500 mt-1">
-                                    Realized: {formatNumber(tradeHistory.overall_metrics.realized_pnl)} | 
-                                    Unrealized: {formatNumber(tradeHistory.overall_metrics.unrealized_pnl)}
+                                    Realized PnL: {formatNumber(tradeHistory.overall_metrics.realized_pnl)} | 
+                                    Unrealized PnL: {formatNumber(tradeHistory.overall_metrics.unrealized_pnl)}
                                 </div>
                             </div>
                             <div className="bg-slate-900 rounded-lg p-4">

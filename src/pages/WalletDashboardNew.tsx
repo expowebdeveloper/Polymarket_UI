@@ -773,7 +773,7 @@ export function WalletDashboard() {
                 : 'text-slate-400 hover:text-white'
                 }`}
             >
-              Market Distribution
+              Market Distributions
             </button>
           </div>
 

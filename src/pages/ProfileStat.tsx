@@ -88,6 +88,16 @@ const getBadgeInfo = (score: number) => {
     };
 };
 
+// Activity type color helper - defined outside component to avoid recreation
+const getActivityTypeColor = (type: string) => {
+    switch (type) {
+        case 'TRADE': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+        case 'REDEEM': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+        case 'REWARD': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+        default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+    }
+};
+
 export function ProfileStat() {
     const [searchParams] = useSearchParams();
     const [walletInput, setWalletInput] = useState('');
@@ -226,220 +236,58 @@ export function ProfileStat() {
         }
     };
 
-    // Calculate detailed market distribution with ROI and Win Rate
+    // Use API distribution data for market distribution (already calculated by backend)
+    // Only calculate locally if API data is not available - this avoids heavy computation
     const marketDistribution = useMemo(() => {
-        const categoryStats = new Map<string, {
-            capital: number;
-            totalPnl: number;
-            wins: number;
-            losses: number;
-            trades: number;
-            markets: Set<string>;
-        }>();
+        // Prefer API distribution data if available
+        if (apiDistribution.length > 0) {
+            return apiDistribution
+                .filter(item => {
+                    const cat = (item.category || '').toLowerCase();
+                    return cat !== 'uncategorized' && cat !== 'other';
+                })
+                .sort((a, b) => {
+                    if (distributionMetric === 'count') {
+                        return (b.trades_count || 0) - (a.trades_count || 0);
+                    }
+                    return (b.capital || 0) - (a.capital || 0);
+                })
+                .slice(0, 10);
+        }
 
-        // Helper function to normalize category
-        const normalizeCategory = (category: string, title: string, slug: string): string => {
-            const lower = (category || title || slug || "").toLowerCase();
-            const combined = `${lower} ${(title || "").toLowerCase()} ${(slug || "").toLowerCase()}`;
-
-            // Elections (check first as it's more specific)
-            if (combined.includes("election") || combined.includes("electoral") || combined.includes("vote") || combined.includes("voting") || combined.includes("ballot")) {
-                return "Elections";
-            }
-
-            // Politics (check before geopolitics)
-            if (combined.includes("politics") || combined.includes("political") || combined.includes("president") ||
-                combined.includes("trump") || combined.includes("biden") || combined.includes("senate") ||
-                combined.includes("congress") || combined.includes("democrat") || combined.includes("republican") ||
-                combined.includes("party") || combined.includes("campaign")) {
-                return "Politics";
-            }
-
-            // Geopolitics
-            if (combined.includes("geopolitics") || combined.includes("geopolitical") || combined.includes("war") ||
-                combined.includes("conflict") || combined.includes("military") || combined.includes("nato") ||
-                combined.includes("alliance") || combined.includes("diplomacy") || combined.includes("sanctions")) {
-                return "Geopolitics";
-            }
-
-            // Sports
-            if (combined.includes("sports") || combined.includes("sport") || combined.includes("nfl") ||
-                combined.includes("nba") || combined.includes("mlb") || combined.includes("soccer") ||
-                combined.includes("football") || combined.includes("basketball") || combined.includes("baseball") ||
-                combined.includes("hockey") || combined.includes("tennis") || combined.includes("golf") ||
-                combined.includes("game") || combined.includes("match") || combined.includes("championship") ||
-                combined.includes("super bowl") || combined.includes("world cup") || combined.includes("olympics") ||
-                combined.includes("tournament") || combined.includes("league")) {
-                return "Sports";
-            }
-
-            // Crypto
-            if (combined.includes("crypto") || combined.includes("cryptocurrency") || combined.includes("bitcoin") ||
-                combined.includes("btc") || combined.includes("ethereum") || combined.includes("eth") ||
-                combined.includes("blockchain") || combined.includes("defi") || combined.includes("nft") ||
-                combined.includes("token") || combined.includes("coin") || combined.includes("altcoin") ||
-                combined.includes("dogecoin") || combined.includes("solana") || combined.includes("cardano")) {
-                return "Crypto";
-            }
-
-            // Tech
-            if (combined.includes("tech") || combined.includes("technology") || combined.includes("ai") ||
-                combined.includes("artificial intelligence") || combined.includes("software") || combined.includes("hardware") ||
-                combined.includes("startup") || combined.includes("silicon valley") || combined.includes("apple") ||
-                combined.includes("google") || combined.includes("microsoft") || combined.includes("meta") ||
-                combined.includes("amazon") || combined.includes("tesla") || combined.includes("nvidia") ||
-                combined.includes("chip") || combined.includes("semiconductor")) {
-                return "Tech";
-            }
-
-            // Finance
-            if (combined.includes("finance") || combined.includes("financial") || combined.includes("bank") ||
-                combined.includes("banking") || combined.includes("investment") || combined.includes("trading") ||
-                combined.includes("stock") || combined.includes("market") || combined.includes("hedge fund") ||
-                combined.includes("private equity") || combined.includes("venture capital")) {
-                return "Finance";
-            }
-
-            // Economy
-            if (combined.includes("economy") || combined.includes("economic") || combined.includes("gdp") ||
-                combined.includes("unemployment") || combined.includes("inflation") || combined.includes("recession") ||
-                combined.includes("growth") || combined.includes("productivity") || combined.includes("trade") ||
-                combined.includes("commerce") || combined.includes("business cycle")) {
-                return "Economy";
-            }
-
-            // Earnings
-            if (combined.includes("earnings") || combined.includes("revenue") || combined.includes("profit") ||
-                combined.includes("quarterly") || combined.includes("q1") || combined.includes("q2") ||
-                combined.includes("q3") || combined.includes("q4") || combined.includes("eps") ||
-                combined.includes("guidance") || combined.includes("beat") || combined.includes("miss")) {
-                return "Earnings";
-            }
-
-            // Climate & Science
-            if (combined.includes("climate") || combined.includes("environment") || combined.includes("environmental") ||
-                combined.includes("science") || combined.includes("scientific") || combined.includes("research") ||
-                combined.includes("global warming") || combined.includes("carbon") || combined.includes("emissions") ||
-                combined.includes("renewable") || combined.includes("solar") || combined.includes("wind") ||
-                combined.includes("energy") || combined.includes("green") || combined.includes("sustainability")) {
-                return "Climate & Science";
-            }
-
-            // Culture
-            if (combined.includes("culture") || combined.includes("cultural") || combined.includes("entertainment") ||
-                combined.includes("movie") || combined.includes("film") || combined.includes("music") ||
-                combined.includes("celebrity") || combined.includes("tv") || combined.includes("television") ||
-                combined.includes("award") || combined.includes("oscar") || combined.includes("grammy") ||
-                combined.includes("fashion") || combined.includes("art") || combined.includes("media")) {
-                return "Culture";
-            }
-
-            // World
-            if (combined.includes("world") || combined.includes("global") || combined.includes("international") ||
-                combined.includes("country") || combined.includes("nation") || combined.includes("united nations") ||
-                combined.includes("un") || combined.includes("eu") || combined.includes("european union")) {
-                return "World";
-            }
-
-            // Use original category if it exists, otherwise "Other"
-            return category || "Other";
-        };
-
-        // Process closed positions
+        // Fallback: Simple category count from positions (lightweight)
+        // Only count categories, don't do heavy normalization
+        const categoryCount = new Map<string, number>();
+        
         closedPositions.forEach(pos => {
-            const title = pos.title || pos.slug || "Unknown Market";
-            const originalCategory = (pos as any).category || "";
-            const category = normalizeCategory(originalCategory, title, pos.slug || "");
-
-            const stake = parseFloat(String((pos as any).total_bought || pos.size || 0)) * parseFloat(String(pos.avg_price || 0));
-            const pnl = parseFloat(String(pos.realized_pnl || 0));
-
-            if (!categoryStats.has(category)) {
-                categoryStats.set(category, {
-                    capital: 0,
-                    totalPnl: 0,
-                    wins: 0,
-                    losses: 0,
-                    trades: 0,
-                    markets: new Set()
-                });
-            }
-
-            const stats = categoryStats.get(category)!;
-            stats.capital += stake;
-            stats.totalPnl += pnl;
-            stats.trades += 1;
-            stats.markets.add(pos.slug || title);
-
-            if (pnl > 0) {
-                stats.wins += 1;
-            } else if (pnl < 0) {
-                stats.losses += 1;
-            }
+            const category = (pos as any).category || 'Other';
+            categoryCount.set(category, (categoryCount.get(category) || 0) + 1);
         });
-
-        // Process active positions for capital
+        
         positions.forEach(pos => {
-            const title = pos.title || pos.slug || "Unknown Market";
-            const originalCategory = (pos as any).category || "";
-            const category = normalizeCategory(originalCategory, title, pos.slug || "");
-
-            const capital = parseFloat(String(pos.initial_value || 0));
-
-            if (!categoryStats.has(category)) {
-                categoryStats.set(category, {
-                    capital: 0,
-                    totalPnl: 0,
-                    wins: 0,
-                    losses: 0,
-                    trades: 0,
-                    markets: new Set()
-                });
-            }
-
-            categoryStats.get(category)!.capital += capital;
-            categoryStats.get(category)!.markets.add(pos.slug || title);
+            const category = (pos as any).category || 'Other';
+            categoryCount.set(category, (categoryCount.get(category) || 0) + 1);
         });
 
-        // Calculate totals and percentages
-        const totalCapital = Array.from(categoryStats.values()).reduce((sum, s) => sum + s.capital, 0);
-
-        const distribution = Array.from(categoryStats.entries()).map(([category, stats]) => {
-            const roiPercent = stats.capital > 0 ? (stats.totalPnl / stats.capital * 100) : 0;
-            const winRatePercent = stats.trades > 0 ? (stats.wins / stats.trades * 100) : 0;
-            const capitalPercent = totalCapital > 0 ? (stats.capital / totalCapital * 100) : 0;
-            const riskScore = stats.capital > 0 ? (Math.abs(stats.totalPnl < 0 ? stats.totalPnl : 0) / stats.capital) : 0;
-
-            return {
+        return Array.from(categoryCount.entries())
+            .filter(([cat]) => cat.toLowerCase() !== 'uncategorized' && cat.toLowerCase() !== 'other')
+            .map(([category, count]) => ({
                 category,
                 market: category,
-                capital: stats.capital,
-                capital_percent: capitalPercent,
-                roi_percent: roiPercent,
-                win_rate_percent: winRatePercent,
-                trades_count: stats.trades,
-                wins: stats.wins,
-                losses: stats.losses,
-                total_pnl: stats.totalPnl,
-                risk_score: riskScore,
-                unique_markets: stats.markets.size
-            };
-        });
-
-        // Filter out Uncategorized and Other, then sort based on selected metric and take top 10
-        return distribution
-            .filter(item => {
-                const cat = item.category.toLowerCase();
-                return cat !== 'uncategorized' && cat !== 'other';
-            })
-            .sort((a, b) => {
-                if (distributionMetric === 'count') {
-                    return b.trades_count - a.trades_count;
-                }
-                return b.capital - a.capital;
-            })
+                capital: 0,
+                capital_percent: 0,
+                roi_percent: 0,
+                win_rate_percent: 0,
+                trades_count: count,
+                wins: 0,
+                losses: 0,
+                total_pnl: 0,
+                risk_score: 0,
+                unique_markets: 0
+            }))
+            .sort((a, b) => b.trades_count - a.trades_count)
             .slice(0, 10);
-    }, [closedPositions, positions, distributionMetric]);
+    }, [apiDistribution, closedPositions.length, positions.length, distributionMetric]);
 
     // Calculate primary edge
     const primaryEdge = useMemo(() => {
@@ -718,7 +566,7 @@ export function ProfileStat() {
                                 {Math.min(100, Math.max(0, metrics.final_score)).toFixed(1)}
                             </p>
                             <div className="flex gap-3 pb-2">
-                                {badgeInfo && (
+                                {badgeInfo && (badgeInfo.title !== "🔄📉 Inconsistent Predictor" || !metrics.user_tag) && (
                                     <span className={`px-6 py-2 rounded-full text-sm border font-bold ${badgeInfo.style}`}>
                                         {badgeInfo.title}
                                     </span>
@@ -751,9 +599,7 @@ export function ProfileStat() {
                                 )}
                                 {metrics.user_tag && (
                                     <span className={`px-6 py-2 rounded-full text-sm border font-bold ${metrics.user_tag.style}`}>
-                                        <span className="bg-gradient-to-r from-current to-current bg-clip-text">
-                                            {metrics.user_tag.emoji} {metrics.user_tag.title}
-                                        </span>
+                                        {metrics.user_tag.emoji} {metrics.user_tag.title}
                                     </span>
                                 )}
                             </div>
@@ -881,7 +727,7 @@ export function ProfileStat() {
                                 <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
                                     <Target className="h-5 w-5" />
                                 </div>
-                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Unrealized</p>
+                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Unrealized PnL</p>
                             </div>
                             <p className={`text-xl font-bold ${(metrics.unrealized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                                 {formatCurrency(metrics.unrealized_pnl)}
@@ -894,7 +740,7 @@ export function ProfileStat() {
                                 <div className="p-2 rounded-lg bg-red-500/10 text-red-400 group-hover:scale-110 transition-transform">
                                     <ArrowRight className="h-5 w-5" />
                                 </div>
-                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Realized</p>
+                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Realized PnL</p>
                             </div>
                             <p className={`text-xl font-bold ${(metrics.realized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                                 {formatCurrency(metrics.realized_pnl)}
@@ -1254,18 +1100,11 @@ export function ProfileStat() {
                                         <>
                                             <div className="space-y-3 mb-4">
                                                 {activitiesLast7Days
+                                                    .slice(0, 50) // Limit to 50 items for performance
                                                     .map((activity, idx) => {
                                                         const activityDate = activity.timestamp
                                                             ? new Date(activity.timestamp * 1000).toLocaleString()
                                                             : 'N/A';
-                                                        const getActivityTypeColor = (type: string) => {
-                                                            switch (type) {
-                                                                case 'TRADE': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-                                                                case 'REDEEM': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-                                                                case 'REWARD': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-                                                                default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
-                                                            }
-                                                        };
                                                         return (
                                                             <div key={idx} className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
                                                                 <div className="flex items-start justify-between mb-2">
@@ -1314,7 +1153,7 @@ export function ProfileStat() {
                                                     })}
                                             </div>
                                             <div className="text-slate-400 text-sm mt-4">
-                                                Showing {activitiesLast7Days.length} activities from the last 7 days
+                                                Showing {Math.min(activitiesLast7Days.length, 50)} of {activitiesLast7Days.length} activities from the last 7 days
                                             </div>
                                         </>
                                     ) : (
