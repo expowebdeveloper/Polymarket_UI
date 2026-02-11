@@ -648,6 +648,53 @@ export async function syncDBDashboard(walletAddress: string, background: boolean
 }
 
 /**
+ * Client-side fallback: Fetch wallet address directly from Polymarket profile page
+ * Used when backend search fails (e.g., Cloudflare blocks server requests)
+ */
+async function resolveWalletFromPolymarket(username: string): Promise<string | null> {
+    const slug = username.replace(/^@/, '').trim();
+    if (!slug) return null;
+    
+    try {
+        console.log(`Trying client-side Polymarket lookup for: ${slug}`);
+        const response = await fetch(`https://polymarket.com/@${slug}`, {
+            method: 'GET',
+            headers: { 'Accept': 'text/html' },
+        });
+        
+        if (!response.ok) {
+            console.log(`Polymarket profile returned ${response.status}`);
+            return null;
+        }
+        
+        const html = await response.text();
+        
+        // Extract wallet address from HTML using multiple patterns
+        const patterns = [
+            /"proxyWallet"\s*:\s*"(0x[a-fA-F0-9]{40})"/,
+            /"userAddress"\s*:\s*"(0x[a-fA-F0-9]{40})"/,
+            /"wallet"\s*:\s*"(0x[a-fA-F0-9]{40})"/,
+            /"address"\s*:\s*"(0x[a-fA-F0-9]{40})"/,
+            /\/portfolio\/(0x[a-fA-F0-9]{40})/,
+        ];
+        
+        for (const pattern of patterns) {
+            const match = html.match(pattern);
+            if (match && match[1]) {
+                console.log(`✓ Found wallet via client-side lookup: ${match[1]}`);
+                return match[1].toLowerCase();
+            }
+        }
+        
+        console.log('Could not extract wallet from Polymarket page');
+        return null;
+    } catch (err) {
+        console.log('Client-side Polymarket lookup failed:', err);
+        return null;
+    }
+}
+
+/**
  * Resolve a search query to a wallet address (search by username/address)
  * @param query - Search query (username or wallet address); leading/trailing spaces are trimmed
  */
@@ -671,6 +718,19 @@ export async function resolveWalletOrUser(query: string): Promise<{ wallet_addre
         clearTimeout(timeoutId);
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
+            // Backend failed - try client-side fallback (browser can access Polymarket directly)
+            if (response.status === 404 && !trimmed.startsWith('0x')) {
+                console.log('Backend search failed, trying client-side Polymarket lookup...');
+                const walletFromPolymarket = await resolveWalletFromPolymarket(trimmed);
+                if (walletFromPolymarket) {
+                    return {
+                        wallet_address: walletFromPolymarket,
+                        type: 'username',
+                        name: trimmed,
+                    };
+                }
+            }
+            
             const detail = typeof data?.detail === 'string' ? data.detail : Array.isArray(data?.detail) ? data.detail.map((d: any) => d?.msg ?? d).join(', ') : null;
             throw {
                 message: detail || `User or wallet not found (${response.status}). Try a full wallet address (0x...), Polymarket username, or X username (with or without @).`,
