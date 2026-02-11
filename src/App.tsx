@@ -36,7 +36,7 @@ function ProtectedLayout({
   return (
     <div className="flex min-h-screen">
       <Sidebar collapsed={collapsed} onSetCollapsed={onSetCollapsed} />
-      <div className={`${collapsed ? 'pl-[100px]' : 'pl-[280px]'} flex-1 flex flex-col transition-all duration-300`}>
+      <div className={`${collapsed ? 'pl-[100px]' : 'pl-[264px]'} flex-1 flex flex-col transition-all duration-300`}>
         <div className="flex-1 px-4 py-4">
           <Routes>
             <Route path="/dashboard" element={<Dashboard onSelectSymbol={onSelectSymbol} />} />

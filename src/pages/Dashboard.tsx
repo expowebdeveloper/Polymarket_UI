@@ -568,7 +568,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
   }, [stats?.biggest_winners_month]);
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen text-white">
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(1200px_700px_at_20%_10%,rgba(56,189,248,0.12),transparent_55%),radial-gradient(1000px_600px_at_80%_0%,rgba(99,102,241,0.10),transparent_55%),radial-gradient(900px_600px_at_50%_90%,rgba(16,185,129,0.08),transparent_60%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.06),transparent_30%,transparent_70%,rgba(255,255,255,0.04))] opacity-40" />
@@ -583,7 +583,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
         </AnimatePresence>
       </div>
 
-      <div className="relative mx-auto w-full max-w-7xl px-5 py-8">
+      <div className="relative mx-auto w-full px-5 py-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex items-start gap-4">
             <div className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/[0.06] backdrop-blur-xl">

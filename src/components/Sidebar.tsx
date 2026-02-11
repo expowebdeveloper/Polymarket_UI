@@ -27,11 +27,11 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onSetCollapsed }: SidebarProps) {
   return (
     <aside
-      className={`fixed top-4 left-4 z-40 h-[calc(100vh-32px)] transition-all duration-300
+      className={`fixed top-0 left-0 z-40 h-screen transition-all duration-300
       ${collapsed ? "w-20" : "w-64"}
-      rounded-3xl border border-white/10
-      bg-white/5 backdrop-blur-xl shadow-[0_8px_40px_rgba(0,0,0,0.35)]
-      before:absolute before:inset-0 before:rounded-3xl before:bg-gradient-to-br before:from-emerald-400/10 before:via-cyan-400/5 before:to-transparent before:pointer-events-none`}
+      border border-white/10
+      bg-white/5 backdrop-blur-xl shadow-[0_8px_40px_rgba(0,0,fixed top-0 left-40,0.35)]
+      before:absolute before:inset-0 before:bg-gradient-to-br before:from-emerald-400/10 before:via-cyan-400/5 before:to-transparent before:pointer-events-none`}
     >
       {/* TOGGLE */}
       <button

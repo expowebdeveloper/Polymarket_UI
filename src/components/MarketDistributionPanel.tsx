@@ -1,4 +1,3 @@
-import React, { useMemo } from "react";
 import {
   PieChart,
   Pie,
@@ -10,6 +9,7 @@ import {
   YAxis,
   Tooltip,
 } from "recharts";
+import React, { useMemo, useState, useCallback } from "react";
 
 type MarketDatum = {
   key: string;
@@ -36,7 +36,7 @@ const CATEGORY_ORDER = [
   "world",
   "economy",
   "climate & science",
-  "elections"
+  "elections",
 ] as const;
 
 // Display-name keys for glass design (Polyrating-style)
@@ -376,38 +376,33 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
 
   return (
     <div className="w-full space-y-4">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[0.82fr_1.18fr]">
-        {/* LEFT - Volume by Category */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* LEFT - Allocation by Category */}
         <GlassCard>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="text-lg font-semibold text-white">Volume by Category</div>
-              <div className="text-sm text-white/55">Total invested volume from Polymarket</div>
+              <div className="text-lg font-semibold text-white">Allocation by Category</div>
+              <div className="text-sm text-white/55">Total Volume</div>
             </div>
             <div className="text-right">
               <div className="text-sm text-white/55">Total</div>
-              <div className="font-semibold text-emerald-300">
-                {fmtMoney(volumeTotalM, "M")}
-              </div>
+              <div className="font-semibold text-emerald-300">{fmtMoney(volumeTotalM, "M")}</div>
             </div>
           </div>
 
-          <div className="mt-6">
-            <div className="h-[280px] sm:h-[320px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={volumeChartData}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius="66%"
-                    outerRadius="92%"
-                    paddingAngle={2}
-                    stroke="rgba(255,255,255,0.10)"
-                    strokeWidth={1}
-                    isAnimationActive
-                  >
-                    {volumeChartData.map((entry) => (
+          <div className="mt-5 h-[420px] sm:h-[460px] rounded-3xl border border-white/10 bg-black/25 p-5 backdrop-blur">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={volumeChartData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius="55%"
+                  outerRadius="85%"
+                >
+                  {volumeChartData.map((entry) => (
                       <Cell
                         key={entry.name}
                         fill={colorForLabel(entry.name)}
@@ -442,7 +437,6 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
                 );
               })}
             </div>
-          </div>
         </GlassCard>
 
         {/* RIGHT - PNL by Category */}
