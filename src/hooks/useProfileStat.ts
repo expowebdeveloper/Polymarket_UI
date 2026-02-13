@@ -8,7 +8,6 @@ import { Position, ClosedPosition, Activity, UserPnL } from '../types/api';
 export interface DataOrigin {
     live?: boolean;
     sources?: string[];
-    cached_seconds_ago?: number;
 }
 
 export interface ProfileStatState {

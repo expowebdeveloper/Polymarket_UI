@@ -6,7 +6,7 @@ import { ErrorMessage } from '../components/ErrorMessage';
 import { BarChart, Bar, Cell, PieChart, Pie, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useProfileStat } from '../hooks/useProfileStat';
 import { useTradeFilter, TradeFilter } from '../hooks/useTradeFilter';
-import { resolveWalletOrUser, fetchUserLeaderboardData, fetchMarketDistribution } from '../services/api';
+import { resolveWalletOrUser, fetchUserLeaderboardData, fetchMarketDistribution, fetchTraderAutocomplete, type TraderAutocompleteItem } from '../services/api';
 import { getVolumeRank } from '../utils/rankUtils';
 import { getStreakBadge } from '../utils/streakUtils';
 import type { UserLeaderboardData } from '../types/api';
@@ -110,6 +110,13 @@ export function ProfileStat() {
     const [loadingDistribution, setLoadingDistribution] = useState(false);
     const [activityTabList, setActivityTabList] = useState<any[]>([]);
     const [activityTabLoading, setActivityTabLoading] = useState(false);
+    // Autocomplete for username search
+    const [suggestions, setSuggestions] = useState<TraderAutocompleteItem[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+    const [highlightedIndex, setHighlightedIndex] = useState(-1);
+    const autocompleteRef = useRef<HTMLDivElement>(null);
+    const autocompleteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const {
         loading,
@@ -205,9 +212,46 @@ export function ProfileStat() {
             });
     }, [activeWallet, activeTab, apiDistribution.length, loadingDistribution]);
 
+    // Debounced autocomplete when user types (min 2 chars, not a wallet)
+    useEffect(() => {
+        const trimmed = walletInput.trim();
+        if (trimmed.length < 2 || (trimmed.startsWith('0x') && trimmed.length >= 42)) {
+            setSuggestions([]);
+            setShowSuggestions(false);
+            return;
+        }
+        if (autocompleteDebounceRef.current) clearTimeout(autocompleteDebounceRef.current);
+        autocompleteDebounceRef.current = setTimeout(() => {
+            setLoadingSuggestions(true);
+            fetchTraderAutocomplete(trimmed, 12)
+                .then((list) => {
+                    setSuggestions(list);
+                    setShowSuggestions(list.length > 0);
+                    setHighlightedIndex(-1);
+                })
+                .catch(() => setSuggestions([]))
+                .finally(() => setLoadingSuggestions(false));
+        }, 280);
+        return () => {
+            if (autocompleteDebounceRef.current) clearTimeout(autocompleteDebounceRef.current);
+        };
+    }, [walletInput]);
+
+    // Close autocomplete on click outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (autocompleteRef.current && !autocompleteRef.current.contains(e.target as Node)) {
+                setShowSuggestions(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     const handleWalletSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSearchError(null);
+        setShowSuggestions(false);
 
         const trimmed = walletInput.trim();
         if (!trimmed) return;
@@ -224,6 +268,18 @@ export function ProfileStat() {
             const message = err?.message ?? "User or wallet not found. Try a full wallet address (0x...), Polymarket username, or X username (with or without @).";
             setSearchError(message);
         }
+    };
+
+    const selectSuggestion = (item: TraderAutocompleteItem) => {
+        const display = item.username || item.pseudonym || item.wallet_address;
+        setWalletInput(display);
+        setActiveWallet(item.wallet_address);
+        setShowSuggestions(false);
+        setSuggestions([]);
+        setSearchError(null);
+        setHistoryPage(1);
+        setActivePositionsPage(1);
+        setClosedPositionsPage(1);
     };
 
     // Calculate detailed market distribution with ROI and Win Rate
@@ -654,15 +710,68 @@ export function ProfileStat() {
                                 </div>
                             )}
 
-                            {/* Search Icon and Input */}
-                            <div className="flex items-center gap-3 flex-1">
-                                <Search className="h-4 w-4 text-emerald-400" />
-                                <input
-                                    className="w-full bg-transparent outline-none text-sm placeholder:text-slate-500"
-                                    placeholder="Search by wallet (0x...), username, or X username (@handle)"
-                                    value={walletInput}
-                                    onChange={(e) => { setWalletInput(e.target.value); setSearchError(null); }}
-                                />
+                            {/* Search Icon and Input with Autocomplete */}
+                            <div className="flex items-center gap-3 flex-1 relative" ref={autocompleteRef}>
+                                <Search className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                                <div className="flex-1 relative">
+                                    <input
+                                        className="w-full bg-transparent outline-none text-sm placeholder:text-slate-500"
+                                        placeholder="Search by wallet (0x...), username, or X username (@handle)"
+                                        value={walletInput}
+                                        onChange={(e) => { setWalletInput(e.target.value); setSearchError(null); }}
+                                        onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                                        onKeyDown={(e) => {
+                                            if (!showSuggestions || suggestions.length === 0) return;
+                                            if (e.key === 'ArrowDown') {
+                                                e.preventDefault();
+                                                setHighlightedIndex((i) => (i < suggestions.length - 1 ? i + 1 : i));
+                                            } else if (e.key === 'ArrowUp') {
+                                                e.preventDefault();
+                                                setHighlightedIndex((i) => (i > 0 ? i - 1 : -1));
+                                            } else if (e.key === 'Enter' && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
+                                                e.preventDefault();
+                                                selectSuggestion(suggestions[highlightedIndex]);
+                                            } else if (e.key === 'Escape') {
+                                                setShowSuggestions(false);
+                                                setHighlightedIndex(-1);
+                                            }
+                                        }}
+                                        autoComplete="off"
+                                        aria-autocomplete="list"
+                                        aria-expanded={showSuggestions && suggestions.length > 0}
+                                    />
+                                    {showSuggestions && (
+                                        <ul
+                                            className="absolute top-full left-0 right-0 mt-1 z-50 max-h-64 overflow-auto rounded-lg border border-white/10 bg-slate-900/95 backdrop-blur shadow-xl py-1"
+                                            role="listbox"
+                                        >
+                                            {loadingSuggestions ? (
+                                                <li className="px-3 py-2 text-sm text-slate-400">Searching...</li>
+                                            ) : suggestions.length === 0 ? null : (
+                                                suggestions.map((item, i) => {
+                                                    const label = item.username || item.pseudonym || item.wallet_address;
+                                                    const sub = item.pseudonym && item.username ? `@${item.pseudonym}` : null;
+                                                    return (
+                                                        <li
+                                                            key={item.wallet_address}
+                                                            role="option"
+                                                            aria-selected={i === highlightedIndex}
+                                                            className={`px-3 py-2 cursor-pointer text-sm flex items-center gap-2 ${i === highlightedIndex ? 'bg-emerald-500/20 text-emerald-200' : 'text-slate-200 hover:bg-white/5'}`}
+                                                            onClick={() => selectSuggestion(item)}
+                                                            onMouseEnter={() => setHighlightedIndex(i)}
+                                                        >
+                                                            {item.profile_image && (
+                                                                <img src={item.profile_image} alt="" className="w-6 h-6 rounded-full object-cover" />
+                                                            )}
+                                                            <span className="truncate">{label}</span>
+                                                            {sub && <span className="text-slate-500 truncate">{sub}</span>}
+                                                        </li>
+                                                    );
+                                                })
+                                            )}
+                                        </ul>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Refresh Button */}
@@ -701,9 +810,6 @@ export function ProfileStat() {
                                 Real data
                             </span>
                             <span>from Polymarket API</span>
-                            {dataOrigin.cached_seconds_ago != null && dataOrigin.cached_seconds_ago > 0 && (
-                                <span>· Cached {dataOrigin.cached_seconds_ago}s ago</span>
-                            )}
                         </div>
                     )}
 

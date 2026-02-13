@@ -5,7 +5,6 @@ import '../styles/ProfileStatsDemo.css';
 const ProfileStatsDemo: React.FC = () => {
     const [walletAddress, setWalletAddress] = useState('0x17db3fcd93ba12d38382a0cade24b200185c5f6d');
     const [username, setUsername] = useState('fengdubiying');
-    const [useDatabase, setUseDatabase] = useState(false);
     const [showStats, setShowStats] = useState(false);
 
     const handleFetchStats = () => {
@@ -52,19 +51,6 @@ const ProfileStatsDemo: React.FC = () => {
                     />
                 </div>
 
-                <div className="toggle-group">
-                    <label className="toggle-label">
-                        <input
-                            type="checkbox"
-                            checked={useDatabase}
-                            onChange={(e) => setUseDatabase(e.target.checked)}
-                            className="toggle-checkbox"
-                        />
-                        <span className="toggle-slider"></span>
-                        <span className="toggle-text">Use Database Cache</span>
-                    </label>
-                </div>
-
                 <button
                     className="fetch-button"
                     onClick={handleFetchStats}
@@ -82,7 +68,6 @@ const ProfileStatsDemo: React.FC = () => {
                     <ProfileStats
                         walletAddress={walletAddress}
                         username={username || undefined}
-                        useDatabase={useDatabase}
                     />
                 </div>
             )}
@@ -102,14 +87,10 @@ const ProfileStatsDemo: React.FC = () => {
                 </div>
 
                 <div className="info-card">
-                    <h3 className="info-title">Data Sources</h3>
+                    <h3 className="info-title">Data Source</h3>
                     <p className="info-text">
-                        Toggle between two data sources:
+                        Data is always fetched live from the Polymarket API.
                     </p>
-                    <ul className="info-list">
-                        <li><strong>Live API:</strong> Fetches fresh data from Polymarket and saves to database</li>
-                        <li><strong>Database Cache:</strong> Retrieves previously saved data for faster loading</li>
-                    </ul>
                 </div>
             </div>
         </div>

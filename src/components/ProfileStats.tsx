@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchProfileStats, fetchProfileStatsFromDB } from '../services/api';
+import { fetchProfileStats } from '../services/api';
 import type { ProfileStatsResponse } from '../types/api';
 import { LoadingSpinner } from './LoadingSpinner';
 import { ErrorMessage } from './ErrorMessage';
@@ -8,13 +8,11 @@ import '../styles/ProfileStats.css';
 interface ProfileStatsProps {
     walletAddress: string;
     username?: string;
-    useDatabase?: boolean;
 }
 
 const ProfileStats: React.FC<ProfileStatsProps> = ({
     walletAddress,
     username,
-    useDatabase = false
 }) => {
     const [stats, setStats] = useState<ProfileStatsResponse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -26,9 +24,7 @@ const ProfileStats: React.FC<ProfileStatsProps> = ({
             setError(null);
 
             try {
-                const data = useDatabase
-                    ? await fetchProfileStatsFromDB(walletAddress, username)
-                    : await fetchProfileStats(walletAddress, username);
+                const data = await fetchProfileStats(walletAddress, username);
                 setStats(data);
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to load profile stats');
@@ -40,7 +36,7 @@ const ProfileStats: React.FC<ProfileStatsProps> = ({
         if (walletAddress) {
             loadStats();
         }
-    }, [walletAddress, username, useDatabase]);
+    }, [walletAddress, username]);
 
     if (loading) {
         return (

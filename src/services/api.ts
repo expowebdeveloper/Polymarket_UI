@@ -222,20 +222,6 @@ export async function fetchProfileStats(
 }
 
 /**
- * Get profile stats from database
- * @param proxyAddress - Wallet address to get stats for
- * @param username - Optional username
- */
-export async function fetchProfileStatsFromDB(
-    proxyAddress: string,
-    username?: string
-): Promise<ProfileStatsResponse> {
-    let url = `${API_ENDPOINTS.profileStats.fromDb}?proxyAddress=${proxyAddress}`;
-    if (username) url += `&username=${username}`;
-    return fetchApi<ProfileStatsResponse>(url, 30000);
-}
-
-/**
  * Get enhanced profile stats with scoring and streaks
  * @param wallet - Optional wallet address
  * @param username - Optional username
@@ -689,6 +675,47 @@ export async function resolveWalletOrUser(query: string): Promise<{ wallet_addre
             message: err instanceof Error ? err.message : 'User or wallet not found. Try a full wallet address (0x...), Polymarket username, or X username (with or without @).',
             status: undefined,
         } as ApiError;
+    }
+}
+
+/** Single suggestion from trader autocomplete */
+export interface TraderAutocompleteItem {
+    wallet_address: string;
+    username?: string | null;
+    pseudonym?: string | null;
+    profile_image?: string | null;
+}
+
+/**
+ * Fetch autocomplete suggestions for trader search (username or X handle).
+ * Uses polymarket_traders table (leaderboard data). Min 2 characters recommended.
+ */
+export async function fetchTraderAutocomplete(
+    q: string,
+    limit: number = 15
+): Promise<TraderAutocompleteItem[]> {
+    const trimmed = (q || '').trim();
+    if (trimmed.length < 2) return [];
+    const params = new URLSearchParams({ q: trimmed, limit: String(limit) });
+    const endpoint = `/dashboard/autocomplete?${params.toString()}`;
+    const url = API_BASE_URL
+        ? `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
+        : endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { accept: 'application/json', 'Content-Type': 'application/json' },
+            signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (!response.ok) return [];
+        const data = await response.json().catch(() => []);
+        return Array.isArray(data) ? data : [];
+    } catch {
+        clearTimeout(timeoutId);
+        return [];
     }
 }
 
