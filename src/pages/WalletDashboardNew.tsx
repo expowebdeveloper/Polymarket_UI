@@ -671,12 +671,12 @@ export function WalletDashboard() {
                 {scoringMetrics?.total_trades > 100 && <Badge text="🏅 Polymarket Badge Holder" glow="strong" />}
                 {(() => {
                   const rank = getVolumeRank(totalVolume);
-                  return <Badge text={`${rank.emoji} ${rank.title}`} glow="strong" />;
+                  return <Badge text={`${rank.emoji} ${rank.title}`} glow="strong" title={rank.tooltip} />;
                 })()}
                 {(() => {
                   const streakBadge = getStreakBadge(streaks.current_streak);
                   if (streakBadge) {
-                    return <Badge text={`${streakBadge.emoji} ${streakBadge.title}`} glow="fire" />;
+                    return <Badge text={`${streakBadge.emoji} ${streakBadge.title}`} glow="fire" title={streakBadge.tooltip} />;
                   }
                   return null;
                 })()}
@@ -927,7 +927,7 @@ function Streak({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Badge({ text, glow }: { text: string; glow?: "strong" | "fire" }) {
+function Badge({ text, glow, title }: { text: string; glow?: "strong" | "fire"; title?: string }) {
   const glowClass =
     glow === "strong"
       ? "shadow-[0_0_30px_rgba(34,197,94,0.6)] border-emerald-400"
@@ -938,6 +938,7 @@ function Badge({ text, glow }: { text: string; glow?: "strong" | "fire" }) {
   return (
     <span
       className={`px-6 py-2 rounded-full text-sm bg-slate-800/70 border text-emerald-300 ${glowClass}`}
+      title={title}
     >
       {text}
     </span>

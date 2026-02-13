@@ -48,43 +48,53 @@ const getBadgeInfo = (score: number) => {
 
     if (clampedScore >= 95) return {
         title: "👑⚡ Prediction God",
-        style: "bg-amber-500/10 text-amber-300 border-amber-500/50 shadow-[0_0_30px_rgba(245,158,11,0.5)]"
+        style: "bg-amber-500/10 text-amber-300 border-amber-500/50 shadow-[0_0_30px_rgba(245,158,11,0.5)]",
+        tooltip: "Final score 95+",
     };
     if (clampedScore >= 90) return {
         title: "👑🔥 Prediction King",
-        style: "bg-emerald-500/10 text-emerald-300 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.5)]"
+        style: "bg-emerald-500/10 text-emerald-300 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.5)]",
+        tooltip: "Final score 90+",
     };
     if (clampedScore >= 80) return {
         title: "🚀🧠 Pro Predictor",
-        style: "bg-blue-500/10 text-blue-300 border-blue-500/50 shadow-[0_0_30px_rgba(59,130,246,0.5)]"
+        style: "bg-blue-500/10 text-blue-300 border-blue-500/50 shadow-[0_0_30px_rgba(59,130,246,0.5)]",
+        tooltip: "Final score 80+",
     };
     if (clampedScore >= 70) return {
         title: "🎯📈 Skilled Predictor",
-        style: "bg-teal-500/10 text-teal-300 border-teal-500/50 shadow-[0_0_20px_rgba(20,184,166,0.4)]"
+        style: "bg-teal-500/10 text-teal-300 border-teal-500/50 shadow-[0_0_20px_rgba(20,184,166,0.4)]",
+        tooltip: "Final score 70+",
     };
     if (clampedScore >= 60) return {
         title: "🌱🚀 Rising Predictor",
-        style: "bg-lime-500/10 text-lime-300 border-lime-500/50 shadow-[0_0_20px_rgba(132,204,22,0.4)]"
+        style: "bg-lime-500/10 text-lime-300 border-lime-500/50 shadow-[0_0_20px_rgba(132,204,22,0.4)]",
+        tooltip: "Final score 60+",
     };
     if (clampedScore >= 50) return {
         title: "⚖️🙂 Average Predictor",
-        style: "bg-yellow-500/10 text-yellow-300 border-yellow-500/50 shadow-[0_0_20px_rgba(234,179,8,0.4)]"
+        style: "bg-yellow-500/10 text-yellow-300 border-yellow-500/50 shadow-[0_0_20px_rgba(234,179,8,0.4)]",
+        tooltip: "Final score 50+",
     };
     if (clampedScore >= 40) return {
         title: "🔄📉 Inconsistent Predictor",
-        style: "bg-orange-500/10 text-orange-300 border-orange-500/50 shadow-[0_0_20px_rgba(249,115,22,0.4)]"
+        style: "bg-orange-500/10 text-orange-300 border-orange-500/50 shadow-[0_0_20px_rgba(249,115,22,0.4)]",
+        tooltip: "Final score 40+",
     };
     if (clampedScore >= 30) return {
         title: "🤔📊 Low-Confidence Predictor",
-        style: "bg-orange-800/20 text-orange-400 border-orange-700/50"
+        style: "bg-orange-800/20 text-orange-400 border-orange-700/50",
+        tooltip: "Final score 30+",
     };
     if (clampedScore >= 20) return {
         title: "🧪📉 Experimental Predictor",
-        style: "bg-red-500/10 text-red-300 border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.4)]"
+        style: "bg-red-500/10 text-red-300 border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.4)]",
+        tooltip: "Final score 20+",
     };
     return {
         title: "⚠️🔥 Extreme-Risk Predictor",
-        style: "bg-red-900/20 text-red-500 border-red-700/50 animate-pulse"
+        style: "bg-red-900/20 text-red-500 border-red-700/50 animate-pulse",
+        tooltip: "Final score below 20",
     };
 };
 
@@ -94,7 +104,8 @@ export function ProfileStat() {
     const [activeWallet, setActiveWallet] = useState('');
     const [userProfile, setUserProfile] = useState<UserLeaderboardData | null>(null);
     const [showAdvanced, setShowAdvanced] = useState(false);
-    const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('distribution');
+    // First tab is Active Positions; Distribution and Activity fetch data only when user clicks that tab
+    const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('active_positions');
     const [distributionMetric, setDistributionMetric] = useState<'count' | 'capital'>('count');
     const [searchError, setSearchError] = useState<string | null>(null);
 
@@ -160,18 +171,14 @@ export function ProfileStat() {
         }
     }, [searchParams]);
 
-    // Fetch user profile data when wallet changes
+    // Fetch user profile data when wallet changes (header only). Do NOT fetch trades here — trades are fetched only when user clicks a Performance filter (Recent 10, 7 Days, etc.).
     useEffect(() => {
         if (activeWallet) {
             fetchUserLeaderboardData(activeWallet, 'overall')
                 .then(data => setUserProfile(data))
                 .catch(err => console.error('Failed to fetch user profile:', err));
-
-            // Fetch recent trades only on load for fast page render; "All Trades" fetches full history when user clicks it
-            fetchTrades('recent10');
         }
-
-    }, [activeWallet, fetchTrades]);
+    }, [activeWallet]);
 
     // Reset activity fetch flag and tab cache when wallet changes
     useEffect(() => {
@@ -275,7 +282,7 @@ export function ProfileStat() {
             setActivePositionsPage(1);
             setClosedPositionsPage(1);
         } catch (err: any) {
-            const message = err?.message ?? "User or wallet not found. Try a full wallet address (0x...), Polymarket username, or X username (with or without @).";
+            const message = err?.message ?? "User or wallet not found. Try a full wallet address (0x...), or Polymarket username.";
             setSearchError(message);
         }
     };
@@ -726,7 +733,7 @@ export function ProfileStat() {
                                 <div className="flex-1 relative">
                                     <input
                                         className="w-full bg-transparent outline-none text-sm placeholder:text-slate-500"
-                                        placeholder="Search by wallet (0x...), username, or X username (@handle)"
+                                        placeholder="Search by wallet (0x...), or Polymarket username"
                                         value={walletInput}
                                         onChange={(e) => { setWalletInput(e.target.value); setSearchError(null); }}
                                         onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
@@ -802,7 +809,7 @@ export function ProfileStat() {
                 <div className="flex flex-col items-center justify-center p-20 text-center">
                     <Wallet className="h-20 w-20 text-emerald-500/20 mb-4" />
                     <h2 className="text-2xl font-bold mb-2">Live API Dashboard</h2>
-                    <p className="text-slate-400 max-w-md">Enter a wallet address, Polymarket username, or X username (@handle) above to calculate real-time metrics directly from Polymarket APIs.</p>
+                    <p className="text-slate-400 max-w-md">Enter a wallet address or Polymarket username above to calculate real-time metrics directly from Polymarket APIs.</p>
                 </div>
             )}
 
@@ -842,7 +849,7 @@ export function ProfileStat() {
                                 {(() => {
                                     const rank = getVolumeRank(metrics.total_volume);
                                     return (
-                                        <span className={`px-6 py-2 rounded-full text-sm border font-bold ${rank.className}`}>
+                                        <span className={`px-6 py-2 rounded-full text-sm border font-bold ${rank.className}`} title={rank.tooltip}>
                                             {rank.emoji} {rank.title}
                                         </span>
                                     );
@@ -851,7 +858,7 @@ export function ProfileStat() {
                                     const streakBadge = getStreakBadge(metrics.streaks.current_streak);
                                     if (streakBadge) {
                                         return (
-                                            <span className={`px-6 py-2 rounded-full text-sm border font-bold ${streakBadge.className}`}>
+                                            <span className={`px-6 py-2 rounded-full text-sm border font-bold ${streakBadge.className}`} title={streakBadge.tooltip}>
                                                 {streakBadge.emoji} {streakBadge.title}
                                             </span>
                                         );
@@ -1239,10 +1246,10 @@ export function ProfileStat() {
                         <div className="pointer-events-none absolute -top-16 left-1/2 h-28 w-[420px] -translate-x-1/2 rounded-full bg-cyan-500/8 blur-3xl" />
                         <div className="flex border-b border-white/10 p-2 gap-2 overflow-x-auto scrollbar-hide">
                             {[
-                                { id: 'distribution', label: 'Distribution' },
-                                { id: 'activity', label: 'Activity' },
                                 { id: 'active_positions', label: 'Active Positions' },
                                 { id: 'closed_positions', label: 'Closed Positions' },
+                                { id: 'distribution', label: 'Distribution' },
+                                { id: 'activity', label: 'Activity' },
                                 // { id: 'history', label: 'Trade History' } // Hidden: trade history tab
                             ].map((tab) => (
                                 <button

@@ -305,7 +305,7 @@ export function DBWalletDashboard() {
                                     {(() => {
                                         const rank = getVolumeRank(totalVolume);
                                         return (
-                                            <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${rank.className}`}>
+                                            <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${rank.className}`} title={rank.tooltip}>
                                                 {rank.emoji} {rank.title}
                                             </span>
                                         );
@@ -314,7 +314,7 @@ export function DBWalletDashboard() {
                                         const streakBadge = getStreakBadge(streaks?.current_streak || 0);
                                         if (streakBadge) {
                                             return (
-                                                <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${streakBadge.className}`}>
+                                                <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${streakBadge.className}`} title={streakBadge.tooltip}>
                                                     {streakBadge.emoji} {streakBadge.title}
                                                 </span>
                                             );

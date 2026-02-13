@@ -471,7 +471,7 @@ export function WalletDashboard() {
                 {(() => {
                   const rank = getVolumeRank(totalVolume);
                   return (
-                    <span className={`px-6 py-2 rounded-full text-sm border font-bold ${rank.className}`}>
+                    <span className={`px-6 py-2 rounded-full text-sm border font-bold ${rank.className}`} title={rank.tooltip}>
                       {rank.emoji} {rank.title}
                     </span>
                   );
@@ -480,7 +480,7 @@ export function WalletDashboard() {
                   const streakBadge = getStreakBadge(streaks.current_streak);
                   if (streakBadge) {
                     return (
-                      <span className={`px-6 py-2 rounded-full text-sm bg-slate-800/70 border text-orange-300 shadow-[0_0_35px_rgba(251,146,60,0.7)] border-orange-400`}>
+                      <span className={`px-6 py-2 rounded-full text-sm bg-slate-800/70 border text-orange-300 shadow-[0_0_35px_rgba(251,146,60,0.7)] border-orange-400`} title={streakBadge.tooltip}>
                         {streakBadge.emoji} {streakBadge.title}
                       </span>
                     );

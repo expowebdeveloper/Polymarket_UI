@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { fetchFilteredTrades } from '../services/api';
 import { UserPnL } from '../types/api';
 
@@ -19,6 +19,14 @@ export function useTradeFilter(walletAddress: string) {
 
     // Cache for storing fetched trade data
     const cacheRef = useRef<TradeCache>({});
+
+    // When wallet changes, clear cache and displayed trades so we don't show previous wallet's data
+    useEffect(() => {
+        cacheRef.current = {};
+        setTrades([]);
+        setCurrentFilter(null);
+        setError(null);
+    }, [walletAddress]);
 
     const fetchTrades = useCallback(async (filter: TradeFilter) => {
         if (!walletAddress) return;

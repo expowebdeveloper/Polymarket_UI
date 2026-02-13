@@ -184,7 +184,8 @@ export function TraderProfile() {
   badges.push({
     label: `${rank.emoji} ${rank.title}`,
     icon: null,
-    customClass: rank.className
+    customClass: rank.className,
+    tooltip: rank.tooltip,
   });
 
   const streakBadge = getStreakBadge(liveMetrics?.streaks?.current_streak || 0);
@@ -192,7 +193,8 @@ export function TraderProfile() {
     badges.push({
       label: `${streakBadge.emoji} ${streakBadge.title}`,
       icon: null,
-      customClass: streakBadge.className
+      customClass: streakBadge.className,
+      tooltip: streakBadge.tooltip,
     });
   }
 
@@ -266,6 +268,7 @@ export function TraderProfile() {
                       ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
                       : 'bg-purple-500/20 text-purple-400 border-purple-500/30'
                   }`}
+                title={(badge as { tooltip?: string }).tooltip}
               >
                 {badge.icon && <badge.icon className="w-4 h-4" />}
                 <span className="text-sm font-bold">{badge.label}</span>
