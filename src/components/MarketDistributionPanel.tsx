@@ -65,6 +65,17 @@ function fmtMoney(value: number, unit: "M" | "K") {
   return `${sign}$${Math.abs(value).toFixed(2)}${unit}`;
 }
 
+/** Format volume: use K when value is in thousands (e.g. $220K), M when in millions (e.g. $1.5M). */
+function fmtVolume(valueInMillions: number): string {
+  const sign = valueInMillions < 0 ? "-" : "";
+  const abs = Math.abs(valueInMillions);
+  if (abs < 1) {
+    const k = Math.round(abs * 1000);
+    return `${sign}$${k}K`;
+  }
+  return `${sign}$${abs.toFixed(2)}M`;
+}
+
 function GlassCard({
   children,
   className = "",
@@ -342,7 +353,8 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
         label: m!.label,
         value: m!.pnl,
       }))
-      .filter((d) => Math.abs(d.value) > 0.001); // hide zero PNL categories
+      .filter((d) => Math.abs(d.value) > 0.001) // hide zero PNL categories
+      .sort((a, b) => a.value - b.value); // ascending by PNL
   }, [markets]);
 
   // Chart data: volume in millions for display, PNL in thousands
@@ -386,13 +398,22 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
             </div>
             <div className="text-right">
               <div className="text-sm text-white/55">Total</div>
-              <div className="font-semibold text-emerald-300">{fmtMoney(volumeTotalM, "M")}</div>
+              <div className="font-semibold text-emerald-300">{fmtVolume(volumeTotalM)}</div>
             </div>
           </div>
 
           <div className="mt-5 h-[420px] sm:h-[460px] rounded-3xl border border-white/10 bg-black/25 p-5 backdrop-blur">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
+                <Tooltip
+                  cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                  content={(props) => (
+                    <MiniTooltip
+                      {...props}
+                      valueFormatter={(v: number) => fmtVolume(v)}
+                    />
+                  )}
+                />
                 <Pie
                   data={volumeChartData}
                   dataKey="value"
@@ -414,7 +435,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
                     <div className="flex h-full w-full flex-col items-center justify-center text-center">
                       <div className="text-sm font-medium text-white/60">Total Volume</div>
                       <div className="mt-2 text-3xl font-semibold text-emerald-200">
-                        {fmtMoney(volumeTotalM, "M")}
+                        {fmtVolume(volumeTotalM)}
                       </div>
                       <div className="mt-1 text-sm text-white/55">invested</div>
                     </div>
@@ -432,7 +453,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
                     name={m.label}
                     color={colorForLabel(m.label)}
                     pct={`${pct.toFixed(1)}%`}
-                    right={fmtMoney(m.volume / 1e6, "M")}
+                    right={fmtVolume(m.volume / 1e6)}
                   />
                 );
               })}
@@ -503,10 +524,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
           </div>
 
           <div className="mt-5 space-y-3">
-            {rightSeries
-              .slice()
-              .sort((a, b) => b.value - a.value)
-              .map((row) => {
+            {rightSeries.map((row) => {
                 const totalPnl = rightSeries.reduce((a, b) => a + b.value, 0);
                 const pct =
                   totalPnl !== 0 ? (row.value / totalPnl) * 100 : 0;
@@ -521,7 +539,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
                         <span
                           className="h-3.5 w-3.5 rounded-full shrink-0"
                           style={{
-                            background: colorForLabel(row.label),
+                            background: row.value >= 0 ? "#22c55e" : "#ef4444",
                           }}
                         />
                         <div>

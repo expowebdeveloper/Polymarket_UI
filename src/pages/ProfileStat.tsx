@@ -6,7 +6,7 @@ import { ErrorMessage } from '../components/ErrorMessage';
 import { BarChart, Bar, Cell, PieChart, Pie, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useProfileStat } from '../hooks/useProfileStat';
 import { useTradeFilter, TradeFilter } from '../hooks/useTradeFilter';
-import { resolveWalletOrUser, fetchUserLeaderboardData, fetchMarketDistribution, fetchTraderAutocomplete, type TraderAutocompleteItem } from '../services/api';
+import { resolveWalletOrUser, fetchUserLeaderboardData, fetchMarketDistribution, fetchActivityForWallet, fetchTraderAutocomplete, type TraderAutocompleteItem } from '../services/api';
 import { getVolumeRank } from '../utils/rankUtils';
 import { getStreakBadge } from '../utils/streakUtils';
 import type { UserLeaderboardData } from '../types/api';
@@ -185,14 +185,24 @@ export function ProfileStat() {
         setLoadingDistribution(false);
     }, [activeWallet]);
 
-    // Fetch activities when Activity tab is selected and activities is empty
+    // Fetch activities only when Activity tab is selected (lightweight fetch, loader only in tab)
+    const activityWalletRef = useRef<string | null>(null);
     useEffect(() => {
-        const key = `${activeWallet}-activity`;
-        if (activeWallet && activeTab === 'activity' && (!activities || activities.length === 0) && !loading && activityFetchAttempted.current !== key) {
-            activityFetchAttempted.current = key;
-            refreshWithTrades();
-        }
-    }, [activeWallet, activeTab, activities, loading, refreshWithTrades]);
+        if (!activeWallet || activeTab !== 'activity') return;
+        if (activityTabList.length > 0 || activityTabLoading) return;
+        const wallet = activeWallet;
+        activityWalletRef.current = wallet;
+        setActivityTabLoading(true);
+        fetchActivityForWallet(wallet, undefined, 1000)
+            .then((data) => {
+                if (activityWalletRef.current !== wallet) return;
+                setActivityTabList(data.activities || []);
+            })
+            .catch((err) => console.error('Failed to fetch activity:', err))
+            .finally(() => {
+                if (activityWalletRef.current === wallet) setActivityTabLoading(false);
+            });
+    }, [activeWallet, activeTab, activityTabList.length, activityTabLoading]);
 
     // Fetch API distribution when tab is active
     useEffect(() => {
@@ -1356,7 +1366,11 @@ export function ProfileStat() {
                             {activeTab === 'activity' && (
                                 <div>
                                     <h3 className="text-lg font-semibold text-white mb-4">Wallet Activity (last 7 days)</h3>
-                                    {activitiesLast7Days.length > 0 ? (
+                                    {activityTabLoading ? (
+                                        <div className="h-[300px] flex items-center justify-center">
+                                            <LoadingSpinner message="Loading wallet activity..." />
+                                        </div>
+                                    ) : activitiesLast7Days.length > 0 ? (
                                         <>
                                             <div className="space-y-3 mb-4">
                                                 {activitiesLast7Days
