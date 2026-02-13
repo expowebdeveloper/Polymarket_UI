@@ -354,7 +354,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
         value: m!.pnl,
       }))
       .filter((d) => Math.abs(d.value) > 0.001) // hide zero PNL categories
-      .sort((a, b) => a.value - b.value); // ascending by PNL
+      .sort((a, b) => b.value - a.value); // descending by PNL
   }, [markets]);
 
   // Chart data: volume in millions for display, PNL in thousands
