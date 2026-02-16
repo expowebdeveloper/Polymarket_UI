@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+    import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, Wallet, TrendingUp, TrendingDown, Trophy, ChevronDown, ChevronUp, Activity as ActivityIcon, RefreshCw } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -21,7 +21,8 @@ const formatCurrency = (value: number | string | undefined): string => {
     if (!value && value !== 0) return '$0.00';
     const num = typeof value === 'string' ? parseFloat(value) : value;
     if (isNaN(num)) return '$0.00';
-    if (num >= 1000000) return `$${(num / 1000000).toFixed(2)}M`;
+    if (num >= 1000000) return `$${(num / 1000000).toFixed(1)}M`;
+    if (num >= 100000) return `$${(num / 1000).toFixed(1)}K`;
     if (num >= 1000) return `$${(num / 1000).toFixed(2)}K`;
     return `$${num.toFixed(2)}`;
 };
@@ -905,7 +906,7 @@ export function ProfileStat() {
             {!loading && activeWallet && metrics && (
                 <div className="px-8 py-6 space-y-6">
                     {/* Data origin: confirm data is real from Polymarket */}
-                    {dataOrigin?.live && (
+                    {/* {dataOrigin?.live && (
                         <div className="flex items-center gap-2 text-xs text-slate-500">
                             <span className="inline-flex items-center gap-1 text-emerald-400/90">
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
@@ -913,7 +914,7 @@ export function ProfileStat() {
                             </span>
                             <span>from Polymarket API</span>
                         </div>
-                    )}
+                    )} */}
 
                     {/* FINAL RATING */}
                     <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 rounded-3xl shadow-[0_16px_60px_-24px_rgba(0,0,0,0.9)] backdrop-blur-2xl p-6">
@@ -1471,7 +1472,7 @@ export function ProfileStat() {
                             {/* Recent 10 Trades tab – full details: trade name, date, buy/sell, price */}
                             {activeTab === 'activity' && (
                                 <div>
-                                    <h3 className="text-lg font-semibold text-white mb-4">Recent 10 Trades</h3>
+                                    <h3 className="text-lg font-semibold text-white mb-4">Recent Trades</h3>
                                     {recentTradesLoading ? (
                                         <div className="h-[300px] flex items-center justify-center">
                                             <LoadingSpinner message="Loading recent trades..." />
@@ -1504,7 +1505,7 @@ export function ProfileStat() {
                                                                             day: 'numeric',
                                                                             hour: '2-digit',
                                                                             minute: '2-digit',
-                                                                          })
+                                                                        })
                                                                         : '—'}
                                                                 </td>
                                                                 <td className="py-3 px-4">

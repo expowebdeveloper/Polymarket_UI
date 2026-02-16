@@ -90,6 +90,7 @@ function mapEntryToRow(entry: LeaderboardEntry, index: number) {
     reward: Math.floor((entry.final_score || 0) / 10) * 5, // Calculate reward based on score
     wallet: entry.wallet_address,
     profileImage: entry.profile_image,
+    userTag: entry.user_tag || null, // PnL-based tag for new traders
   };
 }
 
@@ -113,7 +114,23 @@ function RewardPill({ amount }: { amount: number }) {
   );
 }
 
-function TagPill({ label }: { label: string }) {
+function TagPill({ label, userTag }: { label: string; userTag?: { title: string; emoji: string; style: string } | null }) {
+  // If user has a PnL-based tag, display it instead of volume-based tag
+  if (userTag) {
+    return (
+      <span
+        className={
+          "inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold ring-1 shadow-sm " +
+          userTag.style
+        }
+      >
+        <span aria-hidden>{userTag.emoji}</span>
+        {userTag.title}
+      </span>
+    );
+  }
+
+  // Otherwise show volume-based tag
   const META: Record<string, { emoji: string; cls: string }> = {
     Whale: {
       emoji: "🐋",
@@ -848,7 +865,7 @@ export default function PolyratingLeaderboardPreview() {
                         </td>
 
                         <td className="px-6 py-5">
-                          <TagPill label={getTagLabel(r.volumeRaw, r.rank)} />
+                          <TagPill label={getTagLabel(r.volumeRaw, r.rank)} userTag={r.userTag} />
                         </td>
 
                         <td className="px-6 py-5">

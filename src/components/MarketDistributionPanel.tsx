@@ -62,7 +62,19 @@ function colorForLabel(label: string) {
 
 function fmtMoney(value: number, unit: "M" | "K") {
   const sign = value < 0 ? "-" : "";
-  return `${sign}$${Math.abs(value).toFixed(2)}${unit}`;
+  const abs = Math.abs(value);
+
+  // If unit is K and value >= 1000, convert to M
+  if (unit === "K" && abs >= 1000) {
+    return `${sign}$${(abs / 1000).toFixed(1)}M`;
+  }
+
+  // If unit is K and value >= 100, use 1 decimal place
+  if (unit === "K" && abs >= 100) {
+    return `${sign}$${abs.toFixed(1)}${unit}`;
+  }
+
+  return `${sign}$${abs.toFixed(2)}${unit}`;
 }
 
 /** Format volume: use K when value is in thousands (e.g. $220K), M when in millions (e.g. $1.5M). */
@@ -394,7 +406,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="text-lg font-semibold text-white">Allocation by Category</div>
-              <div className="text-sm text-white/55">Total Volume</div>
+              {/* <div className="text-sm text-white/55">https://backend.polyrating.com</div> */}
             </div>
             <div className="text-right">
               <div className="text-sm text-white/55">Total</div>
@@ -424,40 +436,40 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
                   outerRadius="85%"
                 >
                   {volumeChartData.map((entry) => (
-                      <Cell
-                        key={entry.name}
-                        fill={colorForLabel(entry.name)}
-                        fillOpacity={0.95}
-                      />
-                    ))}
-                  </Pie>
-                  <foreignObject x="28%" y="32%" width="44%" height="46%">
-                    <div className="flex h-full w-full flex-col items-center justify-center text-center">
-                      <div className="text-sm font-medium text-white/60">Total Volume</div>
-                      <div className="mt-2 text-3xl font-semibold text-emerald-200">
-                        {fmtVolume(volumeTotalM)}
-                      </div>
-                      <div className="mt-1 text-sm text-white/55">invested</div>
+                    <Cell
+                      key={entry.name}
+                      fill={colorForLabel(entry.name)}
+                      fillOpacity={0.95}
+                    />
+                  ))}
+                </Pie>
+                <foreignObject x="28%" y="32%" width="44%" height="46%">
+                  <div className="flex h-full w-full flex-col items-center justify-center text-center">
+                    <div className="text-sm font-medium text-white/60">Total Volume</div>
+                    <div className="mt-2 text-3xl font-semibold text-emerald-200">
+                      {fmtVolume(volumeTotalM)}
                     </div>
-                  </foreignObject>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+                    {/* <div className="mt-1 text-sm text-white/55">invested</div> */}
+                  </div>
+                </foreignObject>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
 
-            <div className="mt-8 space-y-4">
-              {allocationSorted.map((m) => {
-                const pct = totalVolume > 0 ? (m.volume / totalVolume) * 100 : 0;
-                return (
-                  <PillRow
-                    key={m.key}
-                    name={m.label}
-                    color={colorForLabel(m.label)}
-                    pct={`${pct.toFixed(1)}%`}
-                    right={fmtVolume(m.volume / 1e6)}
-                  />
-                );
-              })}
-            </div>
+          <div className="mt-8 space-y-4">
+            {allocationSorted.map((m) => {
+              const pct = totalVolume > 0 ? (m.volume / totalVolume) * 100 : 0;
+              return (
+                <PillRow
+                  key={m.key}
+                  name={m.label}
+                  color={colorForLabel(m.label)}
+                  pct={`${pct.toFixed(1)}%`}
+                  right={fmtVolume(m.volume / 1e6)}
+                />
+              );
+            })}
+          </div>
         </GlassCard>
 
         {/* RIGHT - PNL by Category */}
@@ -465,7 +477,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="text-lg font-semibold text-white">PNL by Category</div>
-              <div className="text-sm text-white/55">Total PNL by Category</div>
+              {/* <div className="text-sm text-white/55">Total PNL by Category</div> */}
             </div>
             <div className="text-right">
               <div className="text-sm text-white/55">Total</div>
@@ -525,46 +537,45 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
 
           <div className="mt-5 space-y-3">
             {rightSeries.map((row) => {
-                const totalPnl = rightSeries.reduce((a, b) => a + b.value, 0);
-                const pct =
-                  totalPnl !== 0 ? (row.value / totalPnl) * 100 : 0;
-                const valueK = row.value / 1e3;
-                return (
-                  <div
-                    key={row.key}
-                    className="group rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] px-6 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur transition hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.055),rgba(255,255,255,0.02))]"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <span
-                          className="h-3.5 w-3.5 rounded-full shrink-0"
-                          style={{
-                            background: row.value >= 0 ? "#22c55e" : "#ef4444",
-                          }}
-                        />
-                        <div>
-                          <div className="text-lg font-semibold text-white/92">
-                            {row.label}
-                          </div>
-                          <div className="text-sm text-white/45">
-                            {pct.toFixed(0)}%
-                          </div>
+              const totalPnl = rightSeries.reduce((a, b) => a + b.value, 0);
+              const pct =
+                totalPnl !== 0 ? (row.value / totalPnl) * 100 : 0;
+              const valueK = row.value / 1e3;
+              return (
+                <div
+                  key={row.key}
+                  className="group rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] px-6 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur transition hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.055),rgba(255,255,255,0.02))]"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <span
+                        className="h-3.5 w-3.5 rounded-full shrink-0"
+                        style={{
+                          background: row.value >= 0 ? "#22c55e" : "#ef4444",
+                        }}
+                      />
+                      <div>
+                        <div className="text-lg font-semibold text-white/92">
+                          {row.label}
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <div
-                          className={`text-xl font-semibold ${
-                            row.value >= 0 ? "text-white" : "text-rose-400"
-                          }`}
-                        >
-                          {valueK >= 0 ? "+" : ""}
-                          {fmtMoney(valueK, "K")}
+                        <div className="text-sm text-white/45">
+                          {pct.toFixed(0)}%
                         </div>
                       </div>
                     </div>
+                    <div className="text-right">
+                      <div
+                        className={`text-xl font-semibold ${row.value >= 0 ? "text-white" : "text-rose-400"
+                          }`}
+                      >
+                        {valueK >= 0 ? "+" : ""}
+                        {fmtMoney(valueK, "K")}
+                      </div>
+                    </div>
                   </div>
-                );
-              })}
+                </div>
+              );
+            })}
           </div>
         </GlassCard>
       </div>

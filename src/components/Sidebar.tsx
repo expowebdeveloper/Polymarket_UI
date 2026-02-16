@@ -15,7 +15,7 @@ import logo from "../assets/logo.png";
 
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: BarChart3 },
-  { name: "Predictor Rating/Stat", href: "/profile-stat", icon: Star },
+  { name: "Predictor Rating/Stats", href: "/profile-stat", icon: Star },
   { name: "Market", href: "/markets", icon: CandlestickChart, badge: "Coming Soon", disabled: true },
   { name: "Leaderboard", href: "/leaderboard", icon: Trophy, badge: "Coming Soon", disabled: true },
   { name: "Whales/insiders", href: "/Whales/insiders", icon: LineChart, badge: "Coming Soon", disabled: true },
@@ -57,9 +57,14 @@ export function Sidebar({ collapsed, onSetCollapsed }: SidebarProps) {
             className={`transition-all duration-300 drop-shadow-lg ${collapsed ? "w-10 h-10" : "w-28"}`}
           />
           {!collapsed && (
-            <h1 className="mt-3 text-xl font-semibold tracking-wide text-white">
-              Poly<span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Rating</span>
-            </h1>
+            <>
+              <div className="flex gap-1 flex-col items-end">
+                <h1 className="mt-3 text-xl mb-0 font-semibold tracking-wide text-white leading-none">
+                  Poly<span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Rating</span>
+                </h1>
+                <p className="text-xs text-slate-400 text-right">BETA</p>
+              </div>
+            </>
           )}
         </div>
 

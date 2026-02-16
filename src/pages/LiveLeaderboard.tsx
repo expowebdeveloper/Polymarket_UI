@@ -115,7 +115,23 @@ function RewardPill({ amount }: { amount: number }) {
     );
 }
 
-function TagPill({ label }: { label: string }) {
+function TagPill({ label, userTag }: { label: string; userTag?: { title: string; emoji: string; style: string } | null }) {
+    // If user has a PnL-based tag, display it instead of volume-based tag
+    if (userTag) {
+        return (
+            <span
+                className={
+                    "inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold ring-1 shadow-sm " +
+                    userTag.style
+                }
+            >
+                <span aria-hidden>{userTag.emoji}</span>
+                {userTag.title}
+            </span>
+        );
+    }
+
+    // Otherwise show volume-based tag
     const META: Record<string, { emoji: string; cls: string }> = {
         Whale: {
             emoji: "🐋",
@@ -827,7 +843,7 @@ export default function LiveLeaderboard() {
                                                     </td>
 
                                                     <td className="px-6 py-5">
-                                                        <TagPill label={volumeTag} />
+                                                        <TagPill label={volumeTag} userTag={r.user_tag} />
                                                     </td>
 
                                                     <td className="px-6 py-5">

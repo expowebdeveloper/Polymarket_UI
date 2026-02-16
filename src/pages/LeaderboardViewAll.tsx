@@ -33,10 +33,12 @@ interface TableRow {
     score: number;
     winRate: number;
     volume: string;
+    volumeRaw: number;
     roi: number;
     pnl: number;
     reward: number;
     profileImage?: string;
+    userTag?: { title: string; emoji: string; style: string } | null;
 }
 
 
@@ -86,6 +88,19 @@ function formatMoney(n: number) {
     return `${sign}$${abs.toLocaleString("en-US")}`;
 }
 
+// Get tag label based on volume
+const getTagLabel = (volumeRaw: number, rank: number) => {
+    if (rank <= 3) return "Elite Whale";
+    if (volumeRaw >= 1000000) return "Mega Whale";
+    if (volumeRaw >= 500000) return "Whale";
+    if (volumeRaw >= 100000) return "Shark";
+    if (volumeRaw >= 50000) return "Dolphin";
+    if (volumeRaw >= 10000) return "Young Dolphin";
+    if (volumeRaw >= 5000) return "Fish";
+    if (volumeRaw >= 1000) return "Shrimp";
+    return "Crabs";
+};
+
 
 
 // --------------------
@@ -108,7 +123,23 @@ function RewardPill({ amount }: { amount: number }) {
     );
 }
 
-function TagPill({ label }: { label: string }) {
+function TagPill({ label, userTag }: { label: string; userTag?: { title: string; emoji: string; style: string } | null }) {
+    // If user has a PnL-based tag, display it instead of volume-based tag
+    if (userTag) {
+        return (
+            <span
+                className={
+                    "inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold ring-1 shadow-sm " +
+                    userTag.style
+                }
+            >
+                <span aria-hidden>{userTag.emoji}</span>
+                {userTag.title}
+            </span>
+        );
+    }
+
+    // Otherwise show volume-based tag
     const META: Record<string, { emoji: string; cls: string }> = {
         Whale: {
             emoji: "🐋",
@@ -522,10 +553,12 @@ export default function LeaderboardViewAll() {
                     score: entry.final_score || 0,
                     winRate: entry.win_rate || 0,
                     volume: formatMoney(entry.total_stakes || 0).replace('+', ''), // Remove + sign for volume
+                    volumeRaw: entry.total_stakes || 0,
                     roi: entry.roi || 0,
                     pnl: entry.total_pnl || 0,
                     reward: 0, // Placeholder
-                    profileImage: entry.profile_image
+                    profileImage: entry.profile_image,
+                    userTag: entry.user_tag || null, // PnL-based tag for new traders
                 }));
 
                 setRows(transformedRows);
@@ -802,7 +835,7 @@ export default function LeaderboardViewAll() {
                                                 </td>
 
                                                 <td className="px-6 py-5">
-                                                    <TagPill label={r.rank <= 3 ? "Mega Whale" : "Whale"} />
+                                                    <TagPill label={getTagLabel(r.volumeRaw, r.rank)} userTag={r.userTag} />
                                                 </td>
 
                                                 <td className="px-6 py-5">

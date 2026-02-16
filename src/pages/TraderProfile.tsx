@@ -16,7 +16,8 @@ const formatCurrency = (value: number | string | undefined): string => {
   if (!value && value !== 0) return '$0.00';
   const num = typeof value === 'string' ? parseFloat(value) : value;
   if (isNaN(num)) return '$0.00';
-  if (num >= 1000000) return `$${(num / 1000000).toFixed(2)}M`;
+  if (num >= 1000000) return `$${(num / 1000000).toFixed(1)}M`;
+  if (num >= 100000) return `$${(num / 1000).toFixed(1)}K`;
   if (num >= 1000) return `$${(num / 1000).toFixed(2)}K`;
   return `$${num.toFixed(2)}`;
 };
