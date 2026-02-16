@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Wallet, TrendingUp, TrendingDown, Trophy, Fish, Flame, ChevronDown, ChevronUp, Activity as ActivityIcon, RefreshCw, Target, ArrowRight } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, Trophy, ChevronDown, ChevronUp, Activity as ActivityIcon, RefreshCw } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { BarChart, Bar, Cell, PieChart, Pie, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
@@ -12,6 +12,9 @@ import { getStreakBadge } from '../utils/streakUtils';
 import type { UserLeaderboardData } from '../types/api';
 import { MarketDistributionPanel } from '../components/MarketDistributionPanel';
 import { SocialLinks } from '../components/SocialLinks';
+import realizedPnlIcon from '../assets/realized_pnl.svg';
+import unrealizedPnlIcon from '../assets/unr_pnl.svg';
+
 
 // Helper function to format currency
 const formatCurrency = (value: number | string | undefined): string => {
@@ -1084,7 +1087,7 @@ export function ProfileStat() {
                         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors group">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
-                                    <Target className="h-5 w-5" />
+                                    <img src={unrealizedPnlIcon} alt="Unrealized PnL" className="h-6 w-6 object-contain" />
                                 </div>
                                 <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Unrealized PnL</p>
                             </div>
@@ -1097,7 +1100,7 @@ export function ProfileStat() {
                         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors group">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 rounded-lg bg-red-500/10 text-red-400 group-hover:scale-110 transition-transform">
-                                    <ArrowRight className="h-5 w-5" />
+                                    <img src={realizedPnlIcon} alt="Realized PnL" className="h-5 w-5 object-contain" />
                                 </div>
                                 <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Realized PnL</p>
                             </div>
