@@ -64,7 +64,7 @@ export function WalletDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution'>('history');
+  const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution'>('distribution');
 
   // Data states
   const [profileStats, setProfileStats] = useState<ProfileStatsResponse | null>(null);
@@ -749,6 +749,15 @@ export function WalletDashboard() {
           {/* TABS */}
           <div className="bg-slate-900/60 inline-flex rounded-lg p-1">
             <button
+              onClick={() => setActiveTab('distribution')}
+              className={`px-6 py-2 rounded-md transition ${activeTab === 'distribution'
+                ? 'bg-white text-black'
+                : 'text-slate-400 hover:text-white'
+                }`}
+            >
+              Market Distributions
+            </button>
+            <button
               onClick={() => setActiveTab('history')}
               className={`px-6 py-2 rounded-md transition ${activeTab === 'history'
                 ? 'bg-white text-black'
@@ -765,15 +774,6 @@ export function WalletDashboard() {
                 }`}
             >
               Performance
-            </button>
-            <button
-              onClick={() => setActiveTab('distribution')}
-              className={`px-6 py-2 rounded-md transition ${activeTab === 'distribution'
-                ? 'bg-white text-black'
-                : 'text-slate-400 hover:text-white'
-                }`}
-            >
-              Market Distributions
             </button>
           </div>
 

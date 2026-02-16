@@ -60,7 +60,7 @@ export function WalletDashboard() {
   const [tradeHistory, setTradeHistory] = useState<TradeHistoryResponse | null>(null);
   const [backendScoringMetrics, setBackendScoringMetrics] = useState<any>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('history');
+  const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('distribution');
   const [distributionMetric, setDistributionMetric] = useState<'roi' | 'win_rate' | 'risk'>('roi');
   const [historyPage, setHistoryPage] = useState(1);
   const [activePositionsPage, setActivePositionsPage] = useState(1);
@@ -630,6 +630,12 @@ export function WalletDashboard() {
           {/* TABS */}
           <div className="bg-slate-900/60 inline-flex rounded-lg p-1">
             <button
+              onClick={() => setActiveTab('distribution')}
+              className={`px-6 py-2 rounded-md transition ${activeTab === 'distribution' ? 'bg-white text-black' : 'text-slate-400 hover:text-white'}`}
+            >
+              Market Distribution
+            </button>
+            <button
               onClick={() => {
                 setActiveTab('history');
                 setHistoryPage(1);
@@ -661,12 +667,6 @@ export function WalletDashboard() {
               className={`px-6 py-2 rounded-md transition ${activeTab === 'performance' ? 'bg-white text-black' : 'text-slate-400 hover:text-white'}`}
             >
               Performance
-            </button>
-            <button
-              onClick={() => setActiveTab('distribution')}
-              className={`px-6 py-2 rounded-md transition ${activeTab === 'distribution' ? 'bg-white text-black' : 'text-slate-400 hover:text-white'}`}
-            >
-              Market Distribution
             </button>
           </div>
           {/* Tabs Section */}

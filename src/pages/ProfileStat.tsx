@@ -6,7 +6,7 @@ import { ErrorMessage } from '../components/ErrorMessage';
 import { BarChart, Bar, Cell, PieChart, Pie, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useProfileStat } from '../hooks/useProfileStat';
 import { useTradeFilter, TradeFilter } from '../hooks/useTradeFilter';
-import { resolveWalletOrUser, fetchUserLeaderboardData, fetchMarketDistribution, fetchActivityForWallet, fetchTraderAutocomplete, type TraderAutocompleteItem } from '../services/api';
+import { resolveWalletOrUser, fetchUserLeaderboardData, fetchMarketDistribution, fetchRecentTrades, fetchTraderAutocomplete, type TraderAutocompleteItem } from '../services/api';
 import { getVolumeRank } from '../utils/rankUtils';
 import { getStreakBadge } from '../utils/streakUtils';
 import type { UserLeaderboardData } from '../types/api';
@@ -105,7 +105,7 @@ export function ProfileStat() {
     const [userProfile, setUserProfile] = useState<UserLeaderboardData | null>(null);
     const [showAdvanced, setShowAdvanced] = useState(false);
     // First tab is Active Positions; Distribution and Activity fetch data only when user clicks that tab
-    const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('active_positions');
+    const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution' | 'activity' | 'active_positions' | 'closed_positions'>('distribution');
     const [distributionMetric, setDistributionMetric] = useState<'count' | 'capital'>('count');
     const [searchError, setSearchError] = useState<string | null>(null);
 
@@ -121,6 +121,9 @@ export function ProfileStat() {
     const [loadingDistribution, setLoadingDistribution] = useState(false);
     const [activityTabList, setActivityTabList] = useState<any[]>([]);
     const [activityTabLoading, setActivityTabLoading] = useState(false);
+    const [recentTradesList, setRecentTradesList] = useState<Array<{ title: string; timestamp: number; side: string; price: number; size: number }>>([]);
+    const [recentTradesLoading, setRecentTradesLoading] = useState(false);
+    const [recentTradesError, setRecentTradesError] = useState<string | null>(null);
     // Autocomplete for username search
     const [suggestions, setSuggestions] = useState<TraderAutocompleteItem[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -128,6 +131,7 @@ export function ProfileStat() {
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const autocompleteRef = useRef<HTMLDivElement>(null);
     const autocompleteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const portfolioAutoFetchedRef = useRef<string | null>(null);
 
     const {
         loading,
@@ -143,15 +147,15 @@ export function ProfileStat() {
         refreshWithTrades,
     } = useProfileStat(activeWallet);
 
-    // Activity: prefer lightweight tab fetch, else from profile. Limited to last 7 days for display.
-    const activityDisplayList = activityTabList.length > 0 ? activityTabList : (activities || []);
-    const activitiesLast7Days = useMemo(() => {
-        if (!activityDisplayList.length) return [];
-        const sevenDaysAgoSec = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
-        return [...activityDisplayList]
-            .filter((a) => (a.timestamp ?? 0) >= sevenDaysAgoSec)
-            .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
-    }, [activityTabList, activities]);
+    // Activity tab commented out – was: activityDisplayList / activitiesLast7Days for Wallet Activity (last 7 days)
+    // const activityDisplayList = activityTabList.length > 0 ? activityTabList : (activities || []);
+    // const activitiesLast7Days = useMemo(() => {
+    //     if (!activityDisplayList.length) return [];
+    //     const sevenDaysAgoSec = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
+    //     return [...activityDisplayList]
+    //         .filter((a) => (a.timestamp ?? 0) >= sevenDaysAgoSec)
+    //         .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+    // }, [activityTabList, activities]);
 
     // Trade filtering with caching
     const {
@@ -159,7 +163,8 @@ export function ProfileStat() {
         loading: tradesLoading,
         error: tradesError,
         currentFilter,
-        fetchTrades
+        fetchTrades,
+        setFilterOnly,
     } = useTradeFilter(activeWallet);
 
     // Prefill wallet from URL ?wallet=0x... (e.g. from Dashboard biggest winner link)
@@ -180,10 +185,13 @@ export function ProfileStat() {
         }
     }, [activeWallet]);
 
-    // Reset activity fetch flag and tab cache when wallet changes
+    // Reset activity fetch flag, tab cache, portfolio auto-fetch, and recent trades when wallet changes
     useEffect(() => {
         activityFetchAttempted.current = null;
         setActivityTabList([]);
+        portfolioAutoFetchedRef.current = null;
+        setRecentTradesList([]);
+        setRecentTradesError(null);
     }, [activeWallet]);
 
     // Clear API market distribution when profile/wallet changes so we refetch for the new profile
@@ -192,28 +200,60 @@ export function ProfileStat() {
         setLoadingDistribution(false);
     }, [activeWallet]);
 
-    // Fetch activities only when Activity tab is selected (lightweight fetch, loader only in tab)
-    const activityWalletRef = useRef<string | null>(null);
+    // Auto-select "Recent 10" and fetch when profile is loaded (so graph shows without user clicking)
+    useEffect(() => {
+        if (!activeWallet || loading || tradesLoading) return;
+        if (currentFilter != null) return; // User or auto already selected a filter
+        if (portfolioAutoFetchedRef.current === activeWallet) return;
+        portfolioAutoFetchedRef.current = activeWallet;
+        fetchTrades('recent10');
+    }, [activeWallet, loading, tradesLoading, currentFilter, fetchTrades]);
+
+    // When "Recent 10 Trades" tab is selected, fetch full trade details (name, date, side, price)
+    const recentTradesWalletRef = useRef<string | null>(null);
     useEffect(() => {
         if (!activeWallet || activeTab !== 'activity') return;
-        if (activityTabList.length > 0 || activityTabLoading) return;
         const wallet = activeWallet;
-        activityWalletRef.current = wallet;
-        setActivityTabLoading(true);
-        fetchActivityForWallet(wallet, undefined, 1000)
+        recentTradesWalletRef.current = wallet;
+        setRecentTradesLoading(true);
+        setRecentTradesError(null);
+        fetchRecentTrades(wallet, 10)
             .then((data) => {
-                if (activityWalletRef.current !== wallet) return;
-                setActivityTabList(data.activities || []);
+                if (recentTradesWalletRef.current !== wallet) return;
+                setRecentTradesList(data.trades || []);
             })
-            .catch((err) => console.error('Failed to fetch activity:', err))
+            .catch((err) => {
+                if (recentTradesWalletRef.current !== wallet) return;
+                setRecentTradesError(err?.message || 'Failed to load recent trades');
+                setRecentTradesList([]);
+            })
             .finally(() => {
-                if (activityWalletRef.current === wallet) setActivityTabLoading(false);
+                if (recentTradesWalletRef.current === wallet) setRecentTradesLoading(false);
             });
-    }, [activeWallet, activeTab, activityTabList.length, activityTabLoading]);
+    }, [activeWallet, activeTab]);
 
-    // Fetch API distribution when tab is active
+    // Activity tab commented out – replaced by "Recent 10 Trades" tab
+    // const activityWalletRef = useRef<string | null>(null);
+    // useEffect(() => {
+    //     if (!activeWallet || activeTab !== 'activity') return;
+    //     if (activityTabList.length > 0 || activityTabLoading) return;
+    //     const wallet = activeWallet;
+    //     activityWalletRef.current = wallet;
+    //     setActivityTabLoading(true);
+    //     fetchActivityForWallet(wallet, undefined, 1000)
+    //         .then((data) => {
+    //             if (activityWalletRef.current !== wallet) return;
+    //             setActivityTabList(data.activities || []);
+    //         })
+    //         .catch((err) => console.error('Failed to fetch activity:', err))
+    //         .finally(() => {
+    //             if (activityWalletRef.current === wallet) setActivityTabLoading(false);
+    //         });
+    // }, [activeWallet, activeTab, activityTabList.length, activityTabLoading]);
+
+    // Fetch API distribution when tab is active (no cache - always fetches)
     useEffect(() => {
-        if (!activeWallet || activeTab !== 'distribution' || apiDistribution.length !== 0 || loadingDistribution) return;
+        if (!activeWallet || activeTab !== 'distribution') return;
         const wallet = activeWallet;
         distributionWalletRef.current = wallet;
         setLoadingDistribution(true);
@@ -227,7 +267,7 @@ export function ProfileStat() {
             .finally(() => {
                 if (distributionWalletRef.current === wallet) setLoadingDistribution(false);
             });
-    }, [activeWallet, activeTab, apiDistribution.length, loadingDistribution]);
+    }, [activeWallet, activeTab]);
 
     // Debounced autocomplete when user types (min 2 chars, not a wallet)
     useEffect(() => {
@@ -577,24 +617,66 @@ export function ProfileStat() {
         });
     }, [closedPositions]);
 
-    const performanceGraphData = useMemo(() => {
-        // Use filtered trades if available (from Polymarket API) — only real data, no placeholder
-        const tradesData = filteredTrades.length > 0 ? filteredTrades : [];
-
-        if (!tradesData || tradesData.length === 0) return [];
-
-        // Sort by timestamp
-        const sorted = [...tradesData].sort((a, b) => a.t - b.t);
-        return sorted.map(point => {
-            const d = new Date(point.t * 1000);
-            return {
+    // Build chart data from closed positions for "All Trades" (no extra fetch when we already have profile data)
+    const allTradesGraphFromClosed = useMemo(() => {
+        if (!closedPositions?.length) return [];
+        const withTs = closedPositions
+            .map((cp) => {
+                const row = cp as unknown as Record<string, unknown>;
+                const ts = row.timestamp ?? row.time ?? row.closedAt ?? row.updated_at ?? cp.updated_at ?? cp.created_at ?? cp.end_date;
+                let tSec = 0;
+                if (typeof ts === 'number') tSec = ts > 1e12 ? Math.floor(ts / 1000) : Math.floor(ts);
+                else if (typeof ts === 'string') {
+                    const d = new Date(ts.replace('Z', '+00:00'));
+                    tSec = Number.isNaN(d.getTime()) ? 0 : Math.floor(d.getTime() / 1000);
+                }
+                const pnl = parseFloat(String(row.realizedPnl ?? cp.realized_pnl ?? 0));
+                return { tSec, pnl };
+            })
+            .filter((x) => x.tSec > 0);
+        withTs.sort((a, b) => a.tSec - b.tSec);
+        let cumulative = 0;
+        const result: Array<{ date: string; dateShort: string; timestamp: number; cumulativePnl: number }> = [];
+        for (const { tSec, pnl } of withTs) {
+            cumulative += pnl;
+            const d = new Date(tSec * 1000);
+            result.push({
                 date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                 dateShort: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                timestamp: point.t,
-                cumulativePnl: point.p,
-            };
-        });
-    }, [filteredTrades]);
+                timestamp: tSec,
+                cumulativePnl: Math.round(cumulative * 100) / 100,
+            });
+        }
+        return result;
+    }, [closedPositions]);
+
+    const performanceGraphData = useMemo(() => {
+        // "All Trades": use existing closed positions when available (no API call)
+        if (currentFilter === 'all' && allTradesGraphFromClosed.length > 0) {
+            return allTradesGraphFromClosed;
+        }
+        const tradesData = filteredTrades.length > 0 ? filteredTrades : [];
+        if (!tradesData || tradesData.length === 0) return [];
+
+        // Sort by timestamp; API/backend returns points with p = cumulative PnL at that time.
+        const sorted = [...tradesData].sort((a, b) => (a.t || 0) - (b.t || 0));
+        const result: Array<{ date: string; dateShort: string; timestamp: number; cumulativePnl: number }> = [];
+        for (const point of sorted) {
+            const tRaw = point.t ?? 0;
+            const tSec = tRaw > 1e12 ? Math.floor(tRaw / 1000) : Math.floor(tRaw);
+            if (!Number.isFinite(tSec) || tSec <= 0) continue;
+            const p = typeof point.p === 'number' ? point.p : parseFloat(String(point.p || 0));
+            const d = new Date(tSec * 1000);
+            if (Number.isNaN(d.getTime())) continue;
+            result.push({
+                date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                dateShort: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                timestamp: tSec,
+                cumulativePnl: Math.round(p * 100) / 100,
+            });
+        }
+        return result;
+    }, [currentFilter, allTradesGraphFromClosed, filteredTrades]);
 
     // Actual date range of the graph data (for labeling — real data only)
     const performanceGraphRange = useMemo(() => {
@@ -808,8 +890,8 @@ export function ProfileStat() {
             {!activeWallet && (
                 <div className="flex flex-col items-center justify-center p-20 text-center">
                     <Wallet className="h-20 w-20 text-emerald-500/20 mb-4" />
-                    <h2 className="text-2xl font-bold mb-2">Live API Dashboard</h2>
-                    <p className="text-slate-400 max-w-md">Enter a wallet address or Polymarket username above to calculate real-time metrics directly from Polymarket APIs.</p>
+                    <h2 className="text-2xl font-bold mb-2">Live Polyrating Dashboard</h2>
+                    <p className="text-slate-400 max-w-md">Analyze any trader instantly. Enter a wallet or Polymarket username to unlock real-time performance metrics, trader ratings, and behavioral insights</p>
                 </div>
             )}
 
@@ -865,13 +947,13 @@ export function ProfileStat() {
                                     }
                                     return null;
                                 })()}
-                                {(metrics.is_badge_holder || userProfile?.verifiedBadge) && (
+                                {/* {(metrics.is_badge_holder || userProfile?.verifiedBadge) && (
                                     <span className="px-6 py-2 rounded-full text-sm border font-bold bg-gradient-to-r from-purple-500/10 to-amber-500/10 text-transparent bg-clip-text border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.4)] animate-pulse">
                                         <span className="bg-gradient-to-r from-purple-400 to-amber-400 bg-clip-text">
                                             🏅 Polymarket Badge Holder
                                         </span>
                                     </span>
-                                )}
+                                )} */}
                                 {metrics.user_tag && (
                                     <span className={`px-6 py-2 rounded-full text-sm border font-bold ${metrics.user_tag.style}`}>
                                         <span className="bg-gradient-to-r from-current to-current bg-clip-text">
@@ -884,9 +966,9 @@ export function ProfileStat() {
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 mt-6">
                             <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
-                                <p className="text-xs text-slate-300 mb-0.5">Balance</p>
+                                <p className="text-xs text-slate-300 mb-0.5">Active Position Value</p>
                                 <p className="text-base font-bold text-emerald-300">{formatCurrency(balance)}</p>
-                                <p className="text-[10px] text-slate-400 mt-0.5">Portfolio value (Polymarket API)</p>
+                                <p className="text-[10px] text-slate-400 mt-0.5">Portfolio value </p>
                             </div>
                             <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
                                 <p className="text-xs text-slate-300 mb-0.5">Total PNL</p>
@@ -1098,7 +1180,13 @@ export function ProfileStat() {
                                 <div>
                                     <h3 className="text-lg font-bold">Portfolio Performance</h3>
                                     <p className="text-sm text-slate-400">
-                                        {currentFilter ? `Showing ${currentFilter} trades` : 'Select a filter to view trades'}
+                                        {currentFilter
+                                            ? (currentFilter === 'all'
+                                                ? (performanceGraphRange
+                                                    ? `All Trades · ${performanceGraphRange.firstStr} – ${performanceGraphRange.lastStr}`
+                                                    : 'All Trades')
+                                                : `Showing ${currentFilter === 'recent10' ? 'Recent 10' : currentFilter === '7days' ? '7 Days' : '30 Days'} trades${performanceGraphRange ? ` · ${performanceGraphRange.firstStr} – ${performanceGraphRange.lastStr}` : ''}`)
+                                            : 'Click a filter below to load trade performance (data loads only when you select a filter, not on search)'}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -1114,7 +1202,13 @@ export function ProfileStat() {
                                 {(['recent10', '7days', '30days', 'all'] as TradeFilter[]).map((filter) => (
                                     <button
                                         key={filter}
-                                        onClick={() => fetchTrades(filter)}
+                                        onClick={() => {
+                                            if (filter === 'all' && closedPositions.length > 0) {
+                                                setFilterOnly('all');
+                                            } else {
+                                                fetchTrades(filter);
+                                            }
+                                        }}
                                         disabled={tradesLoading}
                                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${currentFilter === filter
                                             ? 'bg-emerald-500 text-white shadow-lg'
@@ -1142,10 +1236,10 @@ export function ProfileStat() {
                                 </div>
                             )}
 
-                            {/* Empty State */}
+                            {/* Empty State — data fetches only on filter click, not when user searches */}
                             {!tradesLoading && !tradesError && !currentFilter && (
                                 <div className="h-[300px] flex items-center justify-center">
-                                    <p className="text-slate-400">Select a filter above to view trade performance</p>
+                                    <p className="text-slate-400 text-center max-w-sm">Click a filter above to view trade performance. Data is loaded only when you select a filter, not when you search for a wallet.</p>
                                 </div>
                             )}
 
@@ -1187,6 +1281,7 @@ export function ProfileStat() {
                                                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
                                                     itemStyle={{ color: '#10b981' }}
                                                     labelFormatter={(label) => label}
+                                                    formatter={(value: number) => ['Cumulative PnL: ' + formatCurrency(Number(value)), '']}
                                                 />
                                                 <Line
                                                     type="monotone"
@@ -1246,10 +1341,10 @@ export function ProfileStat() {
                         <div className="pointer-events-none absolute -top-16 left-1/2 h-28 w-[420px] -translate-x-1/2 rounded-full bg-cyan-500/8 blur-3xl" />
                         <div className="flex border-b border-white/10 p-2 gap-2 overflow-x-auto scrollbar-hide">
                             {[
+                                { id: 'distribution', label: 'Distribution' },
                                 { id: 'active_positions', label: 'Active Positions' },
                                 { id: 'closed_positions', label: 'Closed Positions' },
-                                { id: 'distribution', label: 'Distribution' },
-                                { id: 'activity', label: 'Activity' },
+                                { id: 'activity', label: 'Recent 10 Trades' },
                                 // { id: 'history', label: 'Trade History' } // Hidden: trade history tab
                             ].map((tab) => (
                                 <button
@@ -1370,84 +1465,62 @@ export function ProfileStat() {
                             )}
                             */}
 
+                            {/* Recent 10 Trades tab – full details: trade name, date, buy/sell, price */}
                             {activeTab === 'activity' && (
                                 <div>
-                                    <h3 className="text-lg font-semibold text-white mb-4">Wallet Activity (last 7 days)</h3>
-                                    {activityTabLoading ? (
+                                    <h3 className="text-lg font-semibold text-white mb-4">Recent 10 Trades</h3>
+                                    {recentTradesLoading ? (
                                         <div className="h-[300px] flex items-center justify-center">
-                                            <LoadingSpinner message="Loading wallet activity..." />
+                                            <LoadingSpinner message="Loading recent trades..." />
                                         </div>
-                                    ) : activitiesLast7Days.length > 0 ? (
+                                    ) : recentTradesError ? (
+                                        <p className="text-red-400 text-center py-8">{recentTradesError}</p>
+                                    ) : recentTradesList.length > 0 ? (
                                         <>
-                                            <div className="space-y-3 mb-4">
-                                                {activitiesLast7Days
-                                                    .map((activity, idx) => {
-                                                        const activityDate = activity.timestamp
-                                                            ? new Date(activity.timestamp * 1000).toLocaleString()
-                                                            : 'N/A';
-                                                        const getActivityTypeColor = (type: string) => {
-                                                            switch (type) {
-                                                                case 'TRADE': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-                                                                case 'REDEEM': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-                                                                case 'REWARD': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-                                                                default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
-                                                            }
-                                                        };
-                                                        return (
-                                                            <div key={idx} className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
-                                                                <div className="flex items-start justify-between mb-2">
-                                                                    <div className="flex-1">
-                                                                        <div className="flex items-center gap-2 mb-1">
-                                                                            <span className={`px-2 py-1 rounded text-xs font-medium border ${getActivityTypeColor(activity.type || 'UNKNOWN')}`}>
-                                                                                {activity.type || 'UNKNOWN'}
-                                                                            </span>
-                                                                            {(activity as any).title && (
-                                                                                <span className="text-white font-medium text-sm">{(activity as any).title}</span>
-                                                                            )}
-                                                                        </div>
-                                                                        {(activity as any).slug && (
-                                                                            <p className="text-slate-400 text-xs mb-1">{(activity as any).slug}</p>
-                                                                        )}
-                                                                        {(activity as any).outcome && (
-                                                                            <p className="text-slate-300 text-sm">Outcome: {(activity as any).outcome}</p>
-                                                                        )}
-                                                                    </div>
-                                                                    <div className="text-right">
-                                                                        {activity.usdc_size && (
-                                                                            <p className={`text-lg font-bold ${(activity.type === 'REWARD' || activity.type === 'REDEEM')
-                                                                                ? 'text-emerald-400'
-                                                                                : (activity as any).side === 'SELL'
-                                                                                    ? 'text-emerald-400'
-                                                                                    : 'text-blue-400'
-                                                                                }`}>
-                                                                                {(activity as any).side === 'SELL' ? '+' : activity.type === 'REWARD' || activity.type === 'REDEEM' ? '+' : ''}
-                                                                                {formatCurrency(activity.usdc_size)}
-                                                                            </p>
-                                                                        )}
-                                                                        <p className="text-slate-500 text-xs mt-1">{activityDate}</p>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="flex items-center gap-4 text-xs text-slate-400 mt-2">
-                                                                    {activity.size && <span>Size: {formatSize(activity.size)}</span>}
-                                                                    {activity.price && <span>Price: ${Number(activity.price).toFixed(4)}</span>}
-                                                                    {activity.transaction_hash && (
-                                                                        <span className="truncate max-w-[200px]" title={activity.transaction_hash}>
-                                                                            TX: {activity.transaction_hash.slice(0, 10)}...
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
+                                            <div className="overflow-x-auto mb-4">
+                                                <table className="w-full">
+                                                    <thead>
+                                                        <tr className="border-b border-slate-800 text-slate-400 text-sm">
+                                                            <th className="text-left py-3 px-4 font-medium">Trade name</th>
+                                                            <th className="text-left py-3 px-4 font-medium">Date of purchase</th>
+                                                            <th className="text-left py-3 px-4 font-medium">Buy / Sell</th>
+                                                            <th className="text-right py-3 px-4 font-medium">Price</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-800/50">
+                                                        {recentTradesList.map((trade, idx) => (
+                                                            <tr key={idx} className="hover:bg-slate-800/30">
+                                                                <td className="py-3 px-4 text-slate-200 max-w-[280px] truncate" title={trade.title}>
+                                                                    {trade.title || '—'}
+                                                                </td>
+                                                                <td className="py-3 px-4 text-slate-300 whitespace-nowrap">
+                                                                    {trade.timestamp
+                                                                        ? new Date(trade.timestamp * 1000).toLocaleDateString('en-US', {
+                                                                            year: 'numeric',
+                                                                            month: 'short',
+                                                                            day: 'numeric',
+                                                                            hour: '2-digit',
+                                                                            minute: '2-digit',
+                                                                          })
+                                                                        : '—'}
+                                                                </td>
+                                                                <td className="py-3 px-4">
+                                                                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-semibold ${(trade.side || '').toUpperCase() === 'BUY' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
+                                                                        {(trade.side || '—').toUpperCase()}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="py-3 px-4 text-right font-medium text-white">
+                                                                    {formatCurrency(trade.price)}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
                                             </div>
-                                            <div className="text-slate-400 text-sm mt-4">
-                                                Showing {activitiesLast7Days.length} activities from the last 7 days
-                                            </div>
+                                            <p className="text-slate-400 text-sm">Showing {recentTradesList.length} recent trades (Polymarket Data API)</p>
                                         </>
                                     ) : (
-                                        <p className="text-slate-400 text-center py-8">
-                                            {activityTabList.length ? 'No activity in the last 7 days' : (activities?.length ? 'No activity in the last 7 days' : 'No activity data available')}
-                                        </p>
+                                        <p className="text-slate-400 text-center py-8">No recent trades for this wallet.</p>
                                     )}
                                 </div>
                             )}

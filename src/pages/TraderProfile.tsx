@@ -67,7 +67,7 @@ export function TraderProfile() {
   const [closedPositions, setClosedPositions] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
   const [liveMetrics, setLiveMetrics] = useState<ScoredMetrics | null>(null);
-  const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution'>('history');
+  const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution'>('distribution');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
@@ -335,6 +335,15 @@ export function TraderProfile() {
         {/* Tabs */}
         <div className={`flex gap-6 mb-6 border-b ${theme === 'dark' ? 'border-slate-800' : 'border-slate-200'}`}>
           <button
+            onClick={() => setActiveTab('distribution')}
+            className={`pb-3 px-2 font-medium transition ${activeTab === 'distribution'
+              ? 'text-emerald-400 border-b-2 border-emerald-400'
+              : `${textSecondaryClass} ${theme === 'dark' ? 'hover:text-white' : 'hover:text-slate-900'}`
+              }`}
+          >
+            Market Distribution
+          </button>
+          <button
             onClick={() => setActiveTab('history')}
             className={`pb-3 px-2 font-medium transition ${activeTab === 'history'
               ? 'text-emerald-400 border-b-2 border-emerald-400'
@@ -351,15 +360,6 @@ export function TraderProfile() {
               }`}
           >
             Performance Graph
-          </button>
-          <button
-            onClick={() => setActiveTab('distribution')}
-            className={`pb-3 px-2 font-medium transition ${activeTab === 'distribution'
-              ? 'text-emerald-400 border-b-2 border-emerald-400'
-              : `${textSecondaryClass} ${theme === 'dark' ? 'hover:text-white' : 'hover:text-slate-900'}`
-              }`}
-          >
-            Market Distribution
           </button>
         </div>
 

@@ -6,14 +6,17 @@ import {
   LineChart,
   ChevronLeft,
   ExternalLink,
+  BarChart3,
+  Star,
+  CandlestickChart
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import logo from "../assets/logo.png";
 
 const navItems = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Predictor Rating/Stat", href: "/profile-stat", icon: LayoutDashboard },
-  { name: "Market", href: "/markets", icon: LineChart, badge: "Coming Soon", disabled: true },
+  { name: "Dashboard", href: "/dashboard", icon: BarChart3 },
+  { name: "Predictor Rating/Stat", href: "/profile-stat", icon: Star },
+  { name: "Market", href: "/markets", icon: CandlestickChart, badge: "Coming Soon", disabled: true },
   { name: "Leaderboard", href: "/leaderboard", icon: Trophy, badge: "Coming Soon", disabled: true },
   { name: "Whales/insiders", href: "/Whales/insiders", icon: LineChart, badge: "Coming Soon", disabled: true },
   { name: "Powly AI", href: "/reports", icon: LineChart, badge: "Coming Soon", disabled: true, useLogo: true },

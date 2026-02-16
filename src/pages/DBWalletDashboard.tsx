@@ -58,7 +58,7 @@ export function DBWalletDashboard() {
     const [marketDistribution, setMarketDistribution] = useState<any[]>([]);
     const [backendScoringMetrics, setBackendScoringMetrics] = useState<any>(null);
     const [showAdvanced, setShowAdvanced] = useState(false);
-    const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution'>('history');
+    const [activeTab, setActiveTab] = useState<'history' | 'performance' | 'distribution'>('distribution');
 
     // Pagination states
     const [closedPositionsPage, setClosedPositionsPage] = useState(1);
@@ -488,6 +488,15 @@ export function DBWalletDashboard() {
                         {/* Tab Headers */}
                         <div className="flex border-b border-slate-800">
                             <button
+                                onClick={() => setActiveTab('distribution')}
+                                className={`px-6 py-3 font-medium transition-colors ${activeTab === 'distribution'
+                                    ? 'text-white border-b-2 border-purple-400'
+                                    : 'text-slate-400 hover:text-white'
+                                    }`}
+                            >
+                                Market Distribution
+                            </button>
+                            <button
                                 onClick={() => setActiveTab('history')}
                                 className={`px-6 py-3 font-medium transition-colors ${activeTab === 'history'
                                     ? 'text-white border-b-2 border-purple-400'
@@ -504,15 +513,6 @@ export function DBWalletDashboard() {
                                     }`}
                             >
                                 Performance
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('distribution')}
-                                className={`px-6 py-3 font-medium transition-colors ${activeTab === 'distribution'
-                                    ? 'text-white border-b-2 border-purple-400'
-                                    : 'text-slate-400 hover:text-white'
-                                    }`}
-                            >
-                                Market Distribution
                             </button>
                         </div>
 

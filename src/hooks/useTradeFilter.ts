@@ -1,15 +1,8 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { fetchFilteredTrades } from '../services/api';
 import { UserPnL } from '../types/api';
 
 export type TradeFilter = 'recent10' | '7days' | '30days' | 'all';
-
-interface TradeCache {
-    [key: string]: {
-        data: UserPnL[];
-        timestamp: number;
-    };
-}
 
 export function useTradeFilter(walletAddress: string) {
     const [loading, setLoading] = useState(false);
@@ -17,12 +10,9 @@ export function useTradeFilter(walletAddress: string) {
     const [trades, setTrades] = useState<UserPnL[]>([]);
     const [currentFilter, setCurrentFilter] = useState<TradeFilter | null>(null);
 
-    // Cache for storing fetched trade data
-    const cacheRef = useRef<TradeCache>({});
-
-    // When wallet changes, clear cache and displayed trades so we don't show previous wallet's data
+    // When wallet changes (e.g. user searched a new address), only clear state. Do NOT fetch.
+    // Portfolio performance data is fetched only when user explicitly clicks a filter (Recent 10, 7 Days, 30 Days, All).
     useEffect(() => {
-        cacheRef.current = {};
         setTrades([]);
         setCurrentFilter(null);
         setError(null);
@@ -31,30 +21,12 @@ export function useTradeFilter(walletAddress: string) {
     const fetchTrades = useCallback(async (filter: TradeFilter) => {
         if (!walletAddress) return;
 
-        // Check cache first
-        const cacheKey = `${walletAddress}-${filter}`;
-        const cached = cacheRef.current[cacheKey];
-
-        if (cached) {
-            console.log(`Using cached trades for filter: ${filter}`);
-            setTrades(cached.data);
-            setCurrentFilter(filter);
-            return;
-        }
-
-        // Fetch from API
         setLoading(true);
         setError(null);
 
         try {
             const result = await fetchFilteredTrades(walletAddress, filter);
             const tradeData = result.trades || [];
-
-            // Store in cache
-            cacheRef.current[cacheKey] = {
-                data: tradeData,
-                timestamp: Date.now()
-            };
 
             setTrades(tradeData);
             setCurrentFilter(filter);
@@ -66,8 +38,9 @@ export function useTradeFilter(walletAddress: string) {
         }
     }, [walletAddress]);
 
-    const clearCache = useCallback(() => {
-        cacheRef.current = {};
+    /** Set filter without fetching (e.g. when "All Trades" uses existing closedPositions). */
+    const setFilterOnly = useCallback((filter: TradeFilter | null) => {
+        setCurrentFilter(filter);
     }, []);
 
     return {
@@ -76,6 +49,6 @@ export function useTradeFilter(walletAddress: string) {
         error,
         currentFilter,
         fetchTrades,
-        clearCache
+        setFilterOnly,
     };
 }

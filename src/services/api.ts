@@ -618,6 +618,17 @@ export async function fetchFilteredTrades(walletAddress: string, filter: string 
 }
 
 /**
+ * Fetch the most recent trades for a wallet with full details (trade name, date, side, price).
+ * Used by the "Recent 10 Trades" tab in ProfileStat.
+ */
+export async function fetchRecentTrades(walletAddress: string, limit: number = 10): Promise<{ trades: Array<{ title: string; timestamp: number; side: string; price: number; size: number }> }> {
+    return fetchApi<{ trades: Array<{ title: string; timestamp: number; side: string; price: number; size: number }> }>(
+        `/dashboard/profile-stat/${walletAddress}/recent-trades?limit=${limit}`,
+        30000
+    );
+}
+
+/**
  * Lightweight fetch for Activity tab only (trades → activities). Fast; does not refetch full profile.
  */
 export async function fetchProfileStatActivities(walletAddress: string): Promise<{ activities: any[] }> {
