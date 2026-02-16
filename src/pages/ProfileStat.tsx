@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Search, Wallet, TrendingUp, TrendingDown, Trophy, ChevronDown, ChevronUp, Activity as ActivityIcon, RefreshCw } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
-import { BarChart, Bar, Cell, PieChart, Pie, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { BarChart, Bar, Cell, PieChart, Pie, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useProfileStat } from '../hooks/useProfileStat';
 import { useTradeFilter, TradeFilter } from '../hooks/useTradeFilter';
 import { resolveWalletOrUser, fetchUserLeaderboardData, fetchMarketDistribution, fetchRecentTrades, fetchTraderAutocomplete, type TraderAutocompleteItem } from '../services/api';
@@ -1252,7 +1252,7 @@ export function ProfileStat() {
                                 <>
                                     <div className="h-[300px] w-full mt-4">
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <LineChart data={performanceGraphData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                                            <AreaChart data={performanceGraphData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
                                                 <defs>
                                                     <linearGradient id="colorPnl" x1="0" y1="0" x2="0" y2="1">
                                                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
@@ -1287,15 +1287,14 @@ export function ProfileStat() {
                                                     labelFormatter={(label) => label}
                                                     formatter={(value: number) => ['Cumulative PnL: ' + formatCurrency(Number(value)), '']}
                                                 />
-                                                <Line
+                                                <Area
                                                     type="monotone"
                                                     dataKey="cumulativePnl"
                                                     stroke="#10b981"
-                                                    strokeWidth={3}
-                                                    dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#0f172a' }}
-                                                    activeDot={{ r: 6, strokeWidth: 0 }}
+                                                    strokeWidth={2}
+                                                    fill="url(#colorPnl)"
                                                 />
-                                            </LineChart>
+                                            </AreaChart>
                                         </ResponsiveContainer>
                                     </div>
                                     <p className="text-xs text-slate-500 mt-2">Source: Polymarket API (real data only)</p>
