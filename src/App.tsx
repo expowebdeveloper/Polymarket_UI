@@ -30,15 +30,8 @@ function TopBanner() {
   return (
     <div className="w-full bg-[#3C3E42] text-slate-200 px-4 py-2.5 flex items-center justify-center gap-2 relative">
       <p className="text-center text-sm">
-        Welcome to Chance! Please keep in mind that this is an early beta, and we're shipping updates every day to improve your experience. For support contact us on{' '}
-        <a
-          href="https://t.me/chance_support"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline hover:text-white transition-colors"
-        >
-          Telegram
-        </a>
+        Polyrating is in Early Beta. New updates and features may be released at any time as we continue improving the platform.
+        
       </p>
       <button
         type="button"
