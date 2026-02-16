@@ -1,8 +1,59 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { TradingHeader } from './components/TradingHeader';
 import { Footer } from './components/Footer';
+
+const BANNER_STORAGE_KEY = 'chance-banner-dismissed';
+
+function TopBanner() {
+  const [dismissed, setDismissed] = useState(true);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(BANNER_STORAGE_KEY);
+      setDismissed(stored === 'true');
+    } catch {
+      setDismissed(false);
+    }
+  }, []);
+
+  const handleClose = () => {
+    setDismissed(true);
+    try {
+      localStorage.setItem(BANNER_STORAGE_KEY, 'true');
+    } catch {}
+  };
+
+  if (dismissed) return null;
+
+  return (
+    <div className="w-full bg-[#3C3E42] text-slate-200 px-4 py-2.5 flex items-center justify-center gap-2 relative">
+      <p className="text-center text-sm">
+        Welcome to Chance! Please keep in mind that this is an early beta, and we're shipping updates every day to improve your experience. For support contact us on{' '}
+        <a
+          href="https://t.me/chance_support"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-white transition-colors"
+        >
+          Telegram
+        </a>
+      </p>
+      <button
+        type="button"
+        onClick={handleClose}
+        aria-label="Close banner"
+        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 6 6 18" />
+          <path d="m6 6 12 12" />
+        </svg>
+      </button>
+    </div>
+  );
+}
 import { Dashboard } from './pages/Dashboard';
 import { Leaderboard } from './pages/Leaderboard';
 import { Markets } from './pages/Markets';
@@ -34,9 +85,11 @@ function ProtectedLayout({
   onSelectSymbol: (symbol: string) => void;
 }) {
   return (
-    <div className="flex min-h-screen">
-      <Sidebar collapsed={collapsed} onSetCollapsed={onSetCollapsed} />
-      <div className={`${collapsed ? 'pl-[100px]' : 'pl-[264px]'} flex-1 flex flex-col transition-all duration-300`}>
+    <div className="flex flex-col min-h-screen">
+      <TopBanner />
+      <div className="flex flex-1 min-h-0">
+        <Sidebar collapsed={collapsed} onSetCollapsed={onSetCollapsed} />
+        <div className={`${collapsed ? 'pl-[100px]' : 'pl-[264px]'} flex-1 flex flex-col transition-all duration-300`}>
         <div className="flex-1 px-4 py-4">
           <Routes>
             <Route path="/dashboard" element={<Dashboard onSelectSymbol={onSelectSymbol} />} />
@@ -187,6 +240,7 @@ function ProtectedLayout({
           </Routes>
         </div>
         <Footer />
+        </div>
       </div>
     </div>
   );
