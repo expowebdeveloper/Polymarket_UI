@@ -405,7 +405,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
         <GlassCard>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="text-lg font-semibold text-white">Allocation by Category</div>
+              <div className="text-lg font-semibold text-white">Volume by Category</div>
               {/* <div className="text-sm text-white/55">https://backend.polyrating.com</div> */}
             </div>
             <div className="text-right">

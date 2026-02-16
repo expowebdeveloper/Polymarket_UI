@@ -699,8 +699,8 @@ export function ProfileStat() {
 
 
 
-    // Calculate badge info safely
-    const badgeInfo = metrics ? getBadgeInfo(metrics.final_score) : null;
+    // Calculate badge info safely; hide score tag when user tag is active
+    const badgeInfo = metrics && !metrics.user_tag ? getBadgeInfo(metrics.final_score) : null;
 
     // Calculate active positions value
     const activePositionsValue = useMemo(() => {
@@ -1119,7 +1119,7 @@ export function ProfileStat() {
                             className="flex items-center justify-between w-full px-6 py-3 bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 backdrop-blur-xl rounded-2xl hover:bg-white/[0.08] transition-all group"
                         >
                             <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold text-slate-300">Advanced Scoring & Metrics</span>
+                                <span className="text-sm font-semibold text-slate-300">Extra Metrics</span>
                             </div>
                             {showAdvanced ? <ChevronUp className="h-5 w-5 text-slate-500 group-hover:text-emerald-400" /> : <ChevronDown className="h-5 w-5 text-slate-500 group-hover:text-emerald-400" />}
                         </button>

@@ -84,12 +84,17 @@ function ProtectedLayout({
   onSetCollapsed: (collapsed: boolean) => void;
   onSelectSymbol: (symbol: string) => void;
 }) {
+  const contentOffset = collapsed ? 'pl-[100px]' : 'pl-[264px]';
+  const bannerOffset = collapsed ? 'ml-[100px]' : 'ml-[264px]';
+
   return (
     <div className="flex flex-col min-h-screen">
-      <TopBanner />
+      <div className={`shrink-0 transition-all duration-300 ${bannerOffset}`}>
+        <TopBanner />
+      </div>
       <div className="flex flex-1 min-h-0">
         <Sidebar collapsed={collapsed} onSetCollapsed={onSetCollapsed} />
-        <div className={`${collapsed ? 'pl-[100px]' : 'pl-[264px]'} flex-1 flex flex-col transition-all duration-300`}>
+        <div className={`${contentOffset} flex-1 flex flex-col transition-all duration-300`}>
         <div className="flex-1 px-4 py-4">
           <Routes>
             <Route path="/dashboard" element={<Dashboard onSelectSymbol={onSelectSymbol} />} />
