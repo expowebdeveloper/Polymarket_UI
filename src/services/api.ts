@@ -608,12 +608,46 @@ export async function fetchProfileStatData(walletAddress: string, skipTrades: bo
     return fetchApi<any>(url, 120000);
 }
 
+/** Polymarket user-pnl API base (used only for "All" filter). */
+const POLYMARKET_USER_PNL_API = 'https://user-pnl-api.polymarket.com/user-pnl';
+
 /**
- * Fetch filtered trade history for a wallet
- * @param walletAddress - Wallet address
- * @param filter - Filter type: "recent10", "7days", "30days", "all" (all return full trade history)
+ * Fetch full PnL history from Polymarket API (interval=all, fidelity=1d).
+ * Used only for the "All" trades chart; 7 days / 30 days / recent 10 use our backend.
+ */
+export async function fetchPolymarketUserPnLAll(walletAddress: string): Promise<Array<{ t: number; p: number }>> {
+    const url = `${POLYMARKET_USER_PNL_API}?user_address=${encodeURIComponent(walletAddress)}&interval=all&fidelity=1d`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { accept: 'application/json' },
+            signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (!response.ok) throw new Error(`Polymarket PnL API error: ${response.status}`);
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+    } catch (e) {
+        clearTimeout(timeoutId);
+        if (e instanceof Error && e.name === 'AbortError') {
+            throw { message: 'Request timeout loading full PnL history', status: 408 } as ApiError;
+        }
+        throw e;
+    }
+}
+
+/**
+ * Fetch filtered trade history for a wallet.
+ * For filter "all" only: uses Polymarket user-pnl API (interval=all, fidelity=1d).
+ * For "recent10", "7days", "30days": uses our backend.
  */
 export async function fetchFilteredTrades(walletAddress: string, filter: string = "all"): Promise<{ trades: any[], count: number, filter: string }> {
+    if (filter === 'all') {
+        const trades = await fetchPolymarketUserPnLAll(walletAddress);
+        return { trades, count: trades.length, filter: 'all' };
+    }
     return fetchApi<{ trades: any[], count: number, filter: string }>(`/dashboard/profile-stat/${walletAddress}/trades?filter=${filter}`, 60000);
 }
 

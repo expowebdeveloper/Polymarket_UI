@@ -656,8 +656,8 @@ export function ProfileStat() {
     }, [closedPositions]);
 
     const performanceGraphData = useMemo(() => {
-        // "All Trades": use existing closed positions when available (no API call)
-        if (currentFilter === 'all' && allTradesGraphFromClosed.length > 0) {
+        // "All Trades": use Polymarket user-pnl API data when available; else fallback to closed positions
+        if (currentFilter === 'all' && filteredTrades.length === 0 && allTradesGraphFromClosed.length > 0) {
             return allTradesGraphFromClosed;
         }
         const tradesData = filteredTrades.length > 0 ? filteredTrades : [];
@@ -946,14 +946,14 @@ export function ProfileStat() {
                         {/* Liquid glow blob */}
                         <div className="pointer-events-none absolute -top-24 left-1/2 h-40 w-[520px] -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
                         <div className="pointer-events-none absolute inset-0 rounded-3xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]" />
-                        <div className="flex items-center gap-3 flex-wrap">
+                        {/* <div className="flex items-center gap-3 flex-wrap">
                             <p className="text-sm uppercase tracking-widest text-emerald-300/80">Final Rating (Live)</p>
                             {volumeBonus > 0 && (
                                 <span className="text-xs font-medium text-amber-400/90 bg-amber-500/10 border border-amber-500/30 rounded-full px-2.5 py-1" title="Volume bonus: higher prediction count increases rating (up to +8% at 5000+ predictions)">
                                     Volume bonus +{(volumeBonus * 100).toFixed(1)}%
                                 </span>
                             )}
-                        </div>
+                        </div> */}
                         <div className="flex items-end gap-6">
                             <p className="text-[60px] leading-none font-extrabold bg-gradient-to-r from-emerald-300 to-emerald-500 bg-clip-text text-transparent">
                                 {displayScore.toFixed(1)}
@@ -1242,13 +1242,7 @@ export function ProfileStat() {
                                 {(['recent10', '7days', '30days', 'all'] as TradeFilter[]).map((filter) => (
                                     <button
                                         key={filter}
-                                        onClick={() => {
-                                            if (filter === 'all' && closedPositions.length > 0) {
-                                                setFilterOnly('all');
-                                            } else {
-                                                fetchTrades(filter);
-                                            }
-                                        }}
+                                        onClick={() => fetchTrades(filter)}
                                         disabled={tradesLoading}
                                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${currentFilter === filter
                                             ? 'bg-emerald-500 text-white shadow-lg'
@@ -1390,7 +1384,7 @@ export function ProfileStat() {
                                 { id: 'distribution', label: 'Distribution' },
                                 { id: 'active_positions', label: 'Active Positions' },
                                 { id: 'closed_positions', label: 'Closed Positions' },
-                                { id: 'activity', label: 'Recent 10 Trades' },
+                                { id: 'activity', label: 'Recent Trades' },
                                 // { id: 'history', label: 'Trade History' } // Hidden: trade history tab
                             ].map((tab) => (
                                 <button
