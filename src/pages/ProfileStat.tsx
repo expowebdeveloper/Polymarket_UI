@@ -946,14 +946,14 @@ export function ProfileStat() {
                         {/* Liquid glow blob */}
                         <div className="pointer-events-none absolute -top-24 left-1/2 h-40 w-[520px] -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
                         <div className="pointer-events-none absolute inset-0 rounded-3xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]" />
-                        {/* <div className="flex items-center gap-3 flex-wrap">
+                        <div className="flex items-center gap-3 flex-wrap">
                             <p className="text-sm uppercase tracking-widest text-emerald-300/80">Final Rating (Live)</p>
-                            {volumeBonus > 0 && (
+                            {/* {volumeBonus > 0 && (
                                 <span className="text-xs font-medium text-amber-400/90 bg-amber-500/10 border border-amber-500/30 rounded-full px-2.5 py-1" title="Volume bonus: higher prediction count increases rating (up to +8% at 5000+ predictions)">
                                     Volume bonus +{(volumeBonus * 100).toFixed(1)}%
                                 </span>
-                            )}
-                        </div> */}
+                            )} */}
+                        </div>
                         <div className="flex items-end gap-6">
                             <p className="text-[60px] leading-none font-extrabold bg-gradient-to-r from-emerald-300 to-emerald-500 bg-clip-text text-transparent">
                                 {displayScore.toFixed(1)}
