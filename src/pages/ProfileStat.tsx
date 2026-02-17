@@ -9,6 +9,7 @@ import { useTradeFilter, TradeFilter } from '../hooks/useTradeFilter';
 import { resolveWalletOrUser, fetchUserLeaderboardData, fetchMarketDistribution, fetchRecentTrades, fetchTraderAutocomplete, type TraderAutocompleteItem } from '../services/api';
 import { getVolumeRank } from '../utils/rankUtils';
 import { getStreakBadge } from '../utils/streakUtils';
+import { getVolumeBonus } from '../utils/scoring';
 import type { UserLeaderboardData } from '../types/api';
 import { MarketDistributionPanel } from '../components/MarketDistributionPanel';
 import { SocialLinks } from '../components/SocialLinks';
@@ -699,8 +700,18 @@ export function ProfileStat() {
 
 
 
+    // Final rating with volume bonus: BaseRating × (1 + Bonus(N)); badge uses this score
+    const { displayScore, volumeBonus } = useMemo(() => {
+        if (!metrics) return { displayScore: 0, volumeBonus: 0 };
+        const n = metrics.total_trades ?? 0;
+        const vb = getVolumeBonus(n);
+        const base = metrics.final_score ?? 0;
+        const withBonus = base * (1 + vb);
+        return { displayScore: Math.min(100, Math.max(0, withBonus)), volumeBonus: vb };
+    }, [metrics]);
+
     // Calculate badge info safely; hide score tag when user tag is active
-    const badgeInfo = metrics && !metrics.user_tag ? getBadgeInfo(metrics.final_score) : null;
+    const badgeInfo = metrics && !metrics.user_tag ? getBadgeInfo(displayScore) : null;
 
     // Calculate active positions value
     const activePositionsValue = useMemo(() => {
@@ -726,6 +737,12 @@ export function ProfileStat() {
         }, 0));
     }, [metrics?.total_losses, closedPositions]);
 
+    // Peak PNL = highest cumulative PnL ever reached (from performance graph data)
+    const peakPnl = useMemo(() => {
+        if (!performanceGraphData?.length) return 0;
+        return Math.max(...performanceGraphData.map((d) => d.cumulativePnl ?? 0), 0);
+    }, [performanceGraphData]);
+
     // Balance = portfolio value from Polymarket Data API (/value?user=...) — total wallet value
     const balance = useMemo(() => {
         if (portfolioValue !== undefined && portfolioValue !== null) return portfolioValue;
@@ -740,12 +757,20 @@ export function ProfileStat() {
     const [showCopied, setShowCopied] = useState(false);
 
     return (
-        <div className="min-h-screen text-white">
-            {/* Ambient liquid glow background – matches Dashboard */}
-            <div className="pointer-events-none fixed inset-0 z-0">
-                <div className="absolute inset-0 bg-[radial-gradient(1200px_700px_at_20%_10%,rgba(56,189,248,0.12),transparent_55%),radial-gradient(1000px_600px_at_80%_0%,rgba(99,102,241,0.10),transparent_55%),radial-gradient(900px_600px_at_50%_90%,rgba(16,185,129,0.08),transparent_60%)]" />
-                <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.06),transparent_30%,transparent_70%,rgba(255,255,255,0.04))] opacity-40" />
-                <div className="absolute inset-0 [background-image:radial-gradient(rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.06]" />
+        <div className="min-h-screen text-white bg-slate-950">
+            {/* Single seamless background: base + soft glow (no layered strips) */}
+            <div className="pointer-events-none fixed inset-0 z-0 bg-slate-950">
+                <div
+                    className="absolute inset-0 opacity-100"
+                    style={{
+                        background: [
+                            'radial-gradient(1200px 700px at 20% 10%, rgba(56,189,248,0.08), transparent 50%)',
+                            'radial-gradient(1000px 600px at 80% 0%, rgba(99,102,241,0.06), transparent 50%)',
+                            'radial-gradient(900px 600px at 50% 90%, rgba(16,185,129,0.05), transparent 55%)',
+                            'linear-gradient(to bottom, rgba(255,255,255,0.03) 0%, transparent 25%, transparent 75%, rgba(255,255,255,0.02) 100%)',
+                        ].join(', '),
+                    }}
+                />
             </div>
 
             {/* TOP NAV */}
@@ -921,10 +946,17 @@ export function ProfileStat() {
                         {/* Liquid glow blob */}
                         <div className="pointer-events-none absolute -top-24 left-1/2 h-40 w-[520px] -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
                         <div className="pointer-events-none absolute inset-0 rounded-3xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]" />
-                        <p className="text-sm uppercase tracking-widest text-emerald-300/80">Final Rating (Live)</p>
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <p className="text-sm uppercase tracking-widest text-emerald-300/80">Final Rating (Live)</p>
+                            {volumeBonus > 0 && (
+                                <span className="text-xs font-medium text-amber-400/90 bg-amber-500/10 border border-amber-500/30 rounded-full px-2.5 py-1" title="Volume bonus: higher prediction count increases rating (up to +8% at 5000+ predictions)">
+                                    Volume bonus +{(volumeBonus * 100).toFixed(1)}%
+                                </span>
+                            )}
+                        </div>
                         <div className="flex items-end gap-6">
                             <p className="text-[60px] leading-none font-extrabold bg-gradient-to-r from-emerald-300 to-emerald-500 bg-clip-text text-transparent">
-                                {Math.min(100, Math.max(0, metrics.final_score)).toFixed(1)}
+                                {displayScore.toFixed(1)}
                             </p>
                             <div className="flex gap-3 pb-2">
                                 {badgeInfo && (
@@ -970,7 +1002,7 @@ export function ProfileStat() {
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 mt-6">
                             <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
-                                <p className="text-xs text-slate-300 mb-0.5">Active Position Value</p>
+                                <p className="text-xs text-slate-300 mb-0.5">Active Positions Value</p>
                                 <p className="text-base font-bold text-emerald-300">{formatCurrency(balance)}</p>
                                 <p className="text-[10px] text-slate-400 mt-0.5">Portfolio value </p>
                             </div>
@@ -986,6 +1018,10 @@ export function ProfileStat() {
                                 <p className="text-xs text-slate-300 mb-0.5">Predictions</p>
                                 <p className="text-base font-bold text-emerald-300">{metrics.total_trades}</p>
                             </div>
+                            {/* <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all" title="Tiers: &lt;500 → 0%; 500–2499 → 1% to 5%; 2500–4999 → 5% to 8%; 5000+ → 8% cap">
+                                <p className="text-xs text-slate-300 mb-0.5">Volume bonus</p>
+                                <p className="text-base font-bold text-amber-400">{volumeBonus > 0 ? `+${(volumeBonus * 100).toFixed(1)}%` : '0%'}</p>
+                            </div> */}
                             <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
                                 <p className="text-xs text-slate-300 mb-0.5">Total Trades</p>
                                 <p className="text-base font-bold text-emerald-300">{totalPredictions}</p>
@@ -1046,8 +1082,8 @@ export function ProfileStat() {
                         </div>
                     </div>
 
-                    {/* PRIMARY METRICS GRID */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    {/* PRIMARY METRICS GRID - Win Rate, Stake Yield, Stake-Weighted Win Rate, Unrealized PnL, Realized PnL */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                         <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-2xl p-4 hover:border-white/15 transition-all group">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:scale-110 transition-transform">
@@ -1059,7 +1095,7 @@ export function ProfileStat() {
                             <p className="text-xs text-slate-500 mt-1">{metrics.streaks.total_wins}W / {metrics.streaks.total_losses}L</p>
                         </div>
 
-                        <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors group">
+                        <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-2xl p-4 hover:border-white/15 transition-all group">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
                                     <TrendingUp className="h-5 w-5" />
@@ -1072,7 +1108,7 @@ export function ProfileStat() {
                             <p className="text-xs text-slate-500 mt-1">All-time</p>
                         </div>
 
-                        <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors group">
+                        <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-2xl p-4 hover:border-white/15 transition-all group">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400 group-hover:scale-110 transition-transform">
                                     <ActivityIcon className="h-5 w-5" />
@@ -1085,7 +1121,7 @@ export function ProfileStat() {
                             <p className="text-xs text-slate-500 mt-1">Weighted by stake size</p>
                         </div>
 
-                        <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors group">
+                        <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-2xl p-4 hover:border-white/15 transition-all group">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
                                     <img src={unrealizedPnlIcon} alt="Unrealized PnL" className="h-6 w-6 object-contain" />
@@ -1098,7 +1134,7 @@ export function ProfileStat() {
                             <p className="text-xs text-slate-500 mt-1">Paper PnL</p>
                         </div>
 
-                        <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 hover:border-emerald-500/30 transition-colors group">
+                        <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-2xl p-4 hover:border-white/15 transition-all group">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 rounded-lg bg-red-500/10 text-red-400 group-hover:scale-110 transition-transform">
                                     <img src={realizedPnlIcon} alt="Realized PnL" className="h-5 w-5 object-contain" />
@@ -1329,12 +1365,19 @@ export function ProfileStat() {
                                 </div>
                                 <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl">
                                     <div className="flex items-center justify-between mb-1">
+                                        <p className="text-sm text-slate-400">Peak PNL</p>
+                                        <ActivityIcon className="h-4 w-4 text-cyan-400" />
+                                    </div>
+                                    <p className="text-xl font-bold text-cyan-400">{formatCurrency(peakPnl)}</p>
+                                </div>
+                                {/* <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl">
+                                    <div className="flex items-center justify-between mb-1">
                                         <p className="text-sm text-slate-400">Balance</p>
                                         <Wallet className="h-4 w-4 text-blue-400" />
                                     </div>
                                     <p className="text-xl font-bold text-white">{formatCurrency(balance)}</p>
                                     <p className="text-xs text-slate-500 mt-1">Portfolio value (Polymarket API)</p>
-                                </div>
+                                </div> */}
                             </div>
                         </div>
                     </div>

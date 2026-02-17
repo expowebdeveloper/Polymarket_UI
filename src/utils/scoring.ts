@@ -49,6 +49,8 @@ export interface ScoredMetrics {
     total_gains?: number;
     /** Sum of all losing realized PnL as positive number (from Polymarket closed positions). */
     total_losses?: number;
+    /** Volume bonus multiplier (0 to 0.08): extra % applied to base rating for high prediction count. */
+    volume_bonus?: number;
 }
 
 /**
@@ -135,6 +137,19 @@ export function calculateConfidenceScore(nPredictions: number): number {
     const y = Math.pow(x, 0.60);
     const z = Math.exp(-y);
     return 1.0 - z;
+}
+
+/**
+ * Volume bonus (piecewise linear) by prediction count N.
+ * N < 500 → 0%; 500–2499 → 1% to 5%; 2500–4999 → 5% to 8%; N ≥ 5000 → 8% cap.
+ * FinalRating = BaseRating × (1 + getVolumeBonus(N)).
+ */
+export function getVolumeBonus(nPredictions: number): number {
+    const n = nPredictions;
+    if (n < 500) return 0;
+    if (n < 2500) return 0.01 + 0.04 * (n - 500) / 2000;
+    if (n < 5000) return 0.05 + 0.03 * (n - 2500) / 2500;
+    return 0.08;
 }
 
 /**
@@ -297,6 +312,12 @@ export function calculateLiveMetrics(
     const confidence_score = calculateConfidenceScore(totalTrades);
     const roi_score = calculateRoiScore(roi / 100); // Input as fractional roi
 
+    // base_score = 0.225*W + 0.225*ROI + 0.50*PnL + 0.05*(1-Risk); base_rating = 100 * confidence(n) * base_score
+    const base_score = 0.225 * win_score + 0.225 * roi_score + 0.50 * pnl_score + 0.05 * (1 - risk_score);
+    const base_rating = 100 * confidence_score * base_score;
+    const volume_bonus = getVolumeBonus(totalTrades);
+    const final_score = Math.min(100, base_rating * (1 + volume_bonus));
+
     return {
         total_pnl: totalPnl,
         roi,
@@ -313,12 +334,8 @@ export function calculateLiveMetrics(
         total_volume: buyVolume + sellVolume,
         buy_volume: buyVolume,
         sell_volume: sellVolume,
-        final_score: confidence_score * (
-            0.30 * win_score * 100 +
-            0.15 * roi_score * 100 +
-            0.50 * pnl_score * 100 +
-            0.05 * (1 - risk_score) * 100
-        ),
+        final_score,
+        volume_bonus,
         risk_score,
         win_score,
         confidence_score,

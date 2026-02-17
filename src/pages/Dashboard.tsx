@@ -92,6 +92,55 @@ type Toast = {
 // -----------------------------
 const cn = (...c: Array<string | false | undefined | null>) => c.filter(Boolean).join(" ");
 
+const EARLY_BETA_BANNER_KEY = "chance-banner-dismissed";
+
+function EarlyBetaBanner() {
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(EARLY_BETA_BANNER_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(EARLY_BETA_BANNER_KEY);
+      setDismissed(stored === "true");
+    } catch {
+      setDismissed(false);
+    }
+  }, []);
+
+  const handleClose = () => {
+    setDismissed(true);
+    try {
+      localStorage.setItem(EARLY_BETA_BANNER_KEY, "true");
+    } catch {}
+  };
+
+  if (dismissed) return null;
+
+  return (
+    <div className="mb-4 w-full rounded-xl border border-white/10 bg-[#3C3E42] text-slate-200 px-4 py-2.5 flex items-center justify-center gap-2 relative">
+      <p className="text-center text-sm">
+        Polyrating is in Early Beta. New updates and features may be released at any time as we continue improving the platform.
+      </p>
+      <button
+        type="button"
+        onClick={handleClose}
+        aria-label="Close banner"
+        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 6 6 18" />
+          <path d="m6 6 12 12" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 function formatUSD(n: number) {
   if (!Number.isFinite(n)) return "$0";
   const abs = Math.abs(n);
@@ -638,6 +687,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
       </div>
 
       <div className="relative mx-auto w-full px-5 py-8">
+        <EarlyBetaBanner />
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex items-start gap-4">
             {/* <div className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/[0.06] backdrop-blur-xl"> */}
