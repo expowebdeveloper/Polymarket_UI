@@ -1291,7 +1291,7 @@ export function ProfileStat() {
                                                 </defs>
                                                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                                                 <XAxis
-                                                    dataKey="dateShort"
+                                                    dataKey={currentFilter === 'all' ? 'date' : 'dateShort'}
                                                     stroke="#64748b"
                                                     fontSize={11}
                                                     tickLine={false}
