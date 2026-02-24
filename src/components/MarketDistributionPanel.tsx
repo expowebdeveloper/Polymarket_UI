@@ -60,6 +60,15 @@ function colorForLabel(label: string) {
   return COLORS[label] ?? COLORS["Other"];
 }
 
+/** Format PNL in dollars: hundreds as-is, thousands with k, millions with M */
+function fmtPnl(dollars: number): string {
+  const sign = dollars < 0 ? "-" : "";
+  const abs = Math.abs(dollars);
+  if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(1)}M`;
+  if (abs >= 1e3) return `${sign}$${(abs / 1e3).toFixed(1)}k`;
+  return `${sign}$${abs.toFixed(2)}`;
+}
+
 function fmtMoney(value: number, unit: "M" | "K") {
   const sign = value < 0 ? "-" : "";
   const abs = Math.abs(value);
@@ -386,9 +395,13 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
       })),
     [rightSeries]
   );
+  const pnlExtent = useMemo(() => {
+    if (pnlChartData.length === 0) return { min: 0, max: 0 };
+    const vals = pnlChartData.map((d) => d.value);
+    return { min: Math.min(...vals), max: Math.max(...vals) };
+  }, [pnlChartData]);
   const volumeTotalM = totalVolume / 1e6;
-  const pnlTotalK =
-    rightSeries.reduce((a, b) => a + b.value, 0) / 1e3;
+  const pnlTotalDollars = rightSeries.reduce((a, b) => a + b.value, 0);
 
   if (markets.length === 0) {
     return (
@@ -482,8 +495,8 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
             <div className="text-right">
               <div className="text-sm text-white/55">Total</div>
               <div className="font-semibold text-emerald-300">
-                {pnlTotalK >= 0 ? "+" : ""}
-                {fmtMoney(pnlTotalK, "K")}
+                {pnlTotalDollars >= 0 ? "+" : ""}
+                {fmtPnl(pnlTotalDollars)}
               </div>
             </div>
           </div>
@@ -510,7 +523,8 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
                   axisLine={false}
                   tickLine={false}
                   width={42}
-                  tickFormatter={(v) => `$${v}k`}
+                  domain={[Math.min(pnlExtent.min, 0) - 0.5, Math.max(pnlExtent.max, 0) + 0.5]}
+                  tickFormatter={(v) => fmtPnl(v * 1e3)}
                 />
                 <Tooltip
                   cursor={{ fill: "rgba(255,255,255,0.04)" }}
@@ -518,7 +532,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
                     <MiniTooltip
                       {...props}
                       valueFormatter={(v: number) =>
-                        (v >= 0 ? "+" : "") + fmtMoney(v, "K")
+                        (v * 1e3 >= 0 ? "+" : "") + fmtPnl(v * 1e3)
                       }
                     />
                   )}
@@ -540,7 +554,6 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
               const totalPnl = rightSeries.reduce((a, b) => a + b.value, 0);
               const pct =
                 totalPnl !== 0 ? (row.value / totalPnl) * 100 : 0;
-              const valueK = row.value / 1e3;
               return (
                 <div
                   key={row.key}
@@ -568,8 +581,8 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
                         className={`text-xl font-semibold ${row.value >= 0 ? "text-white" : "text-rose-400"
                           }`}
                       >
-                        {valueK >= 0 ? "+" : ""}
-                        {fmtMoney(valueK, "K")}
+                        {row.value >= 0 ? "+" : ""}
+                        {fmtPnl(row.value)}
                       </div>
                     </div>
                   </div>

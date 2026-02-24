@@ -17,15 +17,16 @@ import realizedPnlIcon from '../assets/realized_pnl.svg';
 import unrealizedPnlIcon from '../assets/unr_pnl.svg';
 
 
-// Helper function to format currency
+// Helper function to format currency: hundreds as-is, thousands with k, millions with M
 const formatCurrency = (value: number | string | undefined): string => {
     if (!value && value !== 0) return '$0.00';
     const num = typeof value === 'string' ? parseFloat(value) : value;
     if (isNaN(num)) return '$0.00';
-    if (num >= 1000000) return `$${(num / 1000000).toFixed(1)}M`;
-    if (num >= 100000) return `$${(num / 1000).toFixed(1)}K`;
-    if (num >= 1000) return `$${(num / 1000).toFixed(2)}K`;
-    return `$${num.toFixed(2)}`;
+    const abs = Math.abs(num);
+    const sign = num < 0 ? '-' : '';
+    if (abs >= 1000000) return `${sign}$${(abs / 1000000).toFixed(1)}M`;
+    if (abs >= 1000) return `${sign}$${(abs / 1000).toFixed(1)}k`;
+    return `${sign}$${abs.toFixed(2)}`;
 };
 
 // Helper function to format date
@@ -737,11 +738,17 @@ export function ProfileStat() {
         }, 0));
     }, [metrics?.total_losses, closedPositions]);
 
-    // Peak PNL = highest cumulative PnL ever reached (from performance graph data)
-    const peakPnl = useMemo(() => {
-        if (!performanceGraphData?.length) return 0;
-        return Math.max(...performanceGraphData.map((d) => d.cumulativePnl ?? 0), 0);
-    }, [performanceGraphData]);
+    // Peak PNL = highest cumulative PnL ever reached (all time only, from closed positions)
+    const allTimePeakPnl = useMemo(() => {
+        if (!allTradesGraphFromClosed?.length) return 0;
+        return Math.max(...allTradesGraphFromClosed.map((d) => d.cumulativePnl ?? 0), 0);
+    }, [allTradesGraphFromClosed]);
+
+    // Max drawdown = worst PnL at any time (all time only) = minimum cumulative PnL ever reached
+    const maxDrawdownWorstPnl = useMemo(() => {
+        if (!allTradesGraphFromClosed?.length) return 0;
+        return Math.min(...allTradesGraphFromClosed.map((d) => d.cumulativePnl ?? 0), 0);
+    }, [allTradesGraphFromClosed]);
 
     // Balance = portfolio value from Polymarket Data API (/value?user=...) — total wallet value
     const balance = useMemo(() => {
@@ -1191,10 +1198,6 @@ export function ProfileStat() {
                                     <p className="text-lg font-bold text-white">{formatCurrency(metrics.total_stakes || metrics.buy_volume || 0)}</p>
                                 </div>
                                 <div className="bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 backdrop-blur-xl rounded-2xl p-4">
-                                    <p className="text-xs text-slate-400 uppercase mb-1">Max Stake</p>
-                                    <p className="text-lg font-bold text-white">{formatCurrency(metrics.max_stake)}</p>
-                                </div>
-                                <div className="bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 backdrop-blur-xl rounded-2xl p-4">
                                     <p className="text-xs text-slate-400 uppercase mb-1">Winning Stake</p>
                                     <p className="text-lg font-bold text-emerald-400">{formatCurrency(metrics.winning_stakes)}</p>
                                 </div>
@@ -1203,7 +1206,11 @@ export function ProfileStat() {
                                     <p className="text-lg font-bold text-red-400">{formatCurrency(metrics.losing_stakes)}</p>
                                 </div>
                                 <div className="bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 backdrop-blur-xl rounded-2xl p-4">
-                                    <p className="text-xs text-slate-400 uppercase mb-1">Average Stake</p>
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Max Stake Size</p>
+                                    <p className="text-lg font-bold text-white">{formatCurrency(metrics.max_stake)}</p>
+                                </div>
+                                <div className="bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 backdrop-blur-xl rounded-2xl p-4">
+                                    <p className="text-xs text-slate-400 uppercase mb-1">Average Stake Size</p>
                                     <p className="text-lg font-bold text-white">
                                         {formatCurrency((metrics.total_stakes || 0) / (metrics.total_trades || 1))}
                                     </p>
@@ -1362,7 +1369,16 @@ export function ProfileStat() {
                                         <p className="text-sm text-slate-400">Peak PNL</p>
                                         <ActivityIcon className="h-4 w-4 text-cyan-400" />
                                     </div>
-                                    <p className="text-xl font-bold text-cyan-400">{formatCurrency(peakPnl)}</p>
+                                    <p className="text-xl font-bold text-cyan-400">{formatCurrency(allTimePeakPnl)}</p>
+                                    <p className="text-xs text-slate-500 mt-1">All time only · Highest cumulative PnL ever</p>
+                                </div>
+                                <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="text-sm text-slate-400">Max Drawdown</p>
+                                        <TrendingDown className="h-4 w-4 text-red-400" />
+                                    </div>
+                                    <p className="text-xl font-bold text-red-400">{formatCurrency(maxDrawdownWorstPnl)}</p>
+                                    <p className="text-xs text-slate-500 mt-1">All time only · Worst PnL at any time</p>
                                 </div>
                                 {/* <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl">
                                     <div className="flex items-center justify-between mb-1">
@@ -1705,7 +1721,7 @@ export function ProfileStat() {
                                                 <BarChart data={profitTrend} margin={{ top: 8, right: 8, left: 8, bottom: 28 }}>
                                                     <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                                                     <XAxis dataKey="day" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickMargin={8} />
-                                                    <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
+                                                    <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => formatCurrency(Number(v))} />
                                                     <Tooltip
                                                         contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
                                                         formatter={(value: any) => [formatCurrency(value), 'Daily PnL']}
