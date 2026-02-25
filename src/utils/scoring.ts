@@ -143,13 +143,39 @@ export function calculateConfidenceScore(nPredictions: number): number {
  * Volume bonus (piecewise linear) by prediction count N.
  * N < 500 → 0%; 500–2499 → 1% to 5%; 2500–4999 → 5% to 8%; N ≥ 5000 → 8% cap.
  * FinalRating = BaseRating × (1 + getVolumeBonus(N)).
+ * Only eligible when total PnL is at least MIN_PNL_FOR_BONUS_USD ($1k).
  */
+export const MIN_PNL_FOR_BONUS_USD = 1000;
+
 export function getVolumeBonus(nPredictions: number): number {
     const n = nPredictions;
     if (n < 500) return 0;
     if (n < 2500) return 0.01 + 0.04 * (n - 500) / 2000;
     if (n < 5000) return 0.05 + 0.03 * (n - 2500) / 2500;
     return 0.08;
+}
+
+/** Min predictions required for Polyrating accuracy bonus. */
+export const MIN_PREDICTIONS_FOR_POLYRATING_BONUS = 100;
+
+/**
+ * Polyrating bonus by WScore (accuracy). Only applies when nPredictions >= 100.
+ * Moderate reward below 90%; aggressive elite reward from 90%+.
+ * wScoreFraction: win score in 0–1 (e.g. from calculateWinScore).
+ */
+export function getPolyratingBonus(nPredictions: number, wScoreFraction: number): number {
+    if (nPredictions < MIN_PREDICTIONS_FOR_POLYRATING_BONUS) return 0;
+    const pct = wScoreFraction * 100;
+    if (pct < 65) return 0;
+    if (pct < 75) return 0.01;
+    if (pct < 85) return 0.02;
+    if (pct < 90) return 0.03;
+    if (pct < 92) return 0.05;
+    if (pct < 94) return 0.06;
+    if (pct < 96) return 0.07;
+    if (pct < 98) return 0.08;
+    if (pct < 100) return 0.09;
+    return 0.10;
 }
 
 /**
@@ -315,7 +341,8 @@ export function calculateLiveMetrics(
     // base_score = 0.225*W + 0.225*ROI + 0.50*PnL + 0.05*(1-Risk); base_rating = 100 * confidence(n) * base_score
     const base_score = 0.225 * win_score + 0.225 * roi_score + 0.50 * pnl_score + 0.05 * (1 - risk_score);
     const base_rating = 100 * confidence_score * base_score;
-    const volume_bonus = getVolumeBonus(totalTrades);
+    // Polyrating bonus: min 100 predictions, bonus from WScore (65%+ = 1%, up to 10% at 100%)
+    const volume_bonus = getPolyratingBonus(totalTrades, win_score);
     const final_score = Math.min(100, base_rating * (1 + volume_bonus));
 
     return {

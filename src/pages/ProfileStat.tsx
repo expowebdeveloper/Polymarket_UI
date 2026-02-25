@@ -9,7 +9,7 @@ import { useTradeFilter, TradeFilter } from '../hooks/useTradeFilter';
 import { resolveWalletOrUser, fetchUserLeaderboardData, fetchMarketDistribution, fetchRecentTrades, fetchTraderAutocomplete, type TraderAutocompleteItem } from '../services/api';
 import { getVolumeRank } from '../utils/rankUtils';
 import { getStreakBadge } from '../utils/streakUtils';
-import { getVolumeBonus } from '../utils/scoring';
+import { getPolyratingBonus } from '../utils/scoring';
 import type { UserLeaderboardData } from '../types/api';
 import { MarketDistributionPanel } from '../components/MarketDistributionPanel';
 import { SocialLinks } from '../components/SocialLinks';
@@ -701,14 +701,15 @@ export function ProfileStat() {
 
 
 
-    // Final rating with volume bonus: BaseRating × (1 + Bonus(N)); badge uses this score
-    const { displayScore, volumeBonus } = useMemo(() => {
-        if (!metrics) return { displayScore: 0, volumeBonus: 0 };
+    // Final rating with Polyrating bonus: BaseRating × (1 + Bonus(WScore)); bonus only if predictions ≥ 100.
+    const { displayScore, polyratingBonus } = useMemo(() => {
+        if (!metrics) return { displayScore: 0, polyratingBonus: 0 };
         const n = metrics.total_trades ?? 0;
-        const vb = getVolumeBonus(n);
+        const wScore = metrics.win_score ?? 0; // 0–1
+        const bonus = getPolyratingBonus(n, wScore);
         const base = metrics.final_score ?? 0;
-        const withBonus = base * (1 + vb);
-        return { displayScore: Math.min(100, Math.max(0, withBonus)), volumeBonus: vb };
+        const withBonus = base * (1 + bonus);
+        return { displayScore: Math.min(100, Math.max(0, withBonus)), polyratingBonus: bonus };
     }, [metrics]);
 
     // Calculate badge info safely; hide score tag when user tag is active
@@ -955,11 +956,11 @@ export function ProfileStat() {
                         <div className="pointer-events-none absolute inset-0 rounded-3xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]" />
                         <div className="flex items-center gap-3 flex-wrap">
                             <p className="text-sm uppercase tracking-widest text-emerald-300/80">Final Rating</p>
-                            {/* {volumeBonus > 0 && (
-                                <span className="text-xs font-medium text-amber-400/90 bg-amber-500/10 border border-amber-500/30 rounded-full px-2.5 py-1" title="Volume bonus: higher prediction count increases rating (up to +8% at 5000+ predictions)">
-                                    Volume bonus +{(volumeBonus * 100).toFixed(1)}%
+                            {polyratingBonus > 0 && (
+                                <span className="text-xs font-medium text-amber-400/90 bg-amber-500/10 border border-amber-500/30 rounded-full px-2.5 py-1" title="Polyrating bonus: accuracy (WScore) bonus when predictions ≥ 100. 65%+ = 1%, up to 10% at 100%.">
+                                    WScore bonus +{(polyratingBonus * 100).toFixed(0)}%
                                 </span>
-                            )} */}
+                            )}
                         </div>
                         <div className="flex items-end gap-6">
                             <p className="text-[60px] leading-none font-extrabold bg-gradient-to-r from-emerald-300 to-emerald-500 bg-clip-text text-transparent">
@@ -1025,10 +1026,10 @@ export function ProfileStat() {
                                 <p className="text-xs text-slate-300 mb-0.5">Predictions</p>
                                 <p className="text-base font-bold text-emerald-300">{metrics.total_trades}</p>
                             </div>
-                            {/* <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all" title="Tiers: &lt;500 → 0%; 500–2499 → 1% to 5%; 2500–4999 → 5% to 8%; 5000+ → 8% cap">
-                                <p className="text-xs text-slate-300 mb-0.5">Volume bonus</p>
-                                <p className="text-base font-bold text-amber-400">{volumeBonus > 0 ? `+${(volumeBonus * 100).toFixed(1)}%` : '0%'}</p>
-                            </div> */}
+                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all" title="Polyrating: min 100 predictions. 65–75%=1%, 75–85%=2%, 85–90%=3%, 90%+=5–10%.">
+                                <p className="text-xs text-slate-300 mb-0.5">WScore bonus</p>
+                                <p className="text-base font-bold text-amber-400">{polyratingBonus > 0 ? `+${(polyratingBonus * 100).toFixed(0)}%` : '0%'}</p>
+                            </div>
                             <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
                                 <p className="text-xs text-slate-300 mb-0.5">Total Trades</p>
                                 <p className="text-base font-bold text-emerald-300">{totalPredictions}</p>
