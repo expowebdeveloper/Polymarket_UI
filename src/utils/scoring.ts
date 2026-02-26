@@ -159,6 +159,48 @@ export function getVolumeBonus(nPredictions: number): number {
 export const MIN_PREDICTIONS_FOR_POLYRATING_BONUS = 100;
 
 /**
+ * Stake Yield Bonus: % multiplier on base rating. Bucket by prediction count first;
+ * within that bucket, pick the highest stake-yield threshold that matches (no stacking).
+ * stakeYieldPct in percent (e.g. 5.2 means 5.2%). Predictions < 800 → 0%.
+ * FinalRating = BaseRating × (1 + bonus_pct / 100).
+ */
+export function getStakeYieldBonusPct(nPredictions: number, stakeYieldPct: number): number {
+    if (nPredictions < 800) return 0;
+    const sy = stakeYieldPct;
+    if (nPredictions >= 800 && nPredictions <= 1499) {
+        if (sy > 10) return 5;
+        if (sy > 8) return 4;
+        if (sy > 5) return 3.5;
+        if (sy > 3) return 3;
+        return 0;
+    }
+    if (nPredictions >= 1500 && nPredictions <= 2999) {
+        if (sy > 10) return 8;
+        if (sy > 8) return 6;
+        if (sy > 2.5) return 4;
+        return 0;
+    }
+    if (nPredictions >= 3000 && nPredictions <= 4999) {
+        if (sy > 10) return 10;
+        if (sy > 5) return 7;
+        if (sy > 2) return 5;
+        return 0;
+    }
+    if (nPredictions >= 5000 && nPredictions <= 9999) {
+        if (sy > 10) return 10;
+        if (sy > 5) return 10;
+        if (sy > 1.5) return 6;
+        return 0;
+    }
+    // >= 10000
+    if (sy > 10) return 20;
+    if (sy > 5) return 15;
+    if (sy >= 3) return 10;
+    if (sy > 1) return 7;
+    return 0;
+}
+
+/**
  * Polyrating bonus by WScore (accuracy). Only applies when nPredictions >= 100.
  * Moderate reward below 90%; aggressive elite reward from 90%+.
  * wScoreFraction: win score in 0–1 (e.g. from calculateWinScore).
@@ -343,7 +385,8 @@ export function calculateLiveMetrics(
     const base_rating = 100 * confidence_score * base_score;
     // Polyrating bonus: min 100 predictions, bonus from WScore (65%+ = 1%, up to 10% at 100%)
     const volume_bonus = getPolyratingBonus(totalTrades, win_score);
-    const final_score = Math.min(100, base_rating * (1 + volume_bonus));
+    const stake_yield_bonus_pct = getStakeYieldBonusPct(totalTradesWithPnl, roi);
+    const final_score = Math.min(100, base_rating * (1 + volume_bonus) * (1 + stake_yield_bonus_pct / 100));
 
     return {
         total_pnl: totalPnl,

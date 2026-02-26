@@ -18,6 +18,7 @@ import {
   User,
 } from "lucide-react";
 import { API_BASE_URL } from "../config";
+import { headersWithNgrokSkip } from "../services/api";
 import { useActivityWebSocket, type Activity as WsActivity } from "../hooks/useActivityWebSocket";
 import logo from "../assets/Vector.svg";
 
@@ -445,7 +446,10 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
   // Fetch dashboard stats
   const fetchStats = async (signal?: AbortSignal) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/dashboard/stats`, { signal });
+      const res = await fetch(`${API_BASE_URL}/dashboard/stats`, {
+        signal,
+        headers: headersWithNgrokSkip(`${API_BASE_URL}/dashboard/stats`, { accept: 'application/json' }),
+      });
       if (res.ok) {
         const data = await res.json();
         setStats(data);
@@ -461,7 +465,10 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
   // Fetch market count, total events, and active (live) from backend — always returns exact values
   const fetchMarketCount = async (signal?: AbortSignal) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/dashboard/market-count`, { signal });
+      const res = await fetch(`${API_BASE_URL}/dashboard/market-count`, {
+        signal,
+        headers: headersWithNgrokSkip(`${API_BASE_URL}/dashboard/market-count`, { accept: 'application/json' }),
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.counts) {

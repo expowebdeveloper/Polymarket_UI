@@ -22,6 +22,17 @@ import type {
     PaginationInfo,
 } from '../types/api';
 
+/** If the request URL is an ngrok host, include the header so ngrok doesn't show the interstitial. */
+export function headersWithNgrokSkip(url: string, base: Record<string, string>): Record<string, string> {
+    try {
+        const isNgrok = new URL(url).hostname.includes('ngrok');
+        return { ...base, ...(isNgrok ? { 'ngrok-skip-browser-warning': 'true' } : {}) };
+    } catch {
+        return base;
+    }
+}
+
+
 /**
  * Generic fetch wrapper with error handling and timeout
  */
@@ -40,10 +51,10 @@ async function fetchApi<T>(endpoint: string, timeoutMs: number = 30000, method: 
 
         const response = await fetch(url, {
             method,
-            headers: {
+            headers: headersWithNgrokSkip(url, {
                 'accept': 'application/json',
                 'Content-Type': 'application/json',
-            },
+            }),
             signal: controller.signal,
         });
 
@@ -696,7 +707,7 @@ export async function resolveWalletOrUser(query: string): Promise<{ wallet_addre
     try {
         const response = await fetch(url, {
             method: 'GET',
-            headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
+            headers: headersWithNgrokSkip(url, { 'accept': 'application/json', 'Content-Type': 'application/json' }),
             signal: controller.signal,
         });
         clearTimeout(timeoutId);
@@ -751,7 +762,7 @@ export async function fetchTraderAutocomplete(
     try {
         const response = await fetch(url, {
             method: 'GET',
-            headers: { accept: 'application/json', 'Content-Type': 'application/json' },
+            headers: headersWithNgrokSkip(url, { accept: 'application/json', 'Content-Type': 'application/json' }),
             signal: controller.signal,
         });
         clearTimeout(timeoutId);
@@ -846,10 +857,10 @@ export async function register(data: RegisterRequest): Promise<UserResponse> {
     try {
         const response = await fetch(url, {
             method: 'POST',
-            headers: {
+            headers: headersWithNgrokSkip(url, {
                 'accept': 'application/json',
                 'Content-Type': 'application/json',
-            },
+            }),
             body: JSON.stringify(data),
             signal: controller.signal,
         });
@@ -883,10 +894,10 @@ export async function login(data: LoginRequest): Promise<AuthResponse> {
     try {
         const response = await fetch(url, {
             method: 'POST',
-            headers: {
+            headers: headersWithNgrokSkip(url, {
                 'accept': 'application/json',
                 'Content-Type': 'application/json',
-            },
+            }),
             body: JSON.stringify(data),
             signal: controller.signal,
         });
@@ -920,10 +931,10 @@ export async function logout(): Promise<{ message: string, success: boolean }> {
     try {
         const response = await fetch(url, {
             method: 'POST',
-            headers: {
+            headers: headersWithNgrokSkip(url, {
                 'accept': 'application/json',
                 'Content-Type': 'application/json',
-            },
+            }),
             signal: controller.signal,
         });
 

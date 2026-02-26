@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { fetchTradersAnalytics } from '../services/api';
+import { fetchTradersAnalytics, headersWithNgrokSkip } from '../services/api';
 import type { AllLeaderboardsResponse, LeaderboardEntry } from '../types/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
@@ -58,7 +58,10 @@ export const DatabaseLeaderboard: React.FC = () => {
     const handleSync = async () => {
         try {
             setSyncing(true);
-            await fetch(`${API_BASE_URL}/traders/sync?limit=50`, { method: 'POST' });
+            await fetch(`${API_BASE_URL}/traders/sync?limit=50`, {
+                method: 'POST',
+                headers: headersWithNgrokSkip(`${API_BASE_URL}/traders/sync?limit=50`, { accept: 'application/json' }),
+            });
             await loadData();
         } catch (err) {
             console.error('Failed to sync:', err);
