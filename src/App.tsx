@@ -180,7 +180,7 @@ function ProtectedLayout({
               }
             />
             <Route
-              path="/profile-stat"
+              path="/profile-stat/:walletAddress?"
               element={
                 <>
                   <ProfileStat />

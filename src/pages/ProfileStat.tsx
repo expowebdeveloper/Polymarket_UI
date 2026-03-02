@@ -1,5 +1,5 @@
-    import { useState, useMemo, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+   import { useState, useMemo, useEffect, useRef } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Search, Wallet, TrendingUp, TrendingDown, Trophy, ChevronDown, ChevronUp, Activity as ActivityIcon, RefreshCw } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
@@ -13,6 +13,7 @@ import { getPolyratingBonus } from '../utils/scoring';
 import type { UserLeaderboardData } from '../types/api';
 import { MarketDistributionPanel } from '../components/MarketDistributionPanel';
 import { SocialLinks } from '../components/SocialLinks';
+import html2canvas from 'html2canvas';
 import realizedPnlIcon from '../assets/realized_pnl.svg';
 import unrealizedPnlIcon from '../assets/unr_pnl.svg';
 
@@ -105,6 +106,8 @@ const getBadgeInfo = (score: number) => {
 };
 
 export function ProfileStat() {
+    const navigate = useNavigate();
+    const { walletAddress } = useParams<{ walletAddress?: string }>();
     const [searchParams] = useSearchParams();
     const [walletInput, setWalletInput] = useState('');
     const [activeWallet, setActiveWallet] = useState('');
@@ -141,6 +144,7 @@ export function ProfileStat() {
     const autocompleteRef = useRef<HTMLDivElement>(null);
     const autocompleteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const portfolioAutoFetchedRef = useRef<string | null>(null);
+    const profileScreenshotRef = useRef<HTMLDivElement | null>(null);
 
     const {
         loading,
@@ -176,14 +180,17 @@ export function ProfileStat() {
         setFilterOnly,
     } = useTradeFilter(activeWallet);
 
-    // Prefill wallet from URL ?wallet=0x... (e.g. from Dashboard biggest winner link)
+    // Prefill wallet from URL path /profile-stat/:walletAddress or ?wallet=0x... (legacy)
     useEffect(() => {
-        const walletFromUrl = searchParams.get('wallet');
+        const walletFromPath = walletAddress;
+        const walletFromQuery = searchParams.get('wallet');
+        const walletFromUrl = walletFromPath || walletFromQuery;
+
         if (walletFromUrl && walletFromUrl.startsWith('0x') && walletFromUrl.length === 42) {
             setWalletInput(walletFromUrl);
             setActiveWallet(walletFromUrl);
         }
-    }, [searchParams]);
+    }, [walletAddress, searchParams]);
 
     // Fetch user profile data when wallet changes (header). Cache per wallet so searched profile shows its own data.
     useEffect(() => {
@@ -345,6 +352,7 @@ export function ProfileStat() {
             const resolvedAddress = resolution.wallet_address;
 
             setActiveWallet(resolvedAddress);
+            navigate(`/profile-stat/${resolvedAddress}`);
             setHistoryPage(1);
             setActivePositionsPage(1);
             setClosedPositionsPage(1);
@@ -358,6 +366,7 @@ export function ProfileStat() {
         const display = item.username || item.pseudonym || item.wallet_address;
         setWalletInput(display);
         setActiveWallet(item.wallet_address);
+        navigate(`/profile-stat/${item.wallet_address}`);
         setShowSuggestions(false);
         setSuggestions([]);
         setSearchError(null);
@@ -801,6 +810,38 @@ export function ProfileStat() {
     }, [closedPositions.length, positions.length]);
 
     const [showCopied, setShowCopied] = useState(false);
+    const [isSharing, setIsSharing] = useState(false);
+
+    const handleShareOnX = async () => {
+        if (!activeWallet || !profileScreenshotRef.current || isSharing) return;
+        setIsSharing(true);
+        try {
+            const el = profileScreenshotRef.current;
+            const canvas = await html2canvas(el, {
+                useCORS: true,
+                allowTaint: true,
+                logging: false,
+            });
+
+            const dataUrl = canvas.toDataURL('image/png');
+
+            const downloadLink = document.createElement('a');
+            downloadLink.href = dataUrl;
+            downloadLink.download = `polyrating-profile-${activeWallet}.png`;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+
+            const profileUrl = `${window.location.origin}/profile-stat/${encodeURIComponent(activeWallet)}`;
+            const text = encodeURIComponent('Check out this Polymarket trading profile:');
+            const tweetUrl = `https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(profileUrl)}`;
+            window.open(tweetUrl, '_blank', 'noopener,noreferrer');
+        } catch (err) {
+            console.error('Failed to share on X:', err);
+        } finally {
+            setIsSharing(false);
+        }
+    };
 
     return (
         <div className="min-h-screen text-white bg-slate-950">
@@ -819,6 +860,8 @@ export function ProfileStat() {
                 />
             </div>
 
+            {/* Screenshot area: top bar + main stats only (alignment matches UI) */}
+            <div ref={profileScreenshotRef} className="w-full max-w-7xl mx-auto bg-slate-950">
             {/* TOP NAV */}
             <div className="sticky top-0 z-30 border-b border-white/10">
                 <div className="flex items-center justify-center px-6 py-6">
@@ -948,11 +991,27 @@ export function ProfileStat() {
                                 </div>
                             </div>
 
-                            {/* Refresh Button */}
+                            {/* Refresh & Share Buttons */}
                             {activeWallet && (
-                                <button type="button" onClick={() => refresh()} disabled={loading} className="p-1 hover:text-emerald-400 disabled:opacity-50 flex-shrink-0">
-                                    <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                                </button>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => refresh()}
+                                        disabled={loading}
+                                        className="p-1 hover:text-emerald-400 disabled:opacity-50"
+                                    >
+                                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleShareOnX}
+                                        disabled={isSharing}
+                                        className="px-3 py-1 rounded-full text-xs font-semibold border border-white/15 hover:border-emerald-400/60 hover:text-emerald-300 bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-50"
+                                        title="Download a profile screenshot and share on X"
+                                    >
+                                        Share on X
+                                    </button>
+                                </div>
                             )}
                         </form>
                     </div>
@@ -1184,7 +1243,13 @@ export function ProfileStat() {
                             <p className="text-xs text-slate-500 mt-1">Banked PnL</p>
                         </div>
                     </div>
+                </div>
+            )}
+            </div>
+            {/* End screenshot area */}
 
+            {!loading && activeWallet && metrics && (
+                <div className="px-8 py-6 space-y-6">
                     {/* ADVANCED METRICS TOGGLE */}
                     <div className="flex flex-col gap-4">
                         <button

@@ -669,7 +669,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
       profileImage: w.profileImage,
       pnl: w.pnl,
       pnlFormatted: `+${formatUSD(w.pnl)}`,
-      profileLink: `/profile-stat?wallet=${encodeURIComponent(w.user)}`,
+      profileLink: `/profile-stat/${encodeURIComponent(w.user)}`,
       finalScore: w.final_score ?? w.finalScore ?? null,
       winRate: w.win_rate ?? null,
       stakeYield: w.stake_yield ?? null,
