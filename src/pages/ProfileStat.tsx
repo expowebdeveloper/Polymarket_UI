@@ -125,6 +125,9 @@ export function ProfileStat() {
     const distributionWalletRef = useRef<string>('');
     const [apiDistribution, setApiDistribution] = useState<any[]>([]);
     const [loadingDistribution, setLoadingDistribution] = useState(false);
+    // Per-wallet cache for market distribution so switching profiles shows the correct profile's data
+    const distributionCacheRef = useRef(new Map<string, any[]>());
+    const profileCacheRef = useRef(new Map<string, UserLeaderboardData | null>());
     const [activityTabList, setActivityTabList] = useState<any[]>([]);
     const [activityTabLoading, setActivityTabLoading] = useState(false);
     const [recentTradesList, setRecentTradesList] = useState<Array<{ title: string; timestamp: number; side: string; price: number; size: number }>>([]);
@@ -182,13 +185,23 @@ export function ProfileStat() {
         }
     }, [searchParams]);
 
-    // Fetch user profile data when wallet changes (header only). Do NOT fetch trades here — trades are fetched only when user clicks a Performance filter (Recent 10, 7 Days, etc.).
+    // Fetch user profile data when wallet changes (header). Cache per wallet so searched profile shows its own data.
     useEffect(() => {
-        if (activeWallet) {
-            fetchUserLeaderboardData(activeWallet, 'overall')
-                .then(data => setUserProfile(data))
-                .catch(err => console.error('Failed to fetch user profile:', err));
+        if (!activeWallet) {
+            setUserProfile(null);
+            return;
         }
+        const cached = profileCacheRef.current.get(activeWallet);
+        setUserProfile(cached ?? null);
+        fetchUserLeaderboardData(activeWallet, 'overall')
+            .then(data => {
+                profileCacheRef.current.set(activeWallet, data);
+                setUserProfile(data);
+            })
+            .catch(err => {
+                console.error('Failed to fetch user profile:', err);
+                setUserProfile(cached ?? null);
+            });
     }, [activeWallet]);
 
     // Reset activity fetch flag, tab cache, portfolio auto-fetch, and recent trades when wallet changes
@@ -200,9 +213,10 @@ export function ProfileStat() {
         setRecentTradesError(null);
     }, [activeWallet]);
 
-    // Clear API market distribution when profile/wallet changes so we refetch for the new profile
+    // When profile/wallet changes, show cached market distribution for that wallet (or empty)
     useEffect(() => {
-        setApiDistribution([]);
+        const cached = distributionCacheRef.current.get(activeWallet);
+        setApiDistribution(cached ?? []);
         setLoadingDistribution(false);
     }, [activeWallet]);
 
@@ -257,17 +271,24 @@ export function ProfileStat() {
     //         });
     // }, [activeWallet, activeTab, activityTabList.length, activityTabLoading]);
 
-    // Fetch API distribution when tab is active (no cache - always fetches)
+    // Fetch API distribution when tab is active; cache per wallet so searched profile shows its own data
     useEffect(() => {
         if (!activeWallet || activeTab !== 'distribution') return;
         const wallet = activeWallet;
+        const cached = distributionCacheRef.current.get(wallet);
+        if (cached && cached.length > 0) {
+            setApiDistribution(cached);
+            setLoadingDistribution(false);
+            return;
+        }
         distributionWalletRef.current = wallet;
         setLoadingDistribution(true);
         fetchMarketDistribution(wallet)
             .then(data => {
-                // Only apply if this response is for the current profile (avoid showing stale data when switching profiles)
+                const list = data.market_distribution || [];
                 if (distributionWalletRef.current !== wallet) return;
-                setApiDistribution(data.market_distribution || []);
+                distributionCacheRef.current.set(wallet, list);
+                setApiDistribution(list);
             })
             .catch(err => console.error("Failed to fetch market distribution:", err))
             .finally(() => {
@@ -656,6 +677,23 @@ export function ProfileStat() {
         return result;
     }, [closedPositions]);
 
+    // All-time cumulative PnL series for Peak / Trough cards.
+    // Prefer live userPnL from backend (includes rewards and unrealized PnL),
+    // and fall back to closed-positions-derived series if unavailable.
+    const allTimeCumulativePnlSeries = useMemo(() => {
+        if (userPnL && userPnL.length > 0) {
+            const sorted = [...userPnL].sort((a, b) => (a.t || 0) - (b.t || 0));
+            return sorted.map((point) => {
+                const raw = point.p as unknown;
+                const num = typeof raw === 'number' ? raw : parseFloat(String(raw ?? 0));
+                return Number.isFinite(num) ? num : 0;
+            });
+        }
+
+        if (!allTradesGraphFromClosed?.length) return [];
+        return allTradesGraphFromClosed.map((d) => d.cumulativePnl ?? 0);
+    }, [userPnL, allTradesGraphFromClosed]);
+
     const performanceGraphData = useMemo(() => {
         // "All Trades": use Polymarket user-pnl API data when available; else fallback to closed positions
         if (currentFilter === 'all' && filteredTrades.length === 0 && allTradesGraphFromClosed.length > 0) {
@@ -739,17 +777,17 @@ export function ProfileStat() {
         }, 0));
     }, [metrics?.total_losses, closedPositions]);
 
-    // Peak PNL = highest cumulative PnL ever reached (all time only, from closed positions)
+    // Peak PNL = highest cumulative PnL ever reached (all time only)
     const allTimePeakPnl = useMemo(() => {
-        if (!allTradesGraphFromClosed?.length) return 0;
-        return Math.max(...allTradesGraphFromClosed.map((d) => d.cumulativePnl ?? 0), 0);
-    }, [allTradesGraphFromClosed]);
+        if (!allTimeCumulativePnlSeries.length) return 0;
+        return allTimeCumulativePnlSeries.reduce((max, value) => (value > max ? value : max), 0);
+    }, [allTimeCumulativePnlSeries]);
 
-    // Max drawdown = worst PnL at any time (all time only) = minimum cumulative PnL ever reached
-    const maxDrawdownWorstPnl = useMemo(() => {
-        if (!allTradesGraphFromClosed?.length) return 0;
-        return Math.min(...allTradesGraphFromClosed.map((d) => d.cumulativePnl ?? 0), 0);
-    }, [allTradesGraphFromClosed]);
+    // Trough PnL = worst PnL at any time (all time only) = minimum cumulative PnL ever reached
+    const troughPnl = useMemo(() => {
+        if (!allTimeCumulativePnlSeries.length) return 0;
+        return allTimeCumulativePnlSeries.reduce((min, value) => (value < min ? value : min), 0);
+    }, [allTimeCumulativePnlSeries]);
 
     // Balance = portfolio value from Polymarket Data API (/value?user=...) — total wallet value
     const balance = useMemo(() => {
@@ -1366,11 +1404,11 @@ export function ProfileStat() {
                                 </div>
                                 <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl">
                                     <div className="flex items-center justify-between mb-1">
-                                        <p className="text-sm text-slate-400">Max Drawdown</p>
+                                        <p className="text-sm text-slate-400">Trough PnL</p>
                                         <TrendingDown className="h-4 w-4 text-red-400" />
                                     </div>
-                                    <p className="text-xl font-bold text-red-400">{formatCurrency(maxDrawdownWorstPnl)}</p>
-                                    <p className="text-xs text-slate-500 mt-1">All time only · Worst PnL at any time</p>
+                                    <p className="text-xl font-bold text-red-400">{formatCurrency(troughPnl)}</p>
+                                    <p className="text-xs text-slate-500 mt-1">All time only · Lowest cumulative PnL ever reached</p>
                                 </div>
                                 {/* <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl">
                                     <div className="flex items-center justify-between mb-1">

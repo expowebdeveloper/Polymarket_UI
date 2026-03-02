@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
     fetchProfileStatData
 } from '../services/api';
@@ -22,49 +22,83 @@ export interface ProfileStatState {
     dataOrigin?: DataOrigin | null;
 }
 
-export function useProfileStat(walletAddress: string) {
-    const [state, setState] = useState<ProfileStatState>({
-        loading: true,
+// Per-wallet cache so switching profiles shows the correct cached data immediately
+const profileStatCache = new Map<string, ProfileStatState>();
+
+function stateFromData(data: Awaited<ReturnType<typeof fetchProfileStatData>>): ProfileStatState {
+    const backendMetrics = data.scoring_metrics;
+    const metrics: ScoredMetrics = {
+        ...backendMetrics,
+        risk_score: backendMetrics.score_risk || 0,
+        win_score: backendMetrics.score_win_rate || 0,
+        roi_score: backendMetrics.score_roi || 0,
+        pnl_score: backendMetrics.score_pnl || 0,
+        final_score: backendMetrics.final_score || 0,
+    };
+    return {
+        loading: false,
         error: null,
-        metrics: null,
-        positions: [],
-        closedPositions: [],
-        activities: [],
-        userPnL: [],
-        portfolioValue: undefined,
+        metrics,
+        positions: data.positions || [],
+        closedPositions: data.closed_positions || [],
+        activities: data.activities || [],
+        userPnL: data.trade_history?.trades || [],
+        portfolioValue: data.portfolio_value,
+        dataOrigin: data.data_origin ?? null,
+    };
+}
+
+export function useProfileStat(walletAddress: string) {
+    const [state, setState] = useState<ProfileStatState>(() => {
+        if (!walletAddress) {
+            return {
+                loading: true,
+                error: null,
+                metrics: null,
+                positions: [],
+                closedPositions: [],
+                activities: [],
+                userPnL: [],
+                portfolioValue: undefined,
+            };
+        }
+        const cached = profileStatCache.get(walletAddress);
+        if (cached) return { ...cached };
+        return {
+            loading: true,
+            error: null,
+            metrics: null,
+            positions: [],
+            closedPositions: [],
+            activities: [],
+            userPnL: [],
+            portfolioValue: undefined,
+        };
     });
 
     const fetchData = useCallback(async (includeTrades: boolean = false) => {
-        if (!walletAddress) return;
-
-        setState(prev => ({ ...prev, loading: true, error: null }));
-
-        try {
-            const data = await fetchProfileStatData(walletAddress, !includeTrades);
-
-            // Use backend pre-calculated metrics directly (Single Source of Truth)
-            const backendMetrics = data.scoring_metrics;
-            const metrics: ScoredMetrics = {
-                ...backendMetrics,
-                // Ensure field naming compatibility between backend and frontend
-                risk_score: backendMetrics.score_risk || 0,
-                win_score: backendMetrics.score_win_rate || 0,
-                roi_score: backendMetrics.score_roi || 0,
-                pnl_score: backendMetrics.score_pnl || 0,
-                final_score: backendMetrics.final_score || 0,
-            };
-
+        if (!walletAddress) {
             setState({
                 loading: false,
                 error: null,
-                metrics,
-                positions: data.positions || [],
-                closedPositions: data.closed_positions || [],
-                activities: data.activities || [],
-                userPnL: data.trade_history?.trades || [],
-                portfolioValue: data.portfolio_value,
-                dataOrigin: data.data_origin ?? null,
+                metrics: null,
+                positions: [],
+                closedPositions: [],
+                activities: [],
+                userPnL: [],
+                portfolioValue: undefined,
             });
+            return;
+        }
+
+        const hasCached = profileStatCache.has(walletAddress);
+        if (!hasCached) setState(prev => ({ ...prev, loading: true, error: null }));
+
+        try {
+            const data = await fetchProfileStatData(walletAddress, !includeTrades);
+            const newState = stateFromData(data);
+            profileStatCache.set(walletAddress, newState);
+            setState(newState);
         } catch (err: any) {
             console.error('Error fetching profile stat data:', err);
             setState(prev => ({
@@ -76,8 +110,11 @@ export function useProfileStat(walletAddress: string) {
     }, [walletAddress]);
 
     useEffect(() => {
+        if (!walletAddress) return;
+        const cached = profileStatCache.get(walletAddress);
+        if (cached) setState({ ...cached });
         fetchData();
-    }, [fetchData]);
+    }, [walletAddress, fetchData]);
 
     const refreshWithTrades = useCallback(() => fetchData(true), [fetchData]);
 

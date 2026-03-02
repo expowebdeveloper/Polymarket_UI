@@ -589,7 +589,7 @@ export function WalletDashboard() {
                 <p className="text-lg font-semibold text-emerald-400">{(Number(scoringMetrics?.score_risk || 0) * 100).toFixed(2)}%</p>
               </div>
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
-                <p className="text-sm text-slate-400">Max Drawdown</p>
+                <p className="text-sm text-slate-400">Trough PnL</p>
                 <p className="text-lg font-semibold text-emerald-400">{scoringMetrics?.max_drawdown ? `${Number(scoringMetrics.max_drawdown).toFixed(2)}` : '0.00'}</p>
               </div>
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
