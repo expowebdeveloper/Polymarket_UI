@@ -749,18 +749,20 @@ export function ProfileStat() {
 
 
     // Final rating with Polyrating bonus: BaseRating × (1 + Bonus(WScore)); bonus only if predictions ≥ 100.
-    const { displayScore, polyratingBonus } = useMemo(() => {
-        if (!metrics) return { displayScore: 0, polyratingBonus: 0 };
+    // Scoring is only enabled when total_trades >= 20.
+    const { displayScore, polyratingBonus, scoringEnabled } = useMemo(() => {
+        if (!metrics) return { displayScore: 0, polyratingBonus: 0, scoringEnabled: false };
         const n = metrics.total_trades ?? 0;
+        if (n < 20) return { displayScore: 0, polyratingBonus: 0, scoringEnabled: false };
         const wScore = metrics.win_score ?? 0; // 0–1
         const bonus = getPolyratingBonus(n, wScore);
         const base = metrics.final_score ?? 0;
         const withBonus = base * (1 + bonus);
-        return { displayScore: Math.min(100, Math.max(0, withBonus)), polyratingBonus: bonus };
+        return { displayScore: Math.min(100, Math.max(0, withBonus)), polyratingBonus: bonus, scoringEnabled: true };
     }, [metrics]);
 
-    // Calculate badge info safely; hide score tag when user tag is active
-    const badgeInfo = metrics && !metrics.user_tag ? getBadgeInfo(displayScore) : null;
+    // Calculate badge info safely; hide score tag when user tag is active or when scoring is disabled (< 20 trades)
+    const badgeInfo = metrics && !metrics.user_tag && scoringEnabled ? getBadgeInfo(displayScore) : null;
 
     // Calculate active positions value
     const activePositionsValue = useMemo(() => {
@@ -861,11 +863,11 @@ export function ProfileStat() {
             </div>
 
             {/* Screenshot area: top bar + main stats only (alignment matches UI) */}
-            <div ref={profileScreenshotRef} className="w-full max-w-7xl mx-auto bg-slate-950">
+            <div ref={profileScreenshotRef} className="w-full mx-auto bg-slate-950">
             {/* TOP NAV */}
             <div className="sticky top-0 z-30 border-b border-white/10">
                 <div className="flex items-center justify-center px-6 py-6">
-                    <div className="w-full max-w-7xl">
+                    <div className="w-full">
                         <form onSubmit={handleWalletSubmit} className="flex items-center gap-6 bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 rounded-3xl px-8 py-5 shadow-[0_16px_60px_-24px_rgba(0,0,0,0.9)] backdrop-blur-2xl transition-all duration-300 hover:border-white/15 hover:shadow-[0_24px_64px_-24px_rgba(0,0,0,0.95)]">
                             {/* Profile Picture */}
                             {activeWallet && userProfile?.profileImage && (
@@ -1055,10 +1057,12 @@ export function ProfileStat() {
                             <p className="text-sm uppercase tracking-widest text-emerald-300/80">Final Rating</p>
                         </div>
                         <div className="flex items-end gap-6">
-                            <p className="text-[60px] leading-none font-extrabold bg-gradient-to-r from-emerald-300 to-emerald-500 bg-clip-text text-transparent">
-                                {displayScore.toFixed(1)}
-                            </p>
-                            <div className="flex gap-3 pb-2">
+                            {scoringEnabled ? (
+                                <>
+                                    <p className="text-[60px] leading-none font-extrabold bg-gradient-to-r from-emerald-300 to-emerald-500 bg-clip-text text-transparent">
+                                        {displayScore.toFixed(1)}
+                                    </p>
+                                    <div className="flex gap-3 pb-2">
                                 {badgeInfo && (
                                     <span className={`px-6 py-2 rounded-full text-sm border font-bold ${badgeInfo.style}`}>
                                         {badgeInfo.title}
@@ -1097,14 +1101,50 @@ export function ProfileStat() {
                                         </span>
                                     </span>
                                 )}
-                            </div>
-                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex flex-col gap-3 pb-2">
+                                    <p className="text-slate-400 text-lg font-medium">
+                                        You must have more than 20 trades to enable scoring
+                                    </p>
+                                    <div className="flex gap-3 pb-2">
+                                        {(() => {
+                                            const rank = getVolumeRank(metrics.total_volume);
+                                            return (
+                                                <span className={`px-6 py-2 rounded-full text-sm border font-bold ${rank.className}`} title={rank.tooltip}>
+                                                    {rank.emoji} {rank.title}
+                                                </span>
+                                            );
+                                        })()}
+                                        {(() => {
+                                            const streakBadge = getStreakBadge(metrics.streaks.current_streak);
+                                            if (streakBadge) {
+                                                return (
+                                                    <span className={`px-6 py-2 rounded-full text-sm border font-bold ${streakBadge.className}`} title={streakBadge.tooltip}>
+                                                        {streakBadge.emoji} {streakBadge.title}
+                                                    </span>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
+                                        {metrics.user_tag && (
+                                            <span className={`px-6 py-2 rounded-full text-sm border font-bold ${metrics.user_tag.style}`}>
+                                                <span className="bg-gradient-to-r from-current to-current bg-clip-text">
+                                                    {metrics.user_tag.emoji} {metrics.user_tag.title}
+                                                </span>
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
 
+                        </div>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 mt-6">
                             <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
                                 <p className="text-xs text-slate-300 mb-0.5">Active Positions Value</p>
                                 <p className="text-base font-bold text-emerald-300">{formatCurrency(balance)}</p>
-                                <p className="text-[10px] text-slate-400 mt-0.5">Portfolio value </p>
+                                {/* <p className="text-[10px] text-slate-400 mt-0.5">Portfolio value </p> */}
                             </div>
                             <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
                                 <p className="text-xs text-slate-300 mb-0.5">Total PNL</p>
@@ -1119,7 +1159,7 @@ export function ProfileStat() {
                                 <p className="text-base font-bold text-emerald-300">{metrics.total_trades}</p>
                             </div>
                             <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
-                                <p className="text-xs text-slate-300 mb-0.5">Total Trades</p>
+                                <p className="text-xs text-slate-300 mb-0.5">Total Positions</p>
                                 <p className="text-base font-bold text-emerald-300">{totalPredictions}</p>
                             </div>
                             <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
