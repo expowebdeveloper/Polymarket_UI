@@ -203,21 +203,38 @@ export function getStakeYieldBonusPct(nPredictions: number, stakeYieldPct: numbe
 /**
  * Polyrating bonus by WScore (accuracy). Only applies when nPredictions >= 100.
  * Moderate reward below 90%; aggressive elite reward from 90%+.
- * wScoreFraction: win score in 0–1 (e.g. from calculateWinScore).
+ *
+ * Final Bonus Structure (WScore in %, bonus as decimal for multiplier):
+ *   WScore        Bonus
+ *   < 65%         0%
+ *   65-74.99%     1%
+ *   75-84.99%     2%
+ *   85-89.99%     3%
+ *   90-91.99%     5%
+ *   92-93.99%     6%
+ *   94-95.99%     7%
+ *   96-97.99%     8%
+ *   98-99.99%     9%
+ *   100%          10%
+ *
+ * Used as: FinalRating = BaseRating × (1 + getPolyratingBonus(n, wScore)).
+ *
+ * @param nPredictions - Total predictions (unique markets); must be >= 100 for any bonus.
+ * @param wScoreFraction - Win score in 0–1 (e.g. from calculateWinScore).
  */
 export function getPolyratingBonus(nPredictions: number, wScoreFraction: number): number {
     if (nPredictions < MIN_PREDICTIONS_FOR_POLYRATING_BONUS) return 0;
     const pct = wScoreFraction * 100;
     if (pct < 65) return 0;
-    if (pct < 75) return 0.01;
-    if (pct < 85) return 0.02;
-    if (pct < 90) return 0.03;
-    if (pct < 92) return 0.05;
-    if (pct < 94) return 0.06;
-    if (pct < 96) return 0.07;
-    if (pct < 98) return 0.08;
-    if (pct < 100) return 0.09;
-    return 0.10;
+    if (pct < 75) return 0.01;   // 65-74.99%
+    if (pct < 85) return 0.02;   // 75-84.99%
+    if (pct < 90) return 0.03;   // 85-89.99%
+    if (pct < 92) return 0.05;   // 90-91.99%
+    if (pct < 94) return 0.06;   // 92-93.99%
+    if (pct < 96) return 0.07;   // 94-95.99%
+    if (pct < 98) return 0.08;   // 96-97.99%
+    if (pct < 100) return 0.09;  // 98-99.99%
+    return 0.10;                  // 100%
 }
 
 /**
