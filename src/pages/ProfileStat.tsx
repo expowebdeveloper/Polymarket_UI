@@ -686,23 +686,6 @@ export function ProfileStat() {
         return result;
     }, [closedPositions]);
 
-    // All-time cumulative PnL series for Peak / Trough cards.
-    // Prefer live userPnL from backend (includes rewards and unrealized PnL),
-    // and fall back to closed-positions-derived series if unavailable.
-    const allTimeCumulativePnlSeries = useMemo(() => {
-        if (userPnL && userPnL.length > 0) {
-            const sorted = [...userPnL].sort((a, b) => (a.t || 0) - (b.t || 0));
-            return sorted.map((point) => {
-                const raw = point.p as unknown;
-                const num = typeof raw === 'number' ? raw : parseFloat(String(raw ?? 0));
-                return Number.isFinite(num) ? num : 0;
-            });
-        }
-
-        if (!allTradesGraphFromClosed?.length) return [];
-        return allTradesGraphFromClosed.map((d) => d.cumulativePnl ?? 0);
-    }, [userPnL, allTradesGraphFromClosed]);
-
     const performanceGraphData = useMemo(() => {
         // "All Trades": use Polymarket user-pnl API data when available; else fallback to closed positions
         if (currentFilter === 'all' && filteredTrades.length === 0 && allTradesGraphFromClosed.length > 0) {
@@ -730,6 +713,15 @@ export function ProfileStat() {
         }
         return result;
     }, [currentFilter, allTradesGraphFromClosed, filteredTrades]);
+
+    // Peak PNL and Trough PnL: use the same series as the graph when "All Trades" is selected, so they match the chart.
+    const allTimeCumulativePnlSeries = useMemo(() => {
+        if (currentFilter === 'all' && performanceGraphData.length > 0) {
+            return performanceGraphData.map((d) => d.cumulativePnl ?? 0);
+        }
+        if (!allTradesGraphFromClosed?.length) return [];
+        return allTradesGraphFromClosed.map((d) => d.cumulativePnl ?? 0);
+    }, [currentFilter, performanceGraphData, allTradesGraphFromClosed]);
 
     // Actual date range of the graph data (for labeling — real data only)
     const performanceGraphRange = useMemo(() => {
