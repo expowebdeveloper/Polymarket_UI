@@ -403,7 +403,7 @@ export function calculateLiveMetrics(
     // Polyrating bonus: min 100 predictions, bonus from WScore (65%+ = 1%, up to 10% at 100%)
     const volume_bonus = getPolyratingBonus(totalTrades, win_score);
     const stake_yield_bonus_pct = getStakeYieldBonusPct(totalTradesWithPnl, roi);
-    const final_score = Math.min(100, base_rating * (1 + volume_bonus) * (1 + stake_yield_bonus_pct / 100));
+    const final_score = Math.min(99.9, base_rating * (1 + volume_bonus) * (1 + stake_yield_bonus_pct / 100));
 
     return {
         total_pnl: totalPnl,

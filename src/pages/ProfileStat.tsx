@@ -51,7 +51,8 @@ const formatSize = (size: number | string | undefined): string => {
 
 // Helper function to get badge info based on score
 const getBadgeInfo = (score: number) => {
-    const clampedScore = Math.min(100, Math.max(0, score));
+    // Cap score strictly below 100 for badge thresholds
+    const clampedScore = Math.min(99.9, Math.max(0, score));
 
     if (clampedScore >= 95) return {
         title: "👑⚡ Prediction God",
@@ -750,7 +751,8 @@ export function ProfileStat() {
         const bonus = getPolyratingBonus(n, wScore);
         const base = metrics.final_score ?? 0;
         const withBonus = base * (1 + bonus);
-        return { displayScore: Math.min(100, Math.max(0, withBonus)), polyratingBonus: bonus, scoringEnabled: true };
+        // Cap displayed final rating strictly below 100
+        return { displayScore: Math.min(99.9, Math.max(0, withBonus)), polyratingBonus: bonus, scoringEnabled: true };
     }, [metrics]);
 
     // Calculate badge info safely; hide score tag when user tag is active or when scoring is disabled (< 20 trades)
