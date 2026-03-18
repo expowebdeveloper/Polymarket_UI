@@ -1,4 +1,4 @@
-   import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Search, Wallet, TrendingUp, TrendingDown, Trophy, ChevronDown, ChevronUp, Activity as ActivityIcon, RefreshCw } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -16,6 +16,7 @@ import { SocialLinks } from '../components/SocialLinks';
 import html2canvas from 'html2canvas';
 import realizedPnlIcon from '../assets/realized_pnl.svg';
 import unrealizedPnlIcon from '../assets/unr_pnl.svg';
+import polycoolLogo from "../assets/polycool.png";
 
 
 // Helper function to format currency: hundreds as-is, thousands with k, millions with M
@@ -858,181 +859,181 @@ export function ProfileStat() {
 
             {/* Screenshot area: top bar + main stats only (alignment matches UI) */}
             <div ref={profileScreenshotRef} className="w-full mx-auto bg-slate-950">
-            {/* TOP NAV */}
-            <div className="sticky top-0 z-30 border-b border-white/10">
-                <div className="flex items-center justify-center px-6 py-6">
-                    <div className="w-full">
-                        <form onSubmit={handleWalletSubmit} className="flex items-center gap-6 bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 rounded-3xl px-8 py-5 shadow-[0_16px_60px_-24px_rgba(0,0,0,0.9)] backdrop-blur-2xl transition-all duration-300 hover:border-white/15 hover:shadow-[0_24px_64px_-24px_rgba(0,0,0,0.95)]">
-                            {/* Profile Picture */}
-                            {activeWallet && userProfile?.profileImage && (
-                                <img
-                                    src={userProfile.profileImage}
-                                    alt={userProfile.userName || activeWallet}
-                                    className="w-12 h-12 rounded-full object-cover border-2 border-emerald-500/50 cursor-pointer hover:scale-105 transition-transform"
-                                    onClick={() => window.open(userProfile.profileImage, '_blank')}
-                                    title="Click to view full image"
-                                />
-                            )}
+                {/* TOP NAV */}
+                <div className="sticky top-0 z-30 border-b border-white/10">
+                    <div className="flex items-center justify-center px-6 py-6">
+                        <div className="w-full">
+                            <form onSubmit={handleWalletSubmit} className="flex items-center gap-6 bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 rounded-3xl px-8 py-5 shadow-[0_16px_60px_-24px_rgba(0,0,0,0.9)] backdrop-blur-2xl transition-all duration-300 hover:border-white/15 hover:shadow-[0_24px_64px_-24px_rgba(0,0,0,0.95)]">
+                                {/* Profile Picture */}
+                                {activeWallet && userProfile?.profileImage && (
+                                    <img
+                                        src={userProfile.profileImage}
+                                        alt={userProfile.userName || activeWallet}
+                                        className="w-12 h-12 rounded-full object-cover border-2 border-emerald-500/50 cursor-pointer hover:scale-105 transition-transform"
+                                        onClick={() => window.open(userProfile.profileImage, '_blank')}
+                                        title="Click to view full image"
+                                    />
+                                )}
 
-                            {/* Username, X handle, Verified badge and Wallet Address */}
-                            {activeWallet && (
-                                <div className="flex flex-col min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        {userProfile?.userName && (
-                                            <span className="text-lg font-bold text-white truncate">
-                                                {userProfile.userName}
-                                            </span>
-                                        )}
-                                        {userProfile?.xUsername && (
-                                            <span className="text-slate-400 text-sm truncate">
-                                                @{userProfile.xUsername.replace(/^@/, '')}
-                                            </span>
-                                        )}
-                                        <SocialLinks
-                                            xUsername={userProfile?.xUsername}
-                                            polymarketWallet={userProfile?.proxyWallet || activeWallet}
-                                            iconSize={18}
-                                            variant="light"
-                                        />
-                                        {userProfile?.verifiedBadge && (
-                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/40" title="In X user list / Verified">
-                                                <span className="text-blue-400">✓</span>
-                                                Verified
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="relative group">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(activeWallet);
-                                                setShowCopied(true);
-                                                setTimeout(() => setShowCopied(false), 2000);
-                                            }}
-                                            className="text-sm text-slate-400 hover:text-emerald-400 transition text-left truncate flex items-center gap-1"
-                                            title="Click to copy wallet address"
-                                        >
-                                            {activeWallet.slice(0, 6)}...{activeWallet.slice(-4)}
-                                        </button>
+                                {/* Username, X handle, Verified badge and Wallet Address */}
+                                {activeWallet && (
+                                    <div className="flex flex-col min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            {userProfile?.userName && (
+                                                <span className="text-lg font-bold text-white truncate">
+                                                    {userProfile.userName}
+                                                </span>
+                                            )}
+                                            {userProfile?.xUsername && (
+                                                <span className="text-slate-400 text-sm truncate">
+                                                    @{userProfile.xUsername.replace(/^@/, '')}
+                                                </span>
+                                            )}
+                                            <SocialLinks
+                                                xUsername={userProfile?.xUsername}
+                                                polymarketWallet={userProfile?.proxyWallet || activeWallet}
+                                                iconSize={18}
+                                                variant="light"
+                                            />
+                                            {userProfile?.verifiedBadge && (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/40" title="In X user list / Verified">
+                                                    <span className="text-blue-400">✓</span>
+                                                    Verified
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="relative group">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(activeWallet);
+                                                    setShowCopied(true);
+                                                    setTimeout(() => setShowCopied(false), 2000);
+                                                }}
+                                                className="text-sm text-slate-400 hover:text-emerald-400 transition text-left truncate flex items-center gap-1"
+                                                title="Click to copy wallet address"
+                                            >
+                                                {activeWallet.slice(0, 6)}...{activeWallet.slice(-4)}
+                                            </button>
 
-                                        {/* Copied Tooltip */}
-                                        <div className={`absolute top-full mt-1 left-0 bg-emerald-500 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded shadow-lg transition-all duration-200 ${showCopied ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1 pointer-events-none'}`}>
-                                            Copied!
+                                            {/* Copied Tooltip */}
+                                            <div className={`absolute top-full mt-1 left-0 bg-emerald-500 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded shadow-lg transition-all duration-200 ${showCopied ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1 pointer-events-none'}`}>
+                                                Copied!
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {/* Search Icon and Input with Autocomplete */}
-                            <div className="flex items-center gap-3 flex-1 relative" ref={autocompleteRef}>
-                                <Search className="h-4 w-4 text-emerald-400 flex-shrink-0" />
-                                <div className="flex-1 relative">
-                                    <input
-                                        className="w-full bg-transparent outline-none text-sm placeholder:text-slate-500"
-                                        placeholder="Search by wallet (0x...), or Polymarket username"
-                                        value={walletInput}
-                                        onChange={(e) => { setWalletInput(e.target.value); setSearchError(null); }}
-                                        onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                                        onKeyDown={(e) => {
-                                            if (!showSuggestions || suggestions.length === 0) return;
-                                            if (e.key === 'ArrowDown') {
-                                                e.preventDefault();
-                                                setHighlightedIndex((i) => (i < suggestions.length - 1 ? i + 1 : i));
-                                            } else if (e.key === 'ArrowUp') {
-                                                e.preventDefault();
-                                                setHighlightedIndex((i) => (i > 0 ? i - 1 : -1));
-                                            } else if (e.key === 'Enter' && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
-                                                e.preventDefault();
-                                                selectSuggestion(suggestions[highlightedIndex]);
-                                            } else if (e.key === 'Escape') {
-                                                setShowSuggestions(false);
-                                                setHighlightedIndex(-1);
-                                            }
-                                        }}
-                                        autoComplete="off"
-                                        aria-autocomplete="list"
-                                        aria-expanded={showSuggestions && suggestions.length > 0}
-                                    />
-                                    {showSuggestions && (
-                                        <ul
-                                            className="absolute top-full left-0 right-0 mt-1 z-50 max-h-64 overflow-auto rounded-lg border border-white/10 bg-slate-900/95 backdrop-blur shadow-xl py-1"
-                                            role="listbox"
+                                {/* Search Icon and Input with Autocomplete */}
+                                <div className="flex items-center gap-3 flex-1 relative" ref={autocompleteRef}>
+                                    <Search className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                                    <div className="flex-1 relative">
+                                        <input
+                                            className="w-full bg-transparent outline-none text-sm placeholder:text-slate-500"
+                                            placeholder="Search by wallet (0x...), or Polymarket username"
+                                            value={walletInput}
+                                            onChange={(e) => { setWalletInput(e.target.value); setSearchError(null); }}
+                                            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                                            onKeyDown={(e) => {
+                                                if (!showSuggestions || suggestions.length === 0) return;
+                                                if (e.key === 'ArrowDown') {
+                                                    e.preventDefault();
+                                                    setHighlightedIndex((i) => (i < suggestions.length - 1 ? i + 1 : i));
+                                                } else if (e.key === 'ArrowUp') {
+                                                    e.preventDefault();
+                                                    setHighlightedIndex((i) => (i > 0 ? i - 1 : -1));
+                                                } else if (e.key === 'Enter' && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
+                                                    e.preventDefault();
+                                                    selectSuggestion(suggestions[highlightedIndex]);
+                                                } else if (e.key === 'Escape') {
+                                                    setShowSuggestions(false);
+                                                    setHighlightedIndex(-1);
+                                                }
+                                            }}
+                                            autoComplete="off"
+                                            aria-autocomplete="list"
+                                            aria-expanded={showSuggestions && suggestions.length > 0}
+                                        />
+                                        {showSuggestions && (
+                                            <ul
+                                                className="absolute top-full left-0 right-0 mt-1 z-50 max-h-64 overflow-auto rounded-lg border border-white/10 bg-slate-900/95 backdrop-blur shadow-xl py-1"
+                                                role="listbox"
+                                            >
+                                                {loadingSuggestions ? (
+                                                    <li className="px-3 py-2 text-sm text-slate-400">Searching...</li>
+                                                ) : suggestions.length === 0 ? null : (
+                                                    suggestions.map((item, i) => {
+                                                        const label = item.username || item.pseudonym || item.wallet_address;
+                                                        const sub = item.pseudonym && item.username ? `@${item.pseudonym}` : null;
+                                                        return (
+                                                            <li
+                                                                key={item.wallet_address}
+                                                                role="option"
+                                                                aria-selected={i === highlightedIndex}
+                                                                className={`px-3 py-2 cursor-pointer text-sm flex items-center gap-2 ${i === highlightedIndex ? 'bg-emerald-500/20 text-emerald-200' : 'text-slate-200 hover:bg-white/5'}`}
+                                                                onClick={() => selectSuggestion(item)}
+                                                                onMouseEnter={() => setHighlightedIndex(i)}
+                                                            >
+                                                                {item.profile_image && (
+                                                                    <img src={item.profile_image} alt="" className="w-6 h-6 rounded-full object-cover" />
+                                                                )}
+                                                                <span className="truncate">{label}</span>
+                                                                {sub && <span className="text-slate-500 truncate">{sub}</span>}
+                                                            </li>
+                                                        );
+                                                    })
+                                                )}
+                                            </ul>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Refresh & Share Buttons */}
+                                {activeWallet && (
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => refresh()}
+                                            disabled={loading}
+                                            className="p-1 hover:text-emerald-400 disabled:opacity-50"
                                         >
-                                            {loadingSuggestions ? (
-                                                <li className="px-3 py-2 text-sm text-slate-400">Searching...</li>
-                                            ) : suggestions.length === 0 ? null : (
-                                                suggestions.map((item, i) => {
-                                                    const label = item.username || item.pseudonym || item.wallet_address;
-                                                    const sub = item.pseudonym && item.username ? `@${item.pseudonym}` : null;
-                                                    return (
-                                                        <li
-                                                            key={item.wallet_address}
-                                                            role="option"
-                                                            aria-selected={i === highlightedIndex}
-                                                            className={`px-3 py-2 cursor-pointer text-sm flex items-center gap-2 ${i === highlightedIndex ? 'bg-emerald-500/20 text-emerald-200' : 'text-slate-200 hover:bg-white/5'}`}
-                                                            onClick={() => selectSuggestion(item)}
-                                                            onMouseEnter={() => setHighlightedIndex(i)}
-                                                        >
-                                                            {item.profile_image && (
-                                                                <img src={item.profile_image} alt="" className="w-6 h-6 rounded-full object-cover" />
-                                                            )}
-                                                            <span className="truncate">{label}</span>
-                                                            {sub && <span className="text-slate-500 truncate">{sub}</span>}
-                                                        </li>
-                                                    );
-                                                })
-                                            )}
-                                        </ul>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Refresh & Share Buttons */}
-                            {activeWallet && (
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                    <button
-                                        type="button"
-                                        onClick={() => refresh()}
-                                        disabled={loading}
-                                        className="p-1 hover:text-emerald-400 disabled:opacity-50"
-                                    >
-                                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleShareOnX}
-                                        disabled={isSharing}
-                                        className="px-3 py-1 rounded-full text-xs font-semibold border border-white/15 hover:border-emerald-400/60 hover:text-emerald-300 bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-50"
-                                        title="Download a profile screenshot and share on X"
-                                    >
-                                        Share on X
-                                    </button>
-                                </div>
-                            )}
-                        </form>
+                                            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleShareOnX}
+                                            disabled={isSharing}
+                                            className="px-3 py-1 rounded-full text-xs font-semibold border border-white/15 hover:border-emerald-400/60 hover:text-emerald-300 bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-50"
+                                            title="Download a profile screenshot and share on X"
+                                        >
+                                            Share on X
+                                        </button>
+                                    </div>
+                                )}
+                            </form>
+                        </div>
+                        {searchError && (
+                            <p className="mt-2 text-sm text-rose-400" role="alert">{searchError}</p>
+                        )}
                     </div>
-                    {searchError && (
-                        <p className="mt-2 text-sm text-rose-400" role="alert">{searchError}</p>
-                    )}
                 </div>
-            </div>
 
-            {!activeWallet && (
-                <div className="flex flex-col items-center justify-center p-20 text-center">
-                    <Wallet className="h-20 w-20 text-emerald-500/20 mb-4" />
-                    <h2 className="text-2xl font-bold mb-2">Live Polyrating Dashboard</h2>
-                    <p className="text-slate-400 max-w-md">Analyze any trader instantly. Enter a wallet or Polymarket username to unlock real-time performance metrics, trader ratings, and behavioral insights</p>
-                </div>
-            )}
+                {!activeWallet && (
+                    <div className="flex flex-col items-center justify-center p-20 text-center">
+                        <Wallet className="h-20 w-20 text-emerald-500/20 mb-4" />
+                        <h2 className="text-2xl font-bold mb-2">Live Polyrating Dashboard</h2>
+                        <p className="text-slate-400 max-w-md">Analyze any trader instantly. Enter a wallet or Polymarket username to unlock real-time performance metrics, trader ratings, and behavioral insights</p>
+                    </div>
+                )}
 
-            {loading && activeWallet && <div className="p-8"><LoadingSpinner message="Calculating live metrics..." /></div>}
-            {error && <div className="p-8"><ErrorMessage message={error} onRetry={refresh} /></div>}
+                {loading && activeWallet && <div className="p-8"><LoadingSpinner message="Calculating live metrics..." /></div>}
+                {error && <div className="p-8"><ErrorMessage message={error} onRetry={refresh} /></div>}
 
-            {/* CONTENT */}
-            {!loading && activeWallet && metrics && (
-                <div className="px-8 py-6 space-y-6">
-                    {/* Data origin: confirm data is real from Polymarket */}
-                    {/* {dataOrigin?.live && (
+                {/* CONTENT */}
+                {!loading && activeWallet && metrics && (
+                    <div className="px-8 py-6 space-y-6">
+                        {/* Data origin: confirm data is real from Polymarket */}
+                        {/* {dataOrigin?.live && (
                         <div className="flex items-center gap-2 text-xs text-slate-500">
                             <span className="inline-flex items-center gap-1 text-emerald-400/90">
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
@@ -1042,243 +1043,248 @@ export function ProfileStat() {
                         </div>
                     )} */}
 
-                    {/* FINAL RATING */}
-                    <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 rounded-3xl shadow-[0_16px_60px_-24px_rgba(0,0,0,0.9)] backdrop-blur-2xl p-6">
-                        {/* Liquid glow blob */}
-                        <div className="pointer-events-none absolute -top-24 left-1/2 h-40 w-[520px] -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
-                        <div className="pointer-events-none absolute inset-0 rounded-3xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]" />
-                        <div className="flex items-center gap-3 flex-wrap">
-                            <p className="text-sm uppercase tracking-widest text-emerald-300/80">Final Rating</p>
-                        </div>
-                        <div className="flex items-end gap-6">
-                            {scoringEnabled ? (
-                                <>
-                                    <p className="text-[60px] leading-none font-extrabold bg-gradient-to-r from-emerald-300 to-emerald-500 bg-clip-text text-transparent">
-                                        {displayScore.toFixed(1)}
-                                    </p>
-                                    <div className="flex gap-3 pb-2">
-                                {badgeInfo && (
-                                    <span className={`px-6 py-2 rounded-full text-sm border font-bold ${badgeInfo.style}`}>
-                                        {badgeInfo.title}
-                                    </span>
-                                )}
-                                {(() => {
-                                    const rank = getVolumeRank(metrics.total_volume);
-                                    return (
-                                        <span className={`px-6 py-2 rounded-full text-sm border font-bold ${rank.className}`} title={rank.tooltip}>
-                                            {rank.emoji} {rank.title}
-                                        </span>
-                                    );
-                                })()}
-                                {(() => {
-                                    const streakBadge = getStreakBadge(metrics.streaks.current_streak);
-                                    if (streakBadge) {
-                                        return (
-                                            <span className={`px-6 py-2 rounded-full text-sm border font-bold ${streakBadge.className}`} title={streakBadge.tooltip}>
-                                                {streakBadge.emoji} {streakBadge.title}
-                                            </span>
-                                        );
-                                    }
-                                    return null;
-                                })()}
-                                {/* {(metrics.is_badge_holder || userProfile?.verifiedBadge) && (
-                                    <span className="px-6 py-2 rounded-full text-sm border font-bold bg-gradient-to-r from-purple-500/10 to-amber-500/10 text-transparent bg-clip-text border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.4)] animate-pulse">
-                                        <span className="bg-gradient-to-r from-purple-400 to-amber-400 bg-clip-text">
-                                            🏅 Polymarket Badge Holder
-                                        </span>
-                                    </span>
-                                )} */}
-                                {metrics.user_tag && (
-                                    <span className={`px-6 py-2 rounded-full text-sm border font-bold ${metrics.user_tag.style}`}>
-                                        <span className="bg-gradient-to-r from-current to-current bg-clip-text">
-                                            {metrics.user_tag.emoji} {metrics.user_tag.title}
-                                        </span>
-                                    </span>
-                                )}
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="flex flex-col gap-3 pb-2">
-                                    <p className="text-slate-400 text-lg font-medium">
-                                        You must have more than 20 trades to enable scoring
-                                    </p>
-                                    <div className="flex gap-3 pb-2">
-                                        {(() => {
-                                            const rank = getVolumeRank(metrics.total_volume);
-                                            return (
-                                                <span className={`px-6 py-2 rounded-full text-sm border font-bold ${rank.className}`} title={rank.tooltip}>
-                                                    {rank.emoji} {rank.title}
-                                                </span>
-                                            );
-                                        })()}
-                                        {(() => {
-                                            const streakBadge = getStreakBadge(metrics.streaks.current_streak);
-                                            if (streakBadge) {
-                                                return (
-                                                    <span className={`px-6 py-2 rounded-full text-sm border font-bold ${streakBadge.className}`} title={streakBadge.tooltip}>
-                                                        {streakBadge.emoji} {streakBadge.title}
-                                                    </span>
-                                                );
-                                            }
-                                            return null;
-                                        })()}
-                                        {metrics.user_tag && (
-                                            <span className={`px-6 py-2 rounded-full text-sm border font-bold ${metrics.user_tag.style}`}>
-                                                <span className="bg-gradient-to-r from-current to-current bg-clip-text">
-                                                    {metrics.user_tag.emoji} {metrics.user_tag.title}
-                                                </span>
-                                            </span>
+                        {/* FINAL RATING */}
+                        <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 rounded-3xl shadow-[0_16px_60px_-24px_rgba(0,0,0,0.9)] backdrop-blur-2xl p-6">
+                            {/* Liquid glow blob */}
+                            <div className="pointer-events-none absolute -top-24 left-1/2 h-40 w-[520px] -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
+                            <div className="pointer-events-none absolute inset-0 rounded-3xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]" />
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <p className="text-sm uppercase tracking-widest text-emerald-300/80">Final Rating</p>
+                            </div>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end" }}>
+                                <div className="flex items-end gap-6">
+                                    <div className='flex items-end gap-13'>
+                                        {scoringEnabled ? (
+                                            <>
+                                                <p className="text-[60px] leading-none font-extrabold bg-gradient-to-r from-emerald-300 to-emerald-500 bg-clip-text text-transparent">
+                                                    {displayScore.toFixed(1)}
+                                                </p>
+                                                <div className="flex gap-3 pb-2">
+                                                    {badgeInfo && (
+                                                        <span className={`px-6 py-2 rounded-full text-sm border font-bold ${badgeInfo.style}`}>
+                                                            {badgeInfo.title}
+                                                        </span>
+                                                    )}
+                                                    {(() => {
+                                                        const rank = getVolumeRank(metrics.total_volume);
+                                                        return (
+                                                            <span className={`px-6 py-2 rounded-full text-sm border font-bold ${rank.className}`} title={rank.tooltip}>
+                                                                {rank.emoji} {rank.title}
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                    {(() => {
+                                                        const streakBadge = getStreakBadge(metrics.streaks.current_streak);
+                                                        if (streakBadge) {
+                                                            return (
+                                                                <span className={`px-6 py-2 rounded-full text-sm border font-bold ${streakBadge.className}`} title={streakBadge.tooltip}>
+                                                                    {streakBadge.emoji} {streakBadge.title}
+                                                                </span>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
+
+                                                    {metrics.user_tag && (
+                                                        <span className={`px-6 py-2 rounded-full text-sm border font-bold ${metrics.user_tag.style}`}>
+                                                            <span className="bg-gradient-to-r from-current to-current bg-clip-text">
+                                                                {metrics.user_tag.emoji} {metrics.user_tag.title}
+                                                            </span>
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-col gap-3 pb-2">
+                                                <p className="text-slate-400 text-lg font-medium">
+                                                    You must have more than 20 trades to enable scoring
+                                                </p>
+                                                <div className="flex gap-3 pb-2">
+                                                    {(() => {
+                                                        const rank = getVolumeRank(metrics.total_volume);
+                                                        return (
+                                                            <span className={`px-6 py-2 rounded-full text-sm border font-bold ${rank.className}`} title={rank.tooltip}>
+                                                                {rank.emoji} {rank.title}
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                    {(() => {
+                                                        const streakBadge = getStreakBadge(metrics.streaks.current_streak);
+                                                        if (streakBadge) {
+                                                            return (
+                                                                <span className={`px-6 py-2 rounded-full text-sm border font-bold ${streakBadge.className}`} title={streakBadge.tooltip}>
+                                                                    {streakBadge.emoji} {streakBadge.title}
+                                                                </span>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
+                                                    {metrics.user_tag && (
+                                                        <span className={`px-6 py-2 rounded-full text-sm border font-bold ${metrics.user_tag.style}`}>
+                                                            <span className="bg-gradient-to-r from-current to-current bg-clip-text">
+                                                                {metrics.user_tag.emoji} {metrics.user_tag.title}
+                                                            </span>
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
-                            )}
+                                {/* RIGHT: Polycool CTA */}
+                                <div>
+                                    <span className={`px-6 py-2 rounded-full text-sm border font-bold flex align-items-center gap-3`} >
+                                        <img className='polycool-img' style={{ width: "24px", height: "24px" }} src={polycoolLogo} /> Follow this trader on Polycool
+                                    </span>
+                                </div>
+                            </div>
 
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 mt-6">
-                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
-                                <p className="text-xs text-slate-300 mb-0.5">Active Positions Value</p>
-                                <p className="text-base font-bold text-emerald-300">{formatCurrency(balance)}</p>
-                                {/* <p className="text-[10px] text-slate-400 mt-0.5">Portfolio value </p> */}
+
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 mt-6">
+                                <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
+                                    <p className="text-xs text-slate-300 mb-0.5">Active Positions Valuess</p>
+                                    <p className="text-base font-bold text-emerald-300">{formatCurrency(balance)}</p>
+                                    {/* <p className="text-[10px] text-slate-400 mt-0.5">Portfolio value </p> */}
+                                </div>
+                                <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
+                                    <p className="text-xs text-slate-300 mb-0.5">Total PNL</p>
+                                    <p className={`text-base font-bold ${metrics.total_pnl >= 0 ? 'text-emerald-300' : 'text-red-400'}`}>{formatCurrency(metrics.total_pnl)}</p>
+                                </div>
+                                <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
+                                    <p className="text-xs text-slate-300 mb-0.5">Volume Traded</p>
+                                    <p className="text-base font-bold text-emerald-300">{formatCurrency(metrics.total_volume)}</p>
+                                </div>
+                                <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
+                                    <p className="text-xs text-slate-300 mb-0.5">Predictions</p>
+                                    <p className="text-base font-bold text-emerald-300">{metrics.total_trades}</p>
+                                </div>
+                                <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
+                                    <p className="text-xs text-slate-300 mb-0.5">Total Positions</p>
+                                    <p className="text-base font-bold text-emerald-300">{totalPredictions}</p>
+                                </div>
+                                <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
+                                    <p className="text-xs text-slate-300 mb-0.5">Biggest Win</p>
+                                    <p className="text-base font-bold text-emerald-300">{formatCurrency(metrics.largest_win)}</p>
+                                </div>
+                                <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
+                                    <p className="text-xs text-slate-300 mb-0.5">Worst Loss</p>
+                                    <p className="text-base font-bold text-red-400">{formatCurrency(metrics.worst_loss || 0)}</p>
+                                </div>
                             </div>
-                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
-                                <p className="text-xs text-slate-300 mb-0.5">Total PNL</p>
-                                <p className={`text-base font-bold ${metrics.total_pnl >= 0 ? 'text-emerald-300' : 'text-red-400'}`}>{formatCurrency(metrics.total_pnl)}</p>
-                            </div>
-                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
-                                <p className="text-xs text-slate-300 mb-0.5">Volume Traded</p>
-                                <p className="text-base font-bold text-emerald-300">{formatCurrency(metrics.total_volume)}</p>
-                            </div>
-                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
-                                <p className="text-xs text-slate-300 mb-0.5">Predictions</p>
-                                <p className="text-base font-bold text-emerald-300">{metrics.total_trades}</p>
-                            </div>
-                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
-                                <p className="text-xs text-slate-300 mb-0.5">Total Positions</p>
-                                <p className="text-base font-bold text-emerald-300">{totalPredictions}</p>
-                            </div>
-                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
-                                <p className="text-xs text-slate-300 mb-0.5">Biggest Win</p>
-                                <p className="text-base font-bold text-emerald-300">{formatCurrency(metrics.largest_win)}</p>
-                            </div>
-                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
-                                <p className="text-xs text-slate-300 mb-0.5">Worst Loss</p>
-                                <p className="text-base font-bold text-red-400">{formatCurrency(metrics.worst_loss || 0)}</p>
+
+                            <div className="relative mt-6 rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-6 shadow-[0_16px_60px_-24px_rgba(0,0,0,0.9)] backdrop-blur-2xl">
+                                <div className="pointer-events-none absolute -top-16 left-1/2 h-28 w-[420px] -translate-x-1/2 rounded-full bg-emerald-500/8 blur-3xl" />
+                                <div className="flex items-center justify-between text-center divide-x divide-slate-800">
+                                    <div className="flex-1 px-4">
+                                        <p className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-center gap-1">
+                                            <span className="text-orange-500">🔥</span> Longest Win Streak
+                                        </p>
+                                        <p className="text-3xl font-black text-white tracking-tight">{metrics.streaks.longest_streak}</p>
+                                    </div>
+                                    <div className="flex-1 px-4">
+                                        <p className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-center gap-1">
+                                            <span className="text-purple-400">⚡</span> Current Win Streak
+                                        </p>
+                                        <p className="text-3xl font-black text-white tracking-tight">{metrics.streaks.current_streak}</p>
+                                    </div>
+                                    <div className="flex-1 px-4">
+                                        <p className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-center gap-1">
+                                            <span className="text-yellow-400">👍</span> Winning Trades
+                                        </p>
+                                        <p className="text-3xl font-black text-emerald-400 tracking-tight">{metrics.streaks.total_wins}</p>
+                                    </div>
+                                    <div className="flex-1 px-4">
+                                        <p className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-center gap-1">
+                                            <span className="text-red-400">👎</span> Losing Trades
+                                        </p>
+                                        <p className="text-3xl font-black text-slate-300 tracking-tight">{metrics.streaks.total_losses}</p>
+                                    </div>
+                                    <div className="flex-1 px-4">
+                                        <p className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-center gap-1">
+                                            <span className="text-amber-400">🏆</span> Top Category
+                                        </p>
+                                        <p className="text-2xl font-black text-emerald-400 tracking-tight leading-none" title={marketDistribution[0]?.category}>
+                                            {(() => {
+                                                // Find first category that's not Uncategorized or Other
+                                                const topCategory = marketDistribution.find(item => {
+                                                    const cat = item.category.toLowerCase();
+                                                    return cat !== 'uncategorized' && cat !== 'other';
+                                                });
+                                                return topCategory?.category || 'N/A';
+                                            })()}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="relative mt-6 rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-6 shadow-[0_16px_60px_-24px_rgba(0,0,0,0.9)] backdrop-blur-2xl">
-                            <div className="pointer-events-none absolute -top-16 left-1/2 h-28 w-[420px] -translate-x-1/2 rounded-full bg-emerald-500/8 blur-3xl" />
-                            <div className="flex items-center justify-between text-center divide-x divide-slate-800">
-                                <div className="flex-1 px-4">
-                                    <p className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-center gap-1">
-                                        <span className="text-orange-500">🔥</span> Longest Win Streak
-                                    </p>
-                                    <p className="text-3xl font-black text-white tracking-tight">{metrics.streaks.longest_streak}</p>
+                        {/* PRIMARY METRICS GRID - Win Rate, Stake Yield, Stake-Weighted Win Rate, Unrealized PnL, Realized PnL */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-2xl p-4 hover:border-white/15 transition-all group">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:scale-110 transition-transform">
+                                        <Trophy className="h-5 w-5" />
+                                    </div>
+                                    <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Win Rate</p>
                                 </div>
-                                <div className="flex-1 px-4">
-                                    <p className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-center gap-1">
-                                        <span className="text-purple-400">⚡</span> Current Win Streak
-                                    </p>
-                                    <p className="text-3xl font-black text-white tracking-tight">{metrics.streaks.current_streak}</p>
+                                <p className="text-xl font-bold text-white">{metrics.win_rate.toFixed(1)}%</p>
+                                <p className="text-xs text-slate-500 mt-1">{metrics.streaks.total_wins}W / {metrics.streaks.total_losses}L</p>
+                            </div>
+
+                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-2xl p-4 hover:border-white/15 transition-all group">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
+                                        <TrendingUp className="h-5 w-5" />
+                                    </div>
+                                    <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Stake yield</p>
                                 </div>
-                                <div className="flex-1 px-4">
-                                    <p className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-center gap-1">
-                                        <span className="text-yellow-400">👍</span> Winning Trades
-                                    </p>
-                                    <p className="text-3xl font-black text-emerald-400 tracking-tight">{metrics.streaks.total_wins}</p>
+                                <p className={`text-xl font-bold ${metrics.roi >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    {metrics.roi >= 0 ? '+' : ''}{metrics.roi.toFixed(2)}%
+                                </p>
+                                <p className="text-xs text-slate-500 mt-1">All-time</p>
+                            </div>
+
+                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-2xl p-4 hover:border-white/15 transition-all group">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400 group-hover:scale-110 transition-transform">
+                                        <ActivityIcon className="h-5 w-5" />
+                                    </div>
+                                    <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Stake-Weighted Win Rate</p>
                                 </div>
-                                <div className="flex-1 px-4">
-                                    <p className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-center gap-1">
-                                        <span className="text-red-400">👎</span> Losing Trades
-                                    </p>
-                                    <p className="text-3xl font-black text-slate-300 tracking-tight">{metrics.streaks.total_losses}</p>
+                                <p className="text-xl font-bold text-white">
+                                    {((metrics.stake_weighted_win_rate || metrics.w_stake * 100) || 0).toFixed(1)}%
+                                </p>
+                                <p className="text-xs text-slate-500 mt-1">Weighted by stake size</p>
+                            </div>
+
+                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-2xl p-4 hover:border-white/15 transition-all group">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
+                                        <img src={unrealizedPnlIcon} alt="Unrealized PnL" className="h-6 w-6 object-contain" />
+                                    </div>
+                                    <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Unrealized PnL</p>
                                 </div>
-                                <div className="flex-1 px-4">
-                                    <p className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-center gap-1">
-                                        <span className="text-amber-400">🏆</span> Top Category
-                                    </p>
-                                    <p className="text-2xl font-black text-emerald-400 tracking-tight leading-none" title={marketDistribution[0]?.category}>
-                                        {(() => {
-                                            // Find first category that's not Uncategorized or Other
-                                            const topCategory = marketDistribution.find(item => {
-                                                const cat = item.category.toLowerCase();
-                                                return cat !== 'uncategorized' && cat !== 'other';
-                                            });
-                                            return topCategory?.category || 'N/A';
-                                        })()}
-                                    </p>
+                                <p className={`text-xl font-bold ${(metrics.unrealized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    {formatCurrency(metrics.unrealized_pnl)}
+                                </p>
+                                <p className="text-xs text-slate-500 mt-1">Paper PnL</p>
+                            </div>
+
+                            <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-2xl p-4 hover:border-white/15 transition-all group">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 rounded-lg bg-red-500/10 text-red-400 group-hover:scale-110 transition-transform">
+                                        <img src={realizedPnlIcon} alt="Realized PnL" className="h-5 w-5 object-contain" />
+                                    </div>
+                                    <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Realized PnL</p>
                                 </div>
+                                <p className={`text-xl font-bold ${(metrics.realized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    {formatCurrency(metrics.realized_pnl)}
+                                </p>
+                                <p className="text-xs text-slate-500 mt-1">Banked PnL</p>
                             </div>
                         </div>
                     </div>
-
-                    {/* PRIMARY METRICS GRID - Win Rate, Stake Yield, Stake-Weighted Win Rate, Unrealized PnL, Realized PnL */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                        <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-2xl p-4 hover:border-white/15 transition-all group">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:scale-110 transition-transform">
-                                    <Trophy className="h-5 w-5" />
-                                </div>
-                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Win Rate</p>
-                            </div>
-                            <p className="text-xl font-bold text-white">{metrics.win_rate.toFixed(1)}%</p>
-                            <p className="text-xs text-slate-500 mt-1">{metrics.streaks.total_wins}W / {metrics.streaks.total_losses}L</p>
-                        </div>
-
-                        <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-2xl p-4 hover:border-white/15 transition-all group">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
-                                    <TrendingUp className="h-5 w-5" />
-                                </div>
-                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Stake yield</p>
-                            </div>
-                            <p className={`text-xl font-bold ${metrics.roi >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                {metrics.roi >= 0 ? '+' : ''}{metrics.roi.toFixed(2)}%
-                            </p>
-                            <p className="text-xs text-slate-500 mt-1">All-time</p>
-                        </div>
-
-                        <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-2xl p-4 hover:border-white/15 transition-all group">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400 group-hover:scale-110 transition-transform">
-                                    <ActivityIcon className="h-5 w-5" />
-                                </div>
-                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Stake-Weighted Win Rate</p>
-                            </div>
-                            <p className="text-xl font-bold text-white">
-                                {((metrics.stake_weighted_win_rate || metrics.w_stake * 100) || 0).toFixed(1)}%
-                            </p>
-                            <p className="text-xs text-slate-500 mt-1">Weighted by stake size</p>
-                        </div>
-
-                        <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-2xl p-4 hover:border-white/15 transition-all group">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
-                                    <img src={unrealizedPnlIcon} alt="Unrealized PnL" className="h-6 w-6 object-contain" />
-                                </div>
-                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Unrealized PnL</p>
-                            </div>
-                            <p className={`text-xl font-bold ${(metrics.unrealized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                {formatCurrency(metrics.unrealized_pnl)}
-                            </p>
-                            <p className="text-xs text-slate-500 mt-1">Paper PnL</p>
-                        </div>
-
-                        <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-2xl p-4 hover:border-white/15 transition-all group">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 rounded-lg bg-red-500/10 text-red-400 group-hover:scale-110 transition-transform">
-                                    <img src={realizedPnlIcon} alt="Realized PnL" className="h-5 w-5 object-contain" />
-                                </div>
-                                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Realized PnL</p>
-                            </div>
-                            <p className={`text-xl font-bold ${(metrics.realized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                {formatCurrency(metrics.realized_pnl)}
-                            </p>
-                            <p className="text-xs text-slate-500 mt-1">Banked PnL</p>
-                        </div>
-                    </div>
-                </div>
-            )}
+                )}
             </div>
             {/* End screenshot area */}
 
