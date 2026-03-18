@@ -1133,9 +1133,10 @@ export function ProfileStat() {
                                 </div>
                                 {/* RIGHT: Polycool CTA */}
                                 <div>
-                                    <span className={`px-6 py-2 rounded-full text-sm border font-bold flex align-items-center gap-3`} >
-                                        <img className='polycool-img' style={{ width: "24px", height: "24px" }} src={polycoolLogo} /> Follow this trader on Polycool
+                                    <a href="https://t.me/PolycoolApp_bot/PolycoolApp?startapp=ref_59AT9YVG" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "white" }}><span className={`px-6 py-2 rounded-full text-sm border font-bold flex align-items-center gap-3`} >
+                                        <img className='polycool-img' style={{ width: "24px", height: "24px" }} src={polycoolLogo} /> Copy this trader on Polycool
                                     </span>
+                                    </a>
                                 </div>
                             </div>
 
