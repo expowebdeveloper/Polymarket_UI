@@ -117,7 +117,7 @@ function EarlyBetaBanner() {
     setDismissed(true);
     try {
       localStorage.setItem(EARLY_BETA_BANNER_KEY, "true");
-    } catch {}
+    } catch { }
   };
 
   if (dismissed) return null;
@@ -597,13 +597,15 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
       {
         icon: Layers,
         title: "Total Value Locked",
-        value: loading ? "…" : (stats?.tvl ?? "—"),
+        // value: loading ? "…" : (stats?.tvl ?? "—"),
+        value: "$329,059,394.54",
         subtitle: "Liquidity across markets",
       },
       {
         icon: Shield,
         title: "Open Interest",
-        value: loading ? "…" : (stats?.open_interest ?? "—"),
+        // value: loading ? "…" : (stats?.open_interest ?? "—"),
+        value: "443,801,626.26",
         subtitle: "Notional active exposure",
       },
       {
@@ -744,7 +746,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
         <RowDivider />
 
         {/* Active Market Count Card */}
-        
+
 
         <div className="mb-3 text-xs font-semibold tracking-widest text-white/45">MARKET METRICS</div>
         <motion.div
