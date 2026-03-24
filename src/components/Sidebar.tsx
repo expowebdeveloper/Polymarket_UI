@@ -17,7 +17,7 @@ const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: BarChart3 },
   { name: "Predictor Rating/Stats", href: "/profile-stat", icon: Star },
   { name: "Market", href: "/markets", icon: CandlestickChart, badge: "Coming Soon", disabled: true },
-  { name: "Leaderboard", href: "/leaderboard", icon: Trophy, badge: "Coming Soon", disabled: true },
+  { name: "Leaderboard", href: "/leaderboard", icon: Trophy },
   { name: "Whales/insiders", href: "/Whales/insiders", icon: LineChart, badge: "Coming Soon", disabled: true },
   { name: "Powly AI", href: "/reports", icon: LineChart, badge: "Coming Soon", disabled: true, useLogo: true },
 ];
