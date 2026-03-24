@@ -54,6 +54,15 @@ function ProtectedLayout({
               }
             />
             <Route
+              path="/leaderboard/entries"
+              element={
+                <>
+                  <TradingHeader title="Leaderboard" />
+                  <Leaderboard />
+                </>
+              }
+            />
+            <Route
               path="/leaderboard/all"
               element={
                 <>

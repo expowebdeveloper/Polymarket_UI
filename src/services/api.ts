@@ -56,6 +56,7 @@ async function fetchApi<T>(endpoint: string, timeoutMs: number = 30000, method: 
                 'Content-Type': 'application/json',
             }),
             signal: controller.signal,
+            referrerPolicy: 'strict-origin-when-cross-origin',
         });
 
         clearTimeout(timeoutId);
