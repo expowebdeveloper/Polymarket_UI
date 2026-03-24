@@ -10,6 +10,7 @@ import {
     Check,
     Loader2,
 } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import {
     fetchDailyVolumeLeaderboard,
     fetchWeeklyVolumeLeaderboard,
@@ -21,7 +22,7 @@ import type { LeaderboardEntry } from "../types/api";
 // --------------------
 // Types
 // --------------------
-type RankBy = "Score" | "Win Rate" | "Total Volume" | "ROI" | "PNL" | "Rewards";
+type RankBy = "Score" | "Win Rate" | "Total Volume" | "ROI" | "PNL";
 type Range = "Last 24h" | "Last 7 days" | "Last 30 days" | "All time";
 
 interface TableRow {
@@ -41,7 +42,7 @@ interface TableRow {
 }
 
 const RANGE_OPTIONS: Range[] = ["Last 24h", "Last 7 days", "Last 30 days", "All time"];
-const RANK_OPTIONS: RankBy[] = ["Win Rate", "ROI", "Total Volume", "PNL", "Score"]; // Rewards not yet supported by DB sort
+const RANK_OPTIONS: RankBy[] = ["Score", "Win Rate", "ROI", "PNL", "Total Volume"];
 
 const TAG_GROUPS: { title: string; options: string[] }[] = [
     {
@@ -468,16 +469,55 @@ function TagsMenu({
 // Main
 // --------------------
 export function Leaderboard() {
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // Mapping for RankBy
+    const rankByMap: Record<string, RankBy> = {
+        'SCORE': "Score",
+        'WIN_RATE': "Win Rate",
+        'ROI': "ROI",
+        'PNL': "PNL",
+        'VOL': "Total Volume"
+    };
+    const rankByInverseMap: Record<RankBy, string> = {
+        "Score": 'SCORE',
+        "Win Rate": 'WIN_RATE',
+        "ROI": 'ROI',
+        "PNL": 'PNL',
+        "Total Volume": 'VOL'
+    };
+
+    // Mapping for Range
+    const rangeMap: Record<string, Range> = {
+        '24h': "Last 24h",
+        '7d': "Last 7 days",
+        '30d': "Last 30 days",
+        'all': "All time"
+    };
+    const rangeInverseMap: Record<Range, string> = {
+        "Last 24h": '24h',
+        "Last 7 days": '7d',
+        "Last 30 days": '30d',
+        "All time": 'all'
+    };
+
     const [category, setCategory] = useState("All Categories");
-    const [range, setRange] = useState<Range>("All time");
-    const [rankBy, setRankBy] = useState<RankBy>("Score");
+
+    const [range, setRange] = useState<Range>(() => {
+        const r = searchParams.get('time_range');
+        return r && rangeMap[r] ? rangeMap[r] : "All time";
+    });
+    const [rankBy, setRankBy] = useState<RankBy>(() => {
+        const r = searchParams.get('order_by');
+        return r && rankByMap[r] ? rankByMap[r] : "Score";
+    });
 
     const [rankMenuOpen, setRankMenuOpen] = useState(false);
-    const [rankDraft, setRankDraft] = useState<RankBy>("Score");
+    const [rankDraft, setRankDraft] = useState<RankBy>(rankBy);
     const rankAnchorRef = useRef<HTMLDivElement | null>(null);
 
     const [rangeMenuOpen, setRangeMenuOpen] = useState(false);
-    const [rangeDraft, setRangeDraft] = useState<Range>("All time");
+    const [rangeDraft, setRangeDraft] = useState<Range>(range);
     const rangeAnchorRef = useRef<HTMLDivElement | null>(null);
 
     const [tagsMenuOpen, setTagsMenuOpen] = useState(false);
@@ -485,13 +525,29 @@ export function Leaderboard() {
     const [activeTags, setActiveTags] = useState<string[]>([]);
     const tagsAnchorRef = useRef<HTMLDivElement | null>(null);
 
-    const [query, setQuery] = useState("");
+    const [query, setQuery] = useState(searchParams.get('q') || "");
     const [rows, setRows] = useState<TableRow[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [page, setPage] = useState(1);
+
+    const LIMIT = parseInt(searchParams.get('limit') || '50');
+    const [page, setPage] = useState(() => {
+        const offset = parseInt(searchParams.get('offset') || '0');
+        return Math.floor(offset / LIMIT) + 1;
+    });
     const [totalPages, setTotalPages] = useState(1);
-    const LIMIT = 50;
+
+    // Sync state with URL params when state changes
+    useEffect(() => {
+        const params: Record<string, string> = {};
+        params.limit = String(LIMIT);
+        params.offset = String((page - 1) * LIMIT);
+        params.order_by = rankByInverseMap[rankBy];
+        params.time_range = rangeInverseMap[range];
+        if (query) params.q = query;
+
+        setSearchParams(params, { replace: true });
+    }, [page, rankBy, range, query]);
 
     // Fetch data from API
     const fetchData = async () => {
