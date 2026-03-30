@@ -493,7 +493,7 @@ export default function LeaderboardViewAll() {
     const [darkMode, setDarkMode] = useState(false);
 
     const [category, setCategory] = useState("All Categories");
-    const [range, setRange] = useState<Range>("All time");
+    const [range, setRange] = useState<Range>("Last 30 days");
     const [rankBy, setRankBy] = useState<RankBy>("Score");
 
     const [rankMenuOpen, setRankMenuOpen] = useState(false);
@@ -501,7 +501,7 @@ export default function LeaderboardViewAll() {
     const rankAnchorRef = useRef<HTMLDivElement | null>(null);
 
     const [rangeMenuOpen, setRangeMenuOpen] = useState(false);
-    const [rangeDraft, setRangeDraft] = useState<Range>("All time");
+    const [rangeDraft, setRangeDraft] = useState<Range>("Last 30 days");
     const rangeAnchorRef = useRef<HTMLDivElement | null>(null);
 
     const [tagsMenuOpen, setTagsMenuOpen] = useState(false);
@@ -601,6 +601,8 @@ export default function LeaderboardViewAll() {
                                 <div className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 md:flex">
                                     <Search className="h-4 w-4 text-slate-400" />
                                     <input
+                                        id="trader-search"
+                                        name="trader-search"
                                         value={query}
                                         onChange={(e) => setQuery(e.target.value)}
                                         placeholder="Search trader…"

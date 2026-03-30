@@ -49,7 +49,7 @@ function ProtectedLayout({
               element={
                 <>
                   <TradingHeader title="Leaderboard" />
-                  <Leaderboard />
+                  <LeaderboardViewAll />
                 </>
               }
             />

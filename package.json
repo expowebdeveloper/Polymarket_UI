@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
+    "@stripe/react-stripe-js": "^5.6.1",
+    "@stripe/stripe-js": "^8.11.0",
     "@supabase/supabase-js": "^2.57.4",
     "@types/html2canvas": "^0.5.35",
     "framer-motion": "^12.33.0",
