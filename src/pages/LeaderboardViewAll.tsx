@@ -785,8 +785,20 @@ export default function LeaderboardViewAll() {
                                         </tr>
                                     ) : displayRows.length === 0 ? (
                                         <tr>
-                                            <td colSpan={9} className="py-8 text-center text-slate-500">
-                                                No traders found
+                                            <td colSpan={9} className="py-12 text-center">
+                                                <div className="flex flex-col items-center gap-3">
+                                                    <div className="rounded-full bg-slate-100 p-4 dark:bg-slate-800">
+                                                        <Search className="h-6 w-6 text-slate-400" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                                                            No traders found
+                                                        </p>
+                                                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                                            Sync in progress? Try changing the time range to "Last 30 days" or "All time".
+                                                        </p>
+                                                    </div>
+                                                </div>
                                             </td>
                                         </tr>
                                     ) : (
@@ -888,6 +900,8 @@ export default function LeaderboardViewAll() {
                         <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                             <Search className="h-4 w-4 text-slate-400" />
                             <input
+                                id="trader-search-mobile"
+                                name="trader-search-mobile"
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value)}
                                 placeholder="Search trader…"
