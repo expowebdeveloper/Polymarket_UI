@@ -2,20 +2,12 @@
 
 import {
   LayoutDashboard,
-  Trophy,
   LineChart,
   ChevronLeft,
   ExternalLink,
-  BarChart3,
   Star,
   CandlestickChart,
   Microscope,
-  Search,
-  PieChart,
-  User,
-  Settings,
-  HelpCircle,
-  LogOut,
   LayoutGrid
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -24,9 +16,10 @@ import logo from "../assets/logo.png";
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Predictor Rating/Stats", href: "/profile-stat", icon: Star },
-  { name: "Markets", href: "/markets", icon: CandlestickChart },
-  { name: "Leaderboard", href: "/leaderboard/all", icon: Trophy },
-  { name: "Whale Tracker", href: "/whale-tracker", icon: Microscope },
+  { name: "Markets", href: "/markets", icon: CandlestickChart, badge: "Coming Soon", disabled: true },
+  // { name: "Live Rankings", href: "/leaderboard-new", icon: Trophy, badge: "New" },
+  { name: "Leaderboard", href: "/leaderboard/all", icon: LayoutGrid, badge: "Coming Soon", disabled: true },
+  { name: "Whale Tracker", href: "/whale-tracker", icon: Microscope, badge: "Coming Soon", disabled: true },
   { name: "Powly AI", href: "/reports", icon: LineChart, badge: "Coming Soon", disabled: true, useLogo: true },
 ];
 
@@ -41,7 +34,7 @@ export function Sidebar({ collapsed, onSetCollapsed }: SidebarProps) {
       className={`fixed top-0 left-0 z-40 h-screen transition-all duration-300
       ${collapsed ? "w-20" : "w-64"}
       border border-white/10
-      bg-white/5 backdrop-blur-xl shadow-[0_8px_40px_rgba(0,0,fixed top-0 left-40,0.35)]
+      bg-white/5 backdrop-blur-xl shadow-[0_8px_40px_rgba(0,0,0,0.35)]
       before:absolute before:inset-0 before:bg-gradient-to-br before:from-emerald-400/10 before:via-cyan-400/5 before:to-transparent before:pointer-events-none`}
     >
       {/* TOGGLE */}
