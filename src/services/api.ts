@@ -20,6 +20,7 @@ import type {
     ApiError,
     TraderRating,
     PaginationInfo,
+    LeaderboardEntry,
 } from '../types/api';
 
 /** If the request URL is an ngrok host, include the header so ngrok doesn't show the interstitial. */
@@ -967,6 +968,16 @@ export async function fetchUserPnL(walletAddress: string): Promise<any> {
  * Fetch market distribution from API-based endpoint
  * @param walletAddress - Wallet address
  */
-export async function fetchMarketDistribution(walletAddress: string): Promise<any> {
-    return fetchApi<any>(`/dashboard/market-distribution/${walletAddress}`, 60000);
+export async function fetchMarketDistribution(wallet_address: string): Promise<any> {
+    return fetchApi<any>(`/dashboard/market-distribution/${wallet_address}`, 60000);
+}
+
+/**
+ * Fetch new leaderboard entries sorted by final_score
+ * @param limit - Maximum number of entries
+ * @param offset - Offset for pagination
+ */
+export async function fetchNewLeaderboard(limit: number = 100, offset: number = 0): Promise<LeaderboardResponse> {
+    const url = `/leaderboard/new?limit=${limit}&offset=${offset}`;
+    return fetchApi<LeaderboardResponse>(url, 30000, 'GET');
 }

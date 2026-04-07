@@ -5,7 +5,6 @@ import { TradingHeader } from './components/TradingHeader';
 import { Footer } from './components/Footer';
 
 import { Dashboard } from './pages/Dashboard';
-import { Leaderboard } from './pages/Leaderboard';
 import { Markets } from './pages/Markets';
 import { WhaleTracker } from './pages/WhaleTracker';
 import { Reports } from './pages/Reports';
@@ -21,7 +20,7 @@ import LiveLeaderboard from './pages/LiveLeaderboard';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { ProfileStat } from './pages/ProfileStat';
-import { useTheme } from './contexts/ThemeContext';
+import { LeaderboardNew } from './pages/LeaderboardNew';
 import { useAuth } from './contexts/AuthContext';
 
 // Defined outside App so it's stable across re-renders — toggling sidebar no longer remounts route content
@@ -180,6 +179,15 @@ function ProtectedLayout({
               }
             />
             <Route
+              path="/leaderboard-new"
+              element={
+                <>
+                  <TradingHeader title="Live Rankings (Async)" />
+                  <LeaderboardNew />
+                </>
+              }
+            />
+            <Route
               path="/profile-stat/:walletAddress?"
               element={
                 <>
@@ -198,10 +206,8 @@ function ProtectedLayout({
 }
 
 function App() {
-  const [selectedSymbol, setSelectedSymbol] = useState('BTC/USD');
   const [collapsed, setCollapsed] = useState(false);
-  const { theme } = useTheme();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isLoading } = useAuth();
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -225,11 +231,11 @@ function App() {
         {/* Protected routes */}
         {/* Login requirement commented out - allow access without auth */}
         {/* {isAuthenticated ? (
-          <Route path="*" element={<ProtectedLayout collapsed={collapsed} onSetCollapsed={setCollapsed} onSelectSymbol={setSelectedSymbol} />} />
+          <Route path="*" element={<ProtectedLayout collapsed={collapsed} onSetCollapsed={setCollapsed} onSelectSymbol={() => {}} />} />
         ) : (
           <Route path="*" element={<Navigate to="/login" replace />} />
         )} */}
-        <Route path="*" element={<ProtectedLayout collapsed={collapsed} onSetCollapsed={setCollapsed} onSelectSymbol={setSelectedSymbol} />} />
+        <Route path="*" element={<ProtectedLayout collapsed={collapsed} onSetCollapsed={setCollapsed} onSelectSymbol={() => {}} />} />
       </Routes>
     </div>
   );
