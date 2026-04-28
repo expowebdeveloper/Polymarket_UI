@@ -89,12 +89,15 @@ function fmtMoney(value: number, unit: "M" | "K") {
 /** Format volume: use K when value is in thousands (e.g. $220K), M when in millions (e.g. $1.5M). */
 function fmtVolume(valueInMillions: number): string {
   const sign = valueInMillions < 0 ? "-" : "";
-  const abs = Math.abs(valueInMillions);
-  if (abs < 1) {
-    const k = Math.round(abs * 1000);
-    return `${sign}$${k}K`;
+  const actualDollars = Math.abs(valueInMillions) * 1e6;
+  
+  if (actualDollars >= 1e6) {
+    return `${sign}$${(actualDollars / 1e6).toFixed(2)}M`;
   }
-  return `${sign}$${abs.toFixed(2)}M`;
+  if (actualDollars >= 1e3) {
+    return `${sign}$${(actualDollars / 1e3).toFixed(1)}K`;
+  }
+  return `${sign}$${actualDollars.toFixed(2)}`;
 }
 
 function GlassCard({
@@ -278,6 +281,15 @@ function normalizeCategory(category: string): string {
 
 function formatCategoryLabel(category: string): string {
   const normalized = normalizeCategory(category);
+  
+  if (normalized === "other") {
+    // Return original category name instead of "Other"
+    return category
+      .split(" ")
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  }
+
   const labelMap: Record<string, string> = {
     "climate & science": "Climate & Science",
     "macro / rates": "Macro / Rates",
@@ -338,10 +350,8 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
   // Transform real data to component format
   const markets: MarketDatum[] = useMemo(() => {
     return marketDistribution.map((m) => {
-      const normalizedKey = normalizeCategory(m.category);
-
       return {
-        key: normalizedKey,
+        key: m.category,
         label: formatCategoryLabel(m.category),
         allocationPct: m.capital_percent || 0,
         roiPct: m.roi_percent || 0,
@@ -352,11 +362,11 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
         volume: m.capital || 0, // Use backend's capital as volume (already correctly calculated)
         pnl: m.total_pnl || 0,
       };
-    }).filter(m => m.capital > 0 || m.trades > 0 || Math.abs(m.pnl) > 0 || m.volume > 0);
+    });
   }, [marketDistribution]);
 
   const allocationSorted = useMemo(
-    () => [...markets].filter((m) => m.volume > 0.001).sort((a, b) => b.volume - a.volume),
+    () => [...markets].sort((a, b) => b.volume - a.volume),
     [markets]
   );
 
@@ -366,15 +376,12 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
   }, [markets]);
 
   const rightSeries = useMemo(() => {
-    const byKey = new Map(markets.map((m) => [m.key, m]));
-    return CATEGORY_ORDER.map((k) => byKey.get(k))
-      .filter(Boolean)
+    return [...markets]
       .map((m) => ({
-        key: m!.key,
-        label: m!.label,
-        value: m!.pnl,
+        key: m.key,
+        label: m.label,
+        value: m.pnl,
       }))
-      .filter((d) => Math.abs(d.value) > 0.001) // hide zero PNL categories
       .sort((a, b) => b.value - a.value); // descending by PNL
   }, [markets]);
 
