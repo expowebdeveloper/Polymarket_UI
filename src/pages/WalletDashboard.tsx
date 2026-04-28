@@ -295,7 +295,10 @@ export function WalletDashboard() {
       edge += "moderate ROI ";
     }
 
-    if (primary.risk_score < 0.1) {
+    const riskLabel = scoringMetrics?.risk_components?.label;
+    if (riskLabel && riskLabel !== 'Insufficient Data') {
+      edge += `and ${riskLabel.toLowerCase()} profile.`;
+    } else if (primary.risk_score < 0.1) {
       edge += "and low risk.";
     } else if (primary.risk_score < 0.3) {
       edge += "and moderate risk.";
@@ -304,7 +307,7 @@ export function WalletDashboard() {
     }
 
     return edge;
-  }, [marketDistribution]);
+  }, [marketDistribution, scoringMetrics]);
 
   // Calculate profit trend for last 7 days
   const profitTrend = useMemo(() => {
@@ -572,11 +575,11 @@ export function WalletDashboard() {
             >
               {showAdvanced ? (
                 <>
-                  Hide Extra Metrics <ChevronUp />
+                  Hide Extra Metrics1111111 <ChevronUp />
                 </>
               ) : (
                 <>
-                  View Extra Metrics <ChevronDown />
+                  View Extra Metrics111111111 <ChevronDown />
                 </>
               )}
             </button>
@@ -585,8 +588,20 @@ export function WalletDashboard() {
           {showAdvanced && (
             <div className="grid grid-cols-5 gap-4">
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
-                <p className="text-sm text-slate-400">Risk Score</p>
-                <p className="text-lg font-semibold text-emerald-400">{(Number(scoringMetrics?.score_risk || 0) * 100).toFixed(2)}%</p>
+                <p className="text-sm text-slate-400">Risk Profile</p>
+                {scoringMetrics?.risk_components?.label ? (
+                  <p className={`text-base font-semibold ${
+                    scoringMetrics.risk_components.label === 'Very Stable' ? 'text-emerald-400' :
+                    scoringMetrics.risk_components.label === 'Controlled' ? 'text-green-400' :
+                    scoringMetrics.risk_components.label === 'Moderate Risk' ? 'text-yellow-400' :
+                    scoringMetrics.risk_components.label === 'Aggressive' ? 'text-orange-400' :
+                    scoringMetrics.risk_components.label === 'Highly Volatile' ? 'text-red-400' :
+                    'text-slate-400'
+                  }`}>{scoringMetrics.risk_components.label}</p>
+                ) : (
+                  <p className="text-lg font-semibold text-slate-400">—</p>
+                )}
+                <p className="text-xs text-slate-500 mt-1">{(Number(scoringMetrics?.score_risk || 0) * 100).toFixed(1)}% risk</p>
               </div>
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
                 <p className="text-sm text-slate-400">Trough PnL</p>

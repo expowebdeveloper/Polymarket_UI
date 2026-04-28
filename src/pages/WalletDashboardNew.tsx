@@ -574,7 +574,7 @@ export function WalletDashboard() {
   }, [allClosedPositions]);
 
   const primaryMetrics = [
-    { label: "Win Rate", value: `${(scoringMetrics?.win_rate_percent || 0).toFixed(1)}%`, sub: `${streaks.total_wins} of ${streaks.total_wins + streaks.total_losses} trades` },
+    { label: "Win Rate111", value: `${(scoringMetrics?.win_rate_percent || 0).toFixed(1)}%`, sub: `${streaks.total_wins} of ${streaks.total_wins + streaks.total_losses} trades` },
     { label: "Stake yield", value: `${scoringMetrics?.roi >= 0 ? '+' : ''}${(scoringMetrics?.roi || 0).toFixed(2)}%`, sub: "All-time" },
     { label: "Stake-Weighted Win Rate", value: `${stakeWeightedWinRate.toFixed(1)}%`, sub: "Weighted by stake size" },
     { label: "Unrealized PnL", value: formatCurrency(unrealizedPnl), sub: "Active positions" },

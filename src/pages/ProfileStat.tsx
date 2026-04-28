@@ -605,7 +605,10 @@ export function ProfileStat() {
             edge += "moderate ROI ";
         }
 
-        if (primary.risk_score < 0.1) {
+        const riskLabel = metrics?.risk_components?.label;
+        if (riskLabel && riskLabel !== 'Insufficient Data') {
+            edge += `and ${riskLabel.toLowerCase()} profile.`;
+        } else if (primary.risk_score < 0.1) {
             edge += "and low risk.";
         } else if (primary.risk_score < 0.3) {
             edge += "and moderate risk.";
@@ -614,7 +617,7 @@ export function ProfileStat() {
         }
 
         return edge;
-    }, [marketDistribution]);
+    }, [marketDistribution, metrics]);
 
     // Calculate profit trend for last 7 days
     const profitTrend = useMemo(() => {
@@ -842,6 +845,8 @@ export function ProfileStat() {
 
     return (
         <div className="min-h-screen text-white bg-slate-950">
+        <h1>111111111111111111</h1>
+
             {/* Single seamless background: base + soft glow (no layered strips) */}
             <div className="pointer-events-none fixed inset-0 z-0 bg-slate-950">
                 <div
@@ -1049,7 +1054,7 @@ export function ProfileStat() {
                             <div className="pointer-events-none absolute -top-24 left-1/2 h-40 w-[520px] -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
                             <div className="pointer-events-none absolute inset-0 rounded-3xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]" />
                             <div className="flex items-center gap-3 flex-wrap">
-                                <p className="text-sm uppercase tracking-widest text-emerald-300/80">Final Rating</p>
+                                <p className="text-sm uppercase tracking-widest text-emerald-300/80">Final Rating1111111</p>
                             </div>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end" }}>
                                 <div className="flex items-end gap-6">
@@ -1170,6 +1175,21 @@ export function ProfileStat() {
                                 <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
                                     <p className="text-xs text-slate-300 mb-0.5">Worst Loss</p>
                                     <p className="text-base font-bold text-red-400">{formatCurrency(metrics.worst_loss || 0)}</p>
+                                </div>
+                                <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
+                                    <p className="text-xs text-slate-300 mb-0.5">Risk Profile</p>
+                                    {metrics.risk_components?.label ? (
+                                        <p className={`text-sm font-bold ${
+                                            metrics.risk_components.label === 'Very Stable' ? 'text-emerald-400' :
+                                            metrics.risk_components.label === 'Controlled' ? 'text-green-400' :
+                                            metrics.risk_components.label === 'Moderate Risk' ? 'text-yellow-400' :
+                                            metrics.risk_components.label === 'Aggressive' ? 'text-orange-400' :
+                                            metrics.risk_components.label === 'Highly Volatile' ? 'text-red-400' :
+                                            'text-slate-400'
+                                        }`}>{metrics.risk_components.label}</p>
+                                    ) : (
+                                        <p className="text-base font-bold text-slate-400">—</p>
+                                    )}
                                 </div>
                             </div>
 

@@ -51,6 +51,15 @@ export interface ScoredMetrics {
     total_losses?: number;
     /** Volume bonus multiplier (0 to 0.08): extra % applied to base rating for high prediction count. */
     volume_bonus?: number;
+    /** Risk components from the equity-curve risk scoring algorithm. */
+    risk_components?: {
+        label: string;            // "Very Stable" | "Controlled" | "Moderate Risk" | "Aggressive" | "Highly Volatile" | "Insufficient Data"
+        drawdown_score: number | null;
+        loss_severity_score: number | null;
+        max_drawdown_units: number;
+        p90_drawdown_units: number | null;
+        reference_scale: number | null;
+    };
 }
 
 /**
