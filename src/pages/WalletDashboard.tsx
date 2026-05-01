@@ -575,11 +575,11 @@ export function WalletDashboard() {
             >
               {showAdvanced ? (
                 <>
-                  Hide Extra Metrics1111111 <ChevronUp />
+                  Hide Extra Metrics <ChevronUp />
                 </>
               ) : (
                 <>
-                  View Extra Metrics111111111 <ChevronDown />
+                  View Extra Metrics <ChevronDown />
                 </>
               )}
             </button>

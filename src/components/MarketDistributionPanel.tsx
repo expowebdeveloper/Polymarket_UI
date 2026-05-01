@@ -346,6 +346,7 @@ interface MarketDistributionPanelProps {
 
 export function MarketDistributionPanel({ marketDistribution, activities = [], positions = [], closedPositions = [] }: MarketDistributionPanelProps) {
 
+  const [rightMetric, setRightMetric] = useState<'pnl' | 'win_rate'>('pnl');
 
   // Transform real data to component format
   const markets: MarketDatum[] = useMemo(() => {
@@ -376,16 +377,29 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
   }, [markets]);
 
   const rightSeries = useMemo(() => {
+    if (rightMetric === 'win_rate') {
+      return [...markets]
+        // Hide categories with no trades (win rate would be 0% / meaningless)
+        .filter((m) => m.trades > 0)
+        .map((m) => ({
+          key: m.key,
+          label: m.label,
+          value: m.winRatePct,
+          trades: m.trades,
+        }))
+        .sort((a, b) => b.value - a.value); // descending by win rate
+    }
     return [...markets]
       .map((m) => ({
         key: m.key,
         label: m.label,
         value: m.pnl,
+        trades: m.trades,
       }))
       .sort((a, b) => b.value - a.value); // descending by PNL
-  }, [markets]);
+  }, [markets, rightMetric]);
 
-  // Chart data: volume in millions for display, PNL in thousands
+  // Chart data: volume in millions for display, PNL in thousands, win rate as raw %
   const volumeChartData = useMemo(
     () =>
       allocationSorted.map((m) => ({
@@ -394,21 +408,30 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
       })),
     [allocationSorted]
   );
-  const pnlChartData = useMemo(
+  const rightChartData = useMemo(
     () =>
       rightSeries.map((d) => ({
         name: d.label,
-        value: d.value / 1e3,
+        value: rightMetric === 'win_rate' ? d.value : d.value / 1e3,
       })),
-    [rightSeries]
+    [rightSeries, rightMetric]
   );
-  const pnlExtent = useMemo(() => {
-    if (pnlChartData.length === 0) return { min: 0, max: 0 };
-    const vals = pnlChartData.map((d) => d.value);
+  const rightExtent = useMemo(() => {
+    if (rightChartData.length === 0) return { min: 0, max: 0 };
+    const vals = rightChartData.map((d) => d.value);
     return { min: Math.min(...vals), max: Math.max(...vals) };
-  }, [pnlChartData]);
+  }, [rightChartData]);
   const volumeTotalM = totalVolume / 1e6;
-  const pnlTotalDollars = rightSeries.reduce((a, b) => a + b.value, 0);
+  const pnlTotalDollars = rightMetric === 'pnl'
+    ? rightSeries.reduce((a, b) => a + b.value, 0)
+    : 0;
+  // Trade-weighted average win rate across categories (only categories with trades)
+  const avgWinRate = useMemo(() => {
+    if (rightMetric !== 'win_rate') return 0;
+    const totalTrades = rightSeries.reduce((a, b) => a + (b.trades || 0), 0);
+    if (totalTrades === 0) return 0;
+    return rightSeries.reduce((a, b) => a + b.value * (b.trades || 0), 0) / totalTrades;
+  }, [rightSeries, rightMetric]);
 
   if (markets.length === 0) {
     return (
@@ -492,18 +515,40 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
           </div>
         </GlassCard>
 
-        {/* RIGHT - PNL by Category */}
+        {/* RIGHT - PNL or Win Rate by Category (toggle) */}
         <GlassCard>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="text-lg font-semibold text-white">PNL by Category</div>
-              {/* <div className="text-sm text-white/55">Total PNL by Category</div> */}
+              <div className="text-lg font-semibold text-white">
+                {rightMetric === 'pnl' ? 'PNL by Category' : 'Win Rate by Category'}
+              </div>
+              <div className="mt-2 inline-flex rounded-lg bg-slate-900/60 p-1">
+                <button
+                  type="button"
+                  onClick={() => setRightMetric('pnl')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition ${
+                    rightMetric === 'pnl' ? 'bg-white text-black' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  PNL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRightMetric('win_rate')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition ${
+                    rightMetric === 'win_rate' ? 'bg-white text-black' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Win Rate
+                </button>
+              </div>
             </div>
             <div className="text-right">
-              <div className="text-sm text-white/55">Total</div>
+              <div className="text-sm text-white/55">{rightMetric === 'pnl' ? 'Total' : 'Avg'}</div>
               <div className="font-semibold text-emerald-300">
-                {pnlTotalDollars >= 0 ? "+" : ""}
-                {fmtPnl(pnlTotalDollars)}
+                {rightMetric === 'pnl'
+                  ? `${pnlTotalDollars >= 0 ? '+' : ''}${fmtPnl(pnlTotalDollars)}`
+                  : `${avgWinRate.toFixed(1)}%`}
               </div>
             </div>
           </div>
@@ -511,7 +556,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
           <div className="mt-5 h-[420px] sm:h-[460px] rounded-3xl border border-white/10 bg-black/25 p-5 backdrop-blur">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={pnlChartData}
+                data={rightChartData}
                 margin={{ top: 10, right: 10, left: 0, bottom: 18 }}
               >
                 <XAxis
@@ -530,25 +575,37 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
                   axisLine={false}
                   tickLine={false}
                   width={42}
-                  domain={[Math.min(pnlExtent.min, 0) - 0.5, Math.max(pnlExtent.max, 0) + 0.5]}
-                  tickFormatter={(v) => fmtPnl(v * 1e3)}
+                  domain={
+                    rightMetric === 'pnl'
+                      ? [Math.min(rightExtent.min, 0) - 0.5, Math.max(rightExtent.max, 0) + 0.5]
+                      : [0, 100]
+                  }
+                  tickFormatter={(v) =>
+                    rightMetric === 'pnl' ? fmtPnl(v * 1e3) : `${v.toFixed(0)}%`
+                  }
                 />
                 <Tooltip
                   cursor={{ fill: "rgba(255,255,255,0.04)" }}
-                  content={(props) => (
+                  content={(props: any) => (
                     <MiniTooltip
                       {...props}
                       valueFormatter={(v: number) =>
-                        (v * 1e3 >= 0 ? "+" : "") + fmtPnl(v * 1e3)
+                        rightMetric === 'pnl'
+                          ? (v * 1e3 >= 0 ? '+' : '') + fmtPnl(v * 1e3)
+                          : `${v.toFixed(1)}%`
                       }
                     />
                   )}
                 />
                 <Bar dataKey="value" radius={[16, 16, 16, 16]} barSize={58}>
-                  {pnlChartData.map((entry) => (
+                  {rightChartData.map((entry) => (
                     <Cell
                       key={entry.name}
-                      fill={entry.value >= 0 ? "#22c55e" : "#ef4444"}
+                      fill={
+                        rightMetric === 'pnl'
+                          ? entry.value >= 0 ? "#22c55e" : "#ef4444"
+                          : entry.value >= 50 ? "#22c55e" : entry.value >= 33 ? "#f59e0b" : "#ef4444"
+                      }
                     />
                   ))}
                 </Bar>
@@ -558,9 +615,19 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
 
           <div className="mt-5 space-y-3">
             {rightSeries.map((row) => {
-              const totalPnl = rightSeries.reduce((a, b) => a + b.value, 0);
-              const pct =
-                totalPnl !== 0 ? (row.value / totalPnl) * 100 : 0;
+              let pct = 0;
+              let rightLabel = '';
+              let dotColor = '#22c55e';
+              if (rightMetric === 'pnl') {
+                const totalPnl = rightSeries.reduce((a, b) => a + b.value, 0);
+                pct = totalPnl !== 0 ? (row.value / totalPnl) * 100 : 0;
+                rightLabel = (row.value >= 0 ? '+' : '') + fmtPnl(row.value);
+                dotColor = row.value >= 0 ? '#22c55e' : '#ef4444';
+              } else {
+                pct = row.value;
+                rightLabel = `${row.value.toFixed(1)}%`;
+                dotColor = row.value >= 50 ? '#22c55e' : row.value >= 33 ? '#f59e0b' : '#ef4444';
+              }
               return (
                 <div
                   key={row.key}
@@ -570,26 +637,28 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
                     <div className="flex items-center gap-4">
                       <span
                         className="h-3.5 w-3.5 rounded-full shrink-0"
-                        style={{
-                          background: row.value >= 0 ? "#22c55e" : "#ef4444",
-                        }}
+                        style={{ background: dotColor }}
                       />
                       <div>
                         <div className="text-lg font-semibold text-white/92">
                           {row.label}
                         </div>
                         <div className="text-sm text-white/45">
-                          {pct.toFixed(0)}%
+                          {rightMetric === 'pnl'
+                            ? `${pct.toFixed(0)}%`
+                            : `${row.trades} trade${row.trades === 1 ? '' : 's'}`}
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
                       <div
-                        className={`text-xl font-semibold ${row.value >= 0 ? "text-white" : "text-rose-400"
-                          }`}
+                        className={`text-xl font-semibold ${
+                          rightMetric === 'pnl'
+                            ? (row.value >= 0 ? 'text-white' : 'text-rose-400')
+                            : (row.value >= 50 ? 'text-white' : row.value >= 33 ? 'text-amber-300' : 'text-rose-400')
+                        }`}
                       >
-                        {row.value >= 0 ? "+" : ""}
-                        {fmtPnl(row.value)}
+                        {rightLabel}
                       </div>
                     </div>
                   </div>
