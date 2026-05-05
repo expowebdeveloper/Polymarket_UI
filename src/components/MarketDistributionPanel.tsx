@@ -379,15 +379,19 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
   const rightSeries = useMemo(() => {
     if (rightMetric === 'win_rate') {
       return [...markets]
-        // Hide categories with no trades (win rate would be 0% / meaningless)
-        .filter((m) => m.trades > 0)
         .map((m) => ({
           key: m.key,
           label: m.label,
-          value: m.winRatePct,
+          value: m.trades > 0 ? m.winRatePct : 0,
           trades: m.trades,
         }))
-        .sort((a, b) => b.value - a.value); // descending by win rate
+        // Sort: categories with trades first (descending by win rate), then 0-trade ones at the end
+        .sort((a, b) => {
+          if (a.trades === 0 && b.trades === 0) return 0;
+          if (a.trades === 0) return 1;
+          if (b.trades === 0) return -1;
+          return b.value - a.value;
+        });
     }
     return [...markets]
       .map((m) => ({
@@ -462,7 +466,7 @@ export function MarketDistributionPanel({ marketDistribution, activities = [], p
               <PieChart>
                 <Tooltip
                   cursor={{ fill: "rgba(255,255,255,0.04)" }}
-                  content={(props) => (
+                  content={(props: any) => (
                     <MiniTooltip
                       {...props}
                       valueFormatter={(v: number) => fmtVolume(v)}

@@ -590,18 +590,24 @@ export function WalletDashboard() {
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
                 <p className="text-sm text-slate-400">Risk Profile</p>
                 {scoringMetrics?.risk_components?.label ? (
-                  <p className={`text-base font-semibold ${
-                    scoringMetrics.risk_components.label === 'Very Stable' ? 'text-emerald-400' :
-                    scoringMetrics.risk_components.label === 'Controlled' ? 'text-green-400' :
-                    scoringMetrics.risk_components.label === 'Moderate Risk' ? 'text-yellow-400' :
-                    scoringMetrics.risk_components.label === 'Aggressive' ? 'text-orange-400' :
-                    scoringMetrics.risk_components.label === 'Highly Volatile' ? 'text-red-400' :
-                    'text-slate-400'
-                  }`}>{scoringMetrics.risk_components.label}</p>
+                  <>
+                    <p className={`text-base font-semibold ${
+                      scoringMetrics.risk_components.label === 'Very Stable' ? 'text-emerald-400' :
+                      scoringMetrics.risk_components.label === 'Controlled' ? 'text-green-400' :
+                      scoringMetrics.risk_components.label === 'Moderate Risk' ? 'text-yellow-400' :
+                      scoringMetrics.risk_components.label === 'Aggressive' ? 'text-orange-400' :
+                      scoringMetrics.risk_components.label === 'Highly Volatile' ? 'text-red-400' :
+                      'text-slate-400'
+                    }`}>{scoringMetrics.risk_components.label}</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {scoringMetrics.risk_components.risk_score !== null && scoringMetrics.risk_components.risk_score !== undefined
+                        ? `${scoringMetrics.risk_components.risk_score.toFixed(1)} / 100 stability`
+                        : '—'}
+                    </p>
+                  </>
                 ) : (
                   <p className="text-lg font-semibold text-slate-400">—</p>
                 )}
-                <p className="text-xs text-slate-500 mt-1">{(Number(scoringMetrics?.score_risk || 0) * 100).toFixed(1)}% risk</p>
               </div>
               <div className="bg-gradient-to-b from-purple-900/80 to-purple-950/90 border border-purple-700/40 rounded-2xl shadow-[0_0_30px_rgba(124,58,237,0.15)] p-4 text-center">
                 <p className="text-sm text-slate-400">Trough PnL</p>

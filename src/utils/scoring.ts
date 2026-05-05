@@ -54,6 +54,7 @@ export interface ScoredMetrics {
     /** Risk components from the equity-curve risk scoring algorithm. */
     risk_components?: {
         label: string;            // "Very Stable" | "Controlled" | "Moderate Risk" | "Aggressive" | "Highly Volatile" | "Insufficient Data"
+        risk_score: number | null; // 0-100, higher = more stable
         drawdown_score: number | null;
         loss_severity_score: number | null;
         max_drawdown_units: number;

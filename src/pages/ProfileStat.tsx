@@ -1053,7 +1053,7 @@ export function ProfileStat() {
                             <div className="pointer-events-none absolute -top-24 left-1/2 h-40 w-[520px] -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
                             <div className="pointer-events-none absolute inset-0 rounded-3xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]" />
                             <div className="flex items-center gap-3 flex-wrap">
-                                <p className="text-sm uppercase tracking-widest text-emerald-300/80">Final Rating1111111</p>
+                                <p className="text-sm uppercase tracking-widest text-emerald-300/80">Final Rating</p>
                             </div>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end" }}>
                                 <div className="flex items-end gap-6">
@@ -1178,13 +1178,20 @@ export function ProfileStat() {
                                 <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
                                     <p className="text-xs text-slate-300 mb-0.5">Risk Profile</p>
                                     {metrics.risk_components?.label ? (
-                                        <p className={`text-sm font-bold ${metrics.risk_components.label === 'Very Stable' ? 'text-emerald-400' :
+                                        <>
+                                            <p className={`text-sm font-bold ${metrics.risk_components.label === 'Very Stable' ? 'text-emerald-400' :
                                                 metrics.risk_components.label === 'Controlled' ? 'text-green-400' :
                                                     metrics.risk_components.label === 'Moderate Risk' ? 'text-yellow-400' :
                                                         metrics.risk_components.label === 'Aggressive' ? 'text-orange-400' :
                                                             metrics.risk_components.label === 'Highly Volatile' ? 'text-red-400' :
                                                                 'text-slate-400'
-                                            }`}>{metrics.risk_components.label}</p>
+                                                }`}>{metrics.risk_components.label}</p>
+                                            <p className="text-[10px] text-slate-400 mt-0.5">
+                                                {metrics.risk_components.risk_score !== null && metrics.risk_components.risk_score !== undefined
+                                                    ? `${metrics.risk_components.risk_score.toFixed(1)} / 100`
+                                                    : '—'}
+                                            </p>
+                                        </>
                                     ) : (
                                         <p className="text-base font-bold text-slate-400">—</p>
                                     )}

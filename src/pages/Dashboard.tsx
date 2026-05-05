@@ -617,38 +617,38 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
           ? (marketCountFromCache ? "From cache (no refetch)" : "Active + closed")
           : "Run sync script for exact count",
       },
-      {
-        icon: BarChart3,
-        title: "Markets Volume",
-        // value: marketCountLoading ? "…" : (marketCount != null ? formatInt(marketCount) : "—"),
-        value: "$3,840,061,445.05",
-        subtitle: marketCount != null
-          ? (marketCountFromCache ? "From cache (no refetch)" : "Active + closed")
-          : "Run sync script for exact count",
-      },
-      {
-        icon: LayoutGrid,
-        title: "Total Traders",
-        // value: marketCountLoading ? "…" : (eventCount != null ? formatInt(eventCount) : "—"),
-        value: "2,096,534",
-        subtitle: eventCount != null
-          ? (marketCountFromCache ? "Cached (Gamma API)" : "All events (active + closed)")
-          : "Loading…",
-      },
-      {
-        icon: Users,
-        title: "Total Trades",
-        // value: loading ? "…" : (stats?.total_traders ?? "0"),
-        value: "214,401,933",
-        subtitle: "Unique addresses",
-      },
-      {
-        icon: Activity,
-        title: "Total LP Rewards",
-        // value: marketCountLoading ? "…" : (activeMarketCount != null ? formatInt(activeMarketCount) : "—"),
-        value: "$12,816,173.00",
-        subtitle: "Currently open for trading",
-      },
+      // {
+      //   icon: BarChart3,
+      //   title: "Markets Volume",
+      //   // value: marketCountLoading ? "…" : (marketCount != null ? formatInt(marketCount) : "—"),
+      //   value: "$3,840,061,445.05",
+      //   subtitle: marketCount != null
+      //     ? (marketCountFromCache ? "From cache (no refetch)" : "Active + closed")
+      //     : "Run sync script for exact count",
+      // },
+      // {
+      //   icon: LayoutGrid,
+      //   title: "Total Traders",
+      //   // value: marketCountLoading ? "…" : (eventCount != null ? formatInt(eventCount) : "—"),
+      //   value: "2,096,534",
+      //   subtitle: eventCount != null
+      //     ? (marketCountFromCache ? "Cached (Gamma API)" : "All events (active + closed)")
+      //     : "Loading…",
+      // },
+      // {
+      //   icon: Users,
+      //   title: "Total Trades",
+      //   // value: loading ? "…" : (stats?.total_traders ?? "0"),
+      //   value: "214,401,933",
+      //   subtitle: "Unique addresses",
+      // },
+      // {
+      //   icon: Activity,
+      //   title: "Total LP Rewards",
+      //   // value: marketCountLoading ? "…" : (activeMarketCount != null ? formatInt(activeMarketCount) : "—"),
+      //   value: "$12,816,173.00",
+      //   subtitle: "Currently open for trading",
+      // },
       // {
       //   icon: ArrowUpRight,
       //   title: "Buy Ratio",
@@ -770,6 +770,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
 
         <div className="grid grid-cols-1 gap-5">
           <div className="space-y-5">
+            {false && (
             <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-2xl">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(700px_260px_at_12%_0%,rgba(56,189,248,0.16),transparent_60%)]" />
               <div className="relative px-5 py-4">
@@ -830,6 +831,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                 </div>
               </div>
             </div>
+            )}
 
             <GlassCard className="p-5">
               <div>
