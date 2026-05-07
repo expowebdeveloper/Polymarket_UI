@@ -16,6 +16,7 @@ import {
   Bell,
   Copy,
   User,
+  Search,
 } from "lucide-react";
 import { API_BASE_URL } from "../config";
 import { headersWithNgrokSkip } from "../services/api";
@@ -437,6 +438,12 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
   const [marketCountFromCache, setMarketCountFromCache] = useState(false);
   const [activeMarketCount, setActiveMarketCount] = useState<number | null>(null);
   const [activeMarketLoading, setActiveMarketLoading] = useState(true);
+  const [winnersSearch, setWinnersSearch] = useState('');
+  const [winnersPage, setWinnersPage] = useState(1);
+  const winnersPerPage = 10;
+  const [winnersPeriod, setWinnersPeriod] = useState<'day' | 'week' | 'month' | 'all'>('month');
+  const [liveWinners, setLiveWinners] = useState<BiggestWinnerMonth[]>([]);
+  const [winnersLoading, setWinnersLoading] = useState(false);
   const toastTimer = useRef<number | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const prevActivityCount = useRef(-1);
@@ -506,6 +513,43 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
       clearInterval(interval);
     };
   }, []);
+
+  // Fetch biggest winners from live API based on selected period
+  useEffect(() => {
+    const ac = new AbortController();
+    const fetchLiveWinners = async () => {
+      setWinnersLoading(true);
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/leaderboard/live/biggest-winners?time_period=${winnersPeriod}&limit=50`,
+          { signal: ac.signal, headers: headersWithNgrokSkip(`${API_BASE_URL}/leaderboard/live/biggest-winners`, { accept: 'application/json' }) }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const entries = data.entries || data.data || [];
+          setLiveWinners(entries.map((e: any, i: number) => ({
+            user: e.wallet_address || e.proxyAddress || e.user || '',
+            userName: e.name || e.userName || '',
+            xUsername: e.pseudonym || e.xUsername || '',
+            profileImage: e.profile_image || e.profileImage || '',
+            pnl: e.total_pnl ?? e.pnl ?? 0,
+            vol: e.total_volume ?? e.vol ?? 0,
+            rank: e.rank ?? i + 1,
+            final_score: e.final_score ?? e.finalScore ?? null,
+            win_rate: e.win_rate ?? null,
+            stake_yield: e.roi ?? e.stake_yield ?? null,
+            all_time_pnl: e.all_time_pnl ?? null,
+          })));
+        }
+      } catch (err) {
+        if ((err as Error)?.name !== 'AbortError') console.error('Failed to fetch live winners', err);
+      } finally {
+        if (!ac.signal.aborted) setWinnersLoading(false);
+      }
+    };
+    fetchLiveWinners();
+    return () => ac.abort();
+  }, [winnersPeriod]);
 
   // Last updated when stats refresh
   const lastUpdated = useMemo(() => {
@@ -660,24 +704,40 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
   );
 
   const winners = useMemo(() => {
-    const list = stats?.biggest_winners_month ?? [];
+    // Use live API data when available, fall back to cached stats
+    const list = liveWinners.length > 0 ? liveWinners : (stats?.biggest_winners_month ?? []);
     return list.map((w, i) => ({
       rank: (w.rank != null ? w.rank : i + 1) as number,
       handle:
         w.userName || w.xUsername
           ? `@${w.xUsername || w.userName}`
-          : `${w.user.slice(0, 6)}…${w.user.slice(-4)}`,
-      user: w.user,
+          : w.user ? `${w.user.slice(0, 6)}…${w.user.slice(-4)}` : '—',
+      user: w.user || '',
       profileImage: w.profileImage,
       pnl: w.pnl,
-      pnlFormatted: `+${formatUSD(w.pnl)}`,
-      profileLink: `/profile-stat/${encodeURIComponent(w.user)}`,
+      pnlFormatted: `${w.pnl >= 0 ? '+' : ''}${formatUSD(w.pnl)}`,
+      profileLink: `/profile-stat/${encodeURIComponent(w.user || '')}`,
       finalScore: w.final_score ?? w.finalScore ?? null,
       winRate: w.win_rate ?? null,
       stakeYield: w.stake_yield ?? null,
       allTimePnl: w.all_time_pnl ?? null,
     }));
-  }, [stats?.biggest_winners_month]);
+  }, [liveWinners, stats?.biggest_winners_month]);
+
+  const filteredWinners = useMemo(() => {
+    if (!winnersSearch.trim()) return winners;
+    const q = winnersSearch.toLowerCase();
+    return winners.filter(w =>
+      w.handle.toLowerCase().includes(q) ||
+      w.user.toLowerCase().includes(q)
+    );
+  }, [winners, winnersSearch]);
+
+  const totalWinnerPages = Math.max(1, Math.ceil(filteredWinners.length / winnersPerPage));
+  const paginatedWinners = filteredWinners.slice(
+    (winnersPage - 1) * winnersPerPage,
+    winnersPage * winnersPerPage
+  );
 
   return (
     <div className="min-h-screen text-white">
@@ -841,17 +901,49 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-blue-500">
-                      Biggest winners of the month
+                      Biggest winners
+                      {winnersLoading && <span className="ml-2 text-xs text-white/40 font-normal">Loading...</span>}
                     </div>
-                    {/* <div className="text-xs text-white/45">
-                        Top 20 by PnL (API) · Win rate, stake yield &amp; final rating all-time
-                      </div> */}
                   </div>
                 </div>
-                <div className="mt-4 overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
-                  {winners.length === 0 ? (
+                <div className="mt-3 inline-flex rounded-lg bg-white/[0.04] border border-white/10 p-1">
+                  {([
+                    { key: 'day', label: 'Today' },
+                    { key: 'week', label: 'Weekly' },
+                    { key: 'month', label: 'Monthly' },
+                    { key: 'all', label: 'All' },
+                  ] as const).map(tab => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => { setWinnersPeriod(tab.key); setWinnersPage(1); setWinnersSearch(''); }}
+                      className={`px-4 py-1.5 rounded-md text-xs font-medium transition ${
+                        winnersPeriod === tab.key
+                          ? 'bg-white text-black'
+                          : 'text-white/50 hover:text-white/80'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center gap-3">
+                  <div className="relative flex-1 max-w-xs">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+                    <input
+                      type="text"
+                      placeholder="Search by name or wallet..."
+                      value={winnersSearch}
+                      onChange={(e) => { setWinnersSearch(e.target.value); setWinnersPage(1); }}
+                      className="w-full rounded-lg border border-white/10 bg-white/[0.04] py-2 pl-9 pr-3 text-sm text-white placeholder-white/30 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30"
+                    />
+                  </div>
+                  <span className="text-xs text-white/40">{filteredWinners.length} trader{filteredWinners.length !== 1 ? 's' : ''}</span>
+                </div>
+                <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
+                  {filteredWinners.length === 0 ? (
                     <div className="py-12 text-center text-sm text-white/50">
-                      No leaderboard data available
+                      {winners.length === 0 ? 'No leaderboard data available' : 'No traders match your search'}
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
@@ -867,7 +959,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                           </tr>
                         </thead>
                         <tbody>
-                          {winners.map((w) => {
+                          {paginatedWinners.map((w) => {
                             const medal = getMedal(w.rank);
                             const handleCopyWallet = (e: React.MouseEvent) => {
                               e.preventDefault();
@@ -981,6 +1073,31 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                           })}
                         </tbody>
                       </table>
+                    </div>
+                  )}
+                  {totalWinnerPages > 1 && (
+                    <div className="flex items-center justify-between border-t border-white/5 px-5 py-3">
+                      <span className="text-xs text-white/40">
+                        Page {winnersPage} of {totalWinnerPages}
+                      </span>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setWinnersPage(p => Math.max(1, p - 1))}
+                          disabled={winnersPage <= 1}
+                          className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/70 transition hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          Previous
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setWinnersPage(p => Math.min(totalWinnerPages, p + 1))}
+                          disabled={winnersPage >= totalWinnerPages}
+                          className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/70 transition hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          Next
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
