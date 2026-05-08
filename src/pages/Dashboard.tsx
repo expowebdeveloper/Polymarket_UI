@@ -518,31 +518,40 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
   }, []);
 
   // Fetch biggest winners from live API based on selected period
+  // First call returns fast (unenriched). Re-fetch after 15s to pick up enriched data.
   useEffect(() => {
     const ac = new AbortController();
-    const fetchLiveWinners = async () => {
-      setWinnersLoading(true);
+    const mapEntries = (entries: any[]) =>
+      entries.map((e: any, i: number) => {
+        const pnl = e.total_pnl ?? e.pnl ?? 0;
+        const vol = e.total_volume ?? e.vol ?? e.total_stakes ?? 0;
+        const roi = e.roi ?? 0;
+        return {
+          user: e.wallet_address || e.proxyAddress || e.user || '',
+          userName: e.name || e.userName || '',
+          xUsername: e.pseudonym || e.xUsername || '',
+          profileImage: e.profile_image || e.profileImage || '',
+          pnl,
+          vol,
+          rank: e.rank ?? i + 1,
+          final_score: e.final_score > 0 ? e.final_score : null,
+          win_rate: e.win_rate > 0 ? e.win_rate : null,
+          stake_yield: roi !== 0 ? roi : (vol > 0 ? (pnl / vol) * 100 : null),
+          all_time_pnl: e.all_time_pnl ?? null,
+        };
+      });
+
+    const doFetch = async (showLoader: boolean) => {
+      if (showLoader) setWinnersLoading(true);
       try {
         const res = await fetch(
-          `${API_BASE_URL}/leaderboard/live/biggest-winners?time_period=${winnersPeriod}&limit=50`,
+          `${API_BASE_URL}/leaderboard/live/biggest-winners?time_period=${winnersPeriod}&limit=20`,
           { signal: ac.signal, headers: headersWithNgrokSkip(`${API_BASE_URL}/leaderboard/live/biggest-winners`, { accept: 'application/json' }) }
         );
         if (res.ok) {
           const data = await res.json();
           const entries = data.entries || data.data || [];
-          setLiveWinners(entries.map((e: any, i: number) => ({
-            user: e.wallet_address || e.proxyAddress || e.user || '',
-            userName: e.name || e.userName || '',
-            xUsername: e.pseudonym || e.xUsername || '',
-            profileImage: e.profile_image || e.profileImage || '',
-            pnl: e.total_pnl ?? e.pnl ?? 0,
-            vol: e.total_volume ?? e.vol ?? 0,
-            rank: e.rank ?? i + 1,
-            final_score: e.final_score ?? e.finalScore ?? null,
-            win_rate: e.win_rate ?? null,
-            stake_yield: e.roi ?? e.stake_yield ?? null,
-            all_time_pnl: e.all_time_pnl ?? null,
-          })));
+          setLiveWinners(mapEntries(entries));
         }
       } catch (err) {
         if ((err as Error)?.name !== 'AbortError') console.error('Failed to fetch live winners', err);
@@ -550,8 +559,14 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
         if (!ac.signal.aborted) setWinnersLoading(false);
       }
     };
-    fetchLiveWinners();
-    return () => ac.abort();
+
+    doFetch(true);
+    // Poll to pick up enriched data from background task
+    // Enrichment takes ~20-40s, so poll at 15s, 35s, 55s
+    const t1 = setTimeout(() => doFetch(false), 15000);
+    const t2 = setTimeout(() => doFetch(false), 35000);
+    const t3 = setTimeout(() => doFetch(false), 55000);
+    return () => { ac.abort(); clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [winnersPeriod]);
 
   // Last updated when stats refresh
@@ -707,8 +722,12 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
   );
 
   const winners = useMemo(() => {
-    // Use live API data when available, fall back to cached stats
-    const list = liveWinners.length > 0 ? liveWinners : (stats?.biggest_winners_month ?? []);
+    // Cached stats have full scoring (win_rate, final_score, stake_yield).
+    // Live API only has PnL — use cached for 'month' when available, live for other periods.
+    const cached = stats?.biggest_winners_month ?? [];
+    const list = (winnersPeriod === 'month' && cached.length > 0)
+      ? cached
+      : liveWinners.length > 0 ? liveWinners : cached;
     return list.map((w, i) => ({
       rank: (w.rank != null ? w.rank : i + 1) as number,
       handle:
@@ -725,7 +744,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
       stakeYield: w.stake_yield ?? null,
       allTimePnl: w.all_time_pnl ?? null,
     }));
-  }, [liveWinners, stats?.biggest_winners_month]);
+  }, [liveWinners, stats?.biggest_winners_month, winnersPeriod]);
 
   const filteredWinners = useMemo(() => {
     let list = winners;
@@ -957,7 +976,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                   <span className="text-xs text-white/40">{filteredWinners.length} trader{filteredWinners.length !== 1 ? 's' : ''}</span>
                 </div>
                 <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
-                  {winnersLoading ? (
+                  {winnersLoading && !(winnersPeriod === 'month' && (stats?.biggest_winners_month?.length ?? 0) > 0) ? (
                     <div className="py-16 text-center">
                       <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-blue-400" />
                       <p className="mt-3 text-sm text-white/40">Fetching traders...</p>
@@ -1090,7 +1109,9 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                                     : "—"}
                                 </td>
                                 <td className="py-3 px-3 text-right tabular-nums text-white/80">
-                                  {w.winRate != null ? `${w.winRate.toFixed(1)}%` : "—"}
+                                  {w.winRate != null ? `${w.winRate.toFixed(1)}%` : (
+                                    winnersPeriod !== 'month' ? <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400/60 animate-pulse" title="Loading..." /> : <span className="text-white/30">—</span>
+                                  )}
                                 </td>
                                 <td className="py-3 px-3 text-right tabular-nums">
                                   {w.stakeYield != null ? (
@@ -1107,7 +1128,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                                       {Math.round(w.finalScore)}
                                     </span>
                                   ) : (
-                                    <span className="text-white/50">—</span>
+                                    winnersPeriod !== 'month' ? <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400/60 animate-pulse" title="Loading..." /> : <span className="text-white/30">—</span>
                                   )}
                                 </td>
                               </tr>
