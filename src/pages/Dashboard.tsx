@@ -17,6 +17,8 @@ import {
   Copy,
   User,
   Search,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { API_BASE_URL } from "../config";
 import { headersWithNgrokSkip } from "../services/api";
@@ -444,6 +446,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
   const [winnersPeriod, setWinnersPeriod] = useState<'day' | 'week' | 'month' | 'all'>('month');
   const [liveWinners, setLiveWinners] = useState<BiggestWinnerMonth[]>([]);
   const [winnersLoading, setWinnersLoading] = useState(false);
+  const [winnersSort, setWinnersSort] = useState<{ key: string; desc: boolean }>({ key: 'pnl', desc: true });
   const toastTimer = useRef<number | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const prevActivityCount = useRef(-1);
@@ -725,13 +728,26 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
   }, [liveWinners, stats?.biggest_winners_month]);
 
   const filteredWinners = useMemo(() => {
-    if (!winnersSearch.trim()) return winners;
-    const q = winnersSearch.toLowerCase();
-    return winners.filter(w =>
-      w.handle.toLowerCase().includes(q) ||
-      w.user.toLowerCase().includes(q)
-    );
-  }, [winners, winnersSearch]);
+    let list = winners;
+    if (winnersSearch.trim()) {
+      const q = winnersSearch.toLowerCase();
+      list = list.filter(w =>
+        w.handle.toLowerCase().includes(q) ||
+        w.user.toLowerCase().includes(q)
+      );
+    }
+    return [...list].sort((a, b) => {
+      const key = winnersSort.key as keyof typeof a;
+      const aVal = a[key] ?? 0;
+      const bVal = b[key] ?? 0;
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return winnersSort.desc ? bVal - aVal : aVal - bVal;
+      }
+      const aStr = String(aVal).toLowerCase();
+      const bStr = String(bVal).toLowerCase();
+      return winnersSort.desc ? bStr.localeCompare(aStr) : aStr.localeCompare(bStr);
+    });
+  }, [winners, winnersSearch, winnersSort]);
 
   const totalWinnerPages = Math.max(1, Math.ceil(filteredWinners.length / winnersPerPage));
   const paginatedWinners = filteredWinners.slice(
@@ -941,7 +957,12 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                   <span className="text-xs text-white/40">{filteredWinners.length} trader{filteredWinners.length !== 1 ? 's' : ''}</span>
                 </div>
                 <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
-                  {filteredWinners.length === 0 ? (
+                  {winnersLoading ? (
+                    <div className="py-16 text-center">
+                      <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-blue-400" />
+                      <p className="mt-3 text-sm text-white/40">Fetching traders...</p>
+                    </div>
+                  ) : filteredWinners.length === 0 ? (
                     <div className="py-12 text-center text-sm text-white/50">
                       {winners.length === 0 ? 'No leaderboard data available' : 'No traders match your search'}
                     </div>
@@ -950,12 +971,33 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                       <table className="w-full min-w-[720px] border-collapse text-sm">
                         <thead>
                           <tr className="bg-white/[0.04] text-left text-xs font-semibold uppercase tracking-widest text-white/45">
-                            <th className="py-3.5 pl-5 pr-3">Trader</th>
-                            <th className="py-3.5 px-3 text-right tabular-nums">PnL (month)</th>
-                            <th className="py-3.5 px-3 text-right tabular-nums">All-time PnL</th>
-                            <th className="py-3.5 px-3 text-right tabular-nums">Win rate</th>
-                            <th className="py-3.5 px-3 text-right tabular-nums">Stake yield</th>
-                            <th className="py-3.5 pl-3 pr-5 text-right tabular-nums">Final rating</th>
+                            {([
+                              { key: 'handle', label: 'Trader', align: 'left', cls: 'pl-5 pr-3' },
+                              { key: 'pnl', label: `PnL (${winnersPeriod === 'day' ? 'today' : winnersPeriod === 'week' ? 'week' : winnersPeriod === 'month' ? 'month' : 'all'})`, align: 'right', cls: 'px-3' },
+                              { key: 'allTimePnl', label: 'All-time PnL', align: 'right', cls: 'px-3' },
+                              { key: 'winRate', label: 'Win rate', align: 'right', cls: 'px-3' },
+                              { key: 'stakeYield', label: 'Stake yield', align: 'right', cls: 'px-3' },
+                              { key: 'finalScore', label: 'Final rating', align: 'right', cls: 'pl-3 pr-5' },
+                            ] as const).map(col => (
+                              <th
+                                key={col.key}
+                                className={`py-3.5 ${col.cls} ${col.align === 'right' ? 'text-right' : ''} tabular-nums cursor-pointer select-none hover:text-white/70 transition-colors`}
+                                onClick={() => setWinnersSort(prev =>
+                                  prev.key === col.key
+                                    ? { key: col.key, desc: !prev.desc }
+                                    : { key: col.key, desc: true }
+                                )}
+                              >
+                                <span className="inline-flex items-center gap-1">
+                                  {col.label}
+                                  {winnersSort.key === col.key && (
+                                    winnersSort.desc
+                                      ? <ChevronDown className="h-3 w-3 text-blue-400" />
+                                      : <ChevronUp className="h-3 w-3 text-blue-400" />
+                                  )}
+                                </span>
+                              </th>
+                            ))}
                           </tr>
                         </thead>
                         <tbody>
