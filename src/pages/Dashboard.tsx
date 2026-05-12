@@ -1019,8 +1019,15 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                             ))}
                           </tr>
                         </thead>
-                        <tbody>
-                          {paginatedWinners.map((w) => {
+                        <AnimatePresence mode="wait">
+                        <motion.tbody
+                          key={`${winnersPeriod}-${winnersPage}-${winnersSort.key}-${winnersSort.desc}`}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          {paginatedWinners.map((w, idx) => {
                             const medal = getMedal(w.rank);
                             const handleCopyWallet = (e: React.MouseEvent) => {
                               e.preventDefault();
@@ -1030,8 +1037,11 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                               setTimeout(() => setCopiedWallet(null), 2000);
                             };
                             return (
-                              <tr
-                                key={w.rank}
+                              <motion.tr
+                                key={w.user + w.rank}
+                                initial={{ opacity: 0, x: -12 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.25, delay: idx * 0.03 }}
                                 className="group border-b border-white/5 transition-colors last:border-0 hover:bg-white/[0.04]"
                               >
                                 <td className="py-3 pl-5 pr-3">
@@ -1131,10 +1141,11 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                                     winnersPeriod !== 'month' ? <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400/60 animate-pulse" title="Loading..." /> : <span className="text-white/30">—</span>
                                   )}
                                 </td>
-                              </tr>
+                              </motion.tr>
                             );
                           })}
-                        </tbody>
+                        </motion.tbody>
+                        </AnimatePresence>
                       </table>
                     </div>
                   )}

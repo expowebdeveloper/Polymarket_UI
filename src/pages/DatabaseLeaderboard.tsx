@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { fetchTradersAnalytics, headersWithNgrokSkip } from '../services/api';
 import type { AllLeaderboardsResponse, LeaderboardEntry } from '../types/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -34,6 +35,7 @@ export const DatabaseLeaderboard: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(100);
     const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         loadData();
@@ -197,7 +199,16 @@ export const DatabaseLeaderboard: React.FC = () => {
         );
     }
 
-    const currentLeaderboard = getCurrentLeaderboard();
+    const rawLeaderboard = getCurrentLeaderboard();
+    const currentLeaderboard = useMemo(() => {
+        if (!searchQuery.trim()) return rawLeaderboard;
+        const q = searchQuery.toLowerCase();
+        return rawLeaderboard.filter(e =>
+            (e.name || '').toLowerCase().includes(q) ||
+            (e.pseudonym || '').toLowerCase().includes(q) ||
+            (e.wallet_address || '').toLowerCase().includes(q)
+        );
+    }, [rawLeaderboard, searchQuery]);
 
     return (
         <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-950' : 'bg-white'} ${textPrimary} p-6`}>
@@ -458,9 +469,25 @@ export const DatabaseLeaderboard: React.FC = () => {
                     </div>
 
                     <div className="overflow-x-auto">
-                        <h3 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>
-                            {getLeaderboardTitle(activeTab)}
-                        </h3>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>
+                                {getLeaderboardTitle(activeTab)}
+                            </h3>
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="text"
+                                    placeholder="Search by name or wallet..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className={`rounded-lg border px-3 py-2 text-sm outline-none w-64 ${
+                                        theme === 'dark'
+                                            ? 'border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:border-yellow-500/50'
+                                            : 'border-slate-300 bg-white text-slate-900 placeholder-slate-400 focus:border-yellow-500'
+                                    }`}
+                                />
+                                <span className={`text-xs ${textSecondary}`}>{currentLeaderboard.length} traders</span>
+                            </div>
+                        </div>
                         <div className="overflow-x-auto">
                             <table className="w-full border-collapse min-w-full">
                                 <thead>
@@ -482,11 +509,21 @@ export const DatabaseLeaderboard: React.FC = () => {
                                         <th className={`border ${borderColor} px-3 py-2 text-right text-sm font-bold ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>Final_Score</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <AnimatePresence mode="wait">
+                                <motion.tbody
+                                    key={`${activeTab}-${currentPage}-${searchQuery}`}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                >
                                     {currentLeaderboard.length > 0 ? (
                                         currentLeaderboard.map((entry, index) => (
-                                            <tr
+                                            <motion.tr
                                                 key={entry.wallet_address || index}
+                                                initial={{ opacity: 0, x: -10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ duration: 0.2, delay: Math.min(index * 0.02, 0.5) }}
                                                 className={`${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-slate-50'} transition-colors`}
                                             >
                                                 <td className={`border ${borderColor} px-3 py-2 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'} font-bold`}>
@@ -551,16 +588,17 @@ export const DatabaseLeaderboard: React.FC = () => {
                                                 <td className={`border ${borderColor} px-3 py-2 text-right text-sm font-bold ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`}>
                                                     {entry.final_score?.toFixed(2) || '0.00'}
                                                 </td>
-                                            </tr>
+                                            </motion.tr>
                                         ))
                                     ) : (
                                         <tr>
                                             <td colSpan={14} className={`border ${borderColor} px-4 py-8 text-center ${textSecondary}`}>
-                                                No data available for this leaderboard in database
+                                                {searchQuery ? 'No traders match your search' : 'No data available for this leaderboard in database'}
                                             </td>
                                         </tr>
                                     )}
-                                </tbody>
+                                </motion.tbody>
+                                </AnimatePresence>
                             </table>
                         </div>
                         

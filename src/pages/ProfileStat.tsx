@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Search, Wallet, TrendingUp, TrendingDown, Trophy, ChevronDown, ChevronUp, Activity as ActivityIcon, RefreshCw } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, Trophy, ChevronDown, ChevronUp, Activity as ActivityIcon, RefreshCw, Shield } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { BarChart, Bar, Cell, PieChart, Pie, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
@@ -1313,6 +1313,100 @@ export function ProfileStat() {
                 )}
             </div>
             {/* End screenshot area */}
+
+            {/* RISK PROFILE CARD — between Portfolio Performance and Extra Metrics */}
+            {!loading && activeWallet && metrics && (
+                <div className="px-8 pt-6">
+                    <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-6 backdrop-blur-2xl shadow-[0_16px_60px_-24px_rgba(0,0,0,0.9)]">
+                        <div className="pointer-events-none absolute -top-16 left-1/2 h-28 w-[420px] -translate-x-1/2 rounded-full bg-red-500/6 blur-3xl" />
+                        <div className="flex items-center gap-3 mb-5">
+                            <div className="p-2 rounded-lg bg-red-500/10">
+                                <Shield className="h-5 w-5 text-red-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-semibold text-white">Risk Profile</h3>
+                                <p className="text-xs text-slate-500">Key risk metrics from trade history</p>
+                            </div>
+                            {metrics.risk_components?.label && (
+                                <span className={`ml-auto px-3 py-1 rounded-full text-xs font-semibold border ${
+                                    metrics.risk_components.label === 'Very Stable' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' :
+                                    metrics.risk_components.label === 'Controlled' ? 'border-green-500/30 bg-green-500/10 text-green-400' :
+                                    metrics.risk_components.label === 'Moderate Risk' ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400' :
+                                    metrics.risk_components.label === 'Aggressive' ? 'border-orange-500/30 bg-orange-500/10 text-orange-400' :
+                                    metrics.risk_components.label === 'Highly Volatile' ? 'border-red-500/30 bg-red-500/10 text-red-400' :
+                                    'border-slate-500/30 bg-slate-500/10 text-slate-400'
+                                }`}>
+                                    {metrics.risk_components.label}
+                                    {metrics.risk_components.risk_score !== null && metrics.risk_components.risk_score !== undefined
+                                        ? ` (${metrics.risk_components.risk_score.toFixed(0)}/100)`
+                                        : ''}
+                                </span>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                            {/* Average Win / Loss */}
+                            <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                                <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">Avg Win / Loss</p>
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs text-slate-500">Avg Win</span>
+                                        <span className="text-sm font-semibold text-emerald-400">
+                                            {metrics.streaks.total_wins > 0
+                                                ? formatCurrency((metrics.total_gains || 0) / metrics.streaks.total_wins)
+                                                : '—'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs text-slate-500">Avg Loss</span>
+                                        <span className="text-sm font-semibold text-red-400">
+                                            {metrics.streaks.total_losses > 0
+                                                ? formatCurrency(Math.abs((metrics.total_losses as number) || 0) / metrics.streaks.total_losses)
+                                                : '—'}
+                                        </span>
+                                    </div>
+                                    <div className="h-px bg-white/5 my-1" />
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs text-slate-500">Win/Loss Ratio</span>
+                                        <span className="text-sm font-semibold text-white">
+                                            {(() => {
+                                                const avgW = metrics.streaks.total_wins > 0 ? (metrics.total_gains || 0) / metrics.streaks.total_wins : 0;
+                                                const avgL = metrics.streaks.total_losses > 0 ? Math.abs((metrics.total_losses as number) || 0) / metrics.streaks.total_losses : 0;
+                                                return avgL > 0 ? (avgW / avgL).toFixed(2) + 'x' : '—';
+                                            })()}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Max Drawdown */}
+                            <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                                <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">Max Drawdown</p>
+                                <p className="text-2xl font-bold text-red-400">
+                                    {formatCurrency(metrics.risk_components?.max_drawdown_units || metrics.max_drawdown || 0)}
+                                </p>
+                                <p className="text-xs text-slate-500 mt-2">Largest peak-to-trough loss</p>
+                                {metrics.risk_components?.reference_scale && (
+                                    <p className="text-xs text-slate-600 mt-1">
+                                        {((metrics.risk_components.max_drawdown_units || 0) / metrics.risk_components.reference_scale).toFixed(1)}x typical trade
+                                    </p>
+                                )}
+                            </div>
+                            {/* Worst Loss (2nd metric: single worst trade) */}
+                            <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                                <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">Worst Single Loss</p>
+                                <p className="text-2xl font-bold text-red-400">
+                                    {formatCurrency(Math.abs(metrics.worst_loss || 0))}
+                                </p>
+                                <p className="text-xs text-slate-500 mt-2">Biggest losing trade</p>
+                                <div className="h-px bg-white/5 my-2" />
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs text-slate-500">Biggest Win</span>
+                                    <span className="text-sm font-semibold text-emerald-400">{formatCurrency(metrics.largest_win || 0)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {!loading && activeWallet && metrics && (
                 <div className="px-8 py-6 space-y-6">
