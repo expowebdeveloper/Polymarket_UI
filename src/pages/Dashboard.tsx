@@ -589,101 +589,69 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
   }, []);
 
   // Map WS activities to ActivityEntry (last 5, filter by size >= 100, only last 5 min)
-  // Big trades ticker: fetch recent large trades from Polymarket API directly
+  // Live trade ticker — shows latest trade from WebSocket (prefer >= $10K) or REST fallback
   type BigTrade = { id: string; side: 'BUY' | 'SELL'; market: string; amount: number; amountFmt: string; addr: string; ts: number; timeAgo: string };
-  const [bigTrades, setBigTrades] = useState<BigTrade[]>([]);
+  const [restFallbackTrade, setRestFallbackTrade] = useState<BigTrade | null>(null);
 
+  // REST fallback: fetch the single biggest recent trade on load + every 30s
   useEffect(() => {
     const ac = new AbortController();
-    const fetchBigTrades = async () => {
+    const fetchLatest = async () => {
       try {
-        // Fetch recent trades from Polymarket — get 200 and pick the largest ones
-        const res = await fetch(
-          'https://data-api.polymarket.com/trades?limit=200',
-          { signal: ac.signal }
-        );
+        const res = await fetch('https://data-api.polymarket.com/trades?limit=500', { signal: ac.signal });
         if (!res.ok) return;
         const data = await res.json();
-        if (!Array.isArray(data)) return;
-
+        if (!Array.isArray(data) || !data.length) return;
+        // Find the largest trade
+        let best: any = null; let bestVal = 0;
+        for (const t of data) {
+          const v = parseFloat(t.size || '0') * parseFloat(t.price || '0');
+          if (v > bestVal) { bestVal = v; best = t; }
+        }
+        if (!best || bestVal <= 0) return;
         const nowSec = Math.floor(Date.now() / 1000);
-        // Keep latest trades >= $100, already sorted newest first from API
-        const withValue = data.map((t: any) => {
-          const size = parseFloat(t.size || '0');
-          const price = parseFloat(t.price || '0');
-          return { t, value: size * price };
+        const rawTs = best.timestamp || 0;
+        const ts = rawTs > 1e12 ? Math.floor(rawTs / 1000) : rawTs > 0 ? rawTs : nowSec;
+        const diff = Math.max(0, nowSec - ts);
+        const wallet = best.proxyWallet || best.maker || best.taker || '';
+        const traderName = best.name || best.pseudonym || (wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : '—');
+        setRestFallbackTrade({
+          id: best.transactionHash || best.id || `rest-${Date.now()}`,
+          side: (best.side || 'BUY').toUpperCase() as 'BUY' | 'SELL',
+          market: best.title || best.slug?.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) || 'Unknown Market',
+          amount: bestVal,
+          amountFmt: formatUSD(bestVal),
+          addr: traderName,
+          ts,
+          timeAgo: diff < 60 ? `${diff}s ago` : diff < 3600 ? `${Math.floor(diff / 60)}m ago` : `${Math.floor(diff / 3600)}h ago`,
         });
-
-        const mapped: BigTrade[] = withValue
-          .filter((x: any) => x.value >= 100)
-          .slice(0, 1)
-          .map((x: any, i: number) => {
-            const t = x.t;
-            const amount = x.value;
-            const ts = t.timestamp ? Math.floor(new Date(t.timestamp).getTime() / 1000) : nowSec;
-            const diff = Math.max(0, nowSec - ts);
-            const market = t.market_slug || t.market || t.title || '';
-            // Format market slug to readable name
-            const marketName = market
-              ? market.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
-              : 'Polymarket Trade';
-            return {
-              id: t.id || `trade-${i}-${Date.now()}`,
-              side: (t.side || 'BUY').toUpperCase() as 'BUY' | 'SELL',
-              market: marketName,
-              amount,
-              amountFmt: formatUSD(amount),
-              addr: (t.maker || t.taker) ? `${(t.maker || t.taker).slice(0, 6)}…${(t.maker || t.taker).slice(-4)}` : '—',
-              ts,
-              timeAgo: diff < 60 ? `${diff}s ago` : diff < 3600 ? `${Math.floor(diff / 60)}m ago` : `${Math.floor(diff / 3600)}h ago`,
-            };
-          });
-        setBigTrades(mapped);
-      } catch (err) {
-        if ((err as Error)?.name !== 'AbortError') console.error('Big trades fetch error:', err);
-      }
+      } catch {}
     };
-    fetchBigTrades();
-    const interval = setInterval(fetchBigTrades, 20000); // Refresh every 20s
+    fetchLatest();
+    const interval = setInterval(fetchLatest, 30000);
     return () => { ac.abort(); clearInterval(interval); };
   }, []);
 
-  // Also merge WebSocket big trades if available
-  const allBigTrades = useMemo(() => {
+  // WebSocket whale trade (>= $10K)
+  const latestWhaleTrade = useMemo<BigTrade | null>(() => {
     const nowSec = Math.floor(Date.now() / 1000);
-    const wsBig: BigTrade[] = wsActivities
-      .filter((a) => (a.amount_usd || 0) >= 10000)
-      .slice(0, 10)
-      .map((a) => {
-        const diff = Math.max(0, nowSec - (a.timestamp || nowSec));
-        return {
-          id: a.id,
-          side: a.side as 'BUY' | 'SELL',
-          market: a.market || 'Unknown Market',
-          amount: a.amount_usd || 0,
-          amountFmt: formatUSD(a.amount_usd || 0),
-          addr: a.user_address ? `${a.user_address.slice(0, 6)}…${a.user_address.slice(-4)}` : '—',
-          ts: a.timestamp,
-          timeAgo: diff < 60 ? `${diff}s ago` : diff < 3600 ? `${Math.floor(diff / 60)}m ago` : `${Math.floor(diff / 3600)}h ago`,
-        };
-      });
-    // Merge: WS trades first (newest), then REST trades, deduplicate by id
-    const seen = new Set<string>();
-    const merged: BigTrade[] = [];
-    for (const t of [...wsBig, ...bigTrades]) {
-      if (!seen.has(t.id)) { seen.add(t.id); merged.push(t); }
-    }
-    return merged.slice(0, 15);
-  }, [bigTrades, wsActivities]);
+    const whale = wsActivities.find((a) => (a.amount_usd || 0) >= 10000);
+    if (!whale) return null;
+    const diff = Math.max(0, nowSec - (whale.timestamp || nowSec));
+    return {
+      id: whale.id,
+      side: whale.side as 'BUY' | 'SELL',
+      market: whale.market || 'Unknown Market',
+      amount: whale.amount_usd || 0,
+      amountFmt: formatUSD(whale.amount_usd || 0),
+      addr: whale.user_address ? `${whale.user_address.slice(0, 6)}…${whale.user_address.slice(-4)}` : '—',
+      ts: whale.timestamp,
+      timeAgo: diff < 60 ? `${diff}s ago` : diff < 3600 ? `${Math.floor(diff / 60)}m ago` : `${Math.floor(diff / 3600)}h ago`,
+    };
+  }, [wsActivities, tick]);
 
-  const [tickerIndex, setTickerIndex] = useState(0);
-  useEffect(() => {
-    if (allBigTrades.length <= 1) { setTickerIndex(0); return; }
-    const timer = setInterval(() => {
-      setTickerIndex(prev => (prev + 1) % allBigTrades.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [allBigTrades.length]);
+  // Prefer WebSocket whale trade, fallback to REST biggest trade
+  const allBigTrades = latestWhaleTrade ? [latestWhaleTrade] : restFallbackTrade ? [restFallbackTrade] : [];
 
   const activityEntries = useMemo<ActivityEntry[]>(() => {
     const nowSec = Math.floor(Date.now() / 1000);
@@ -978,8 +946,8 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
               {/* Trade Card */}
               <div className="h-14 relative overflow-hidden">
                 <AnimatePresence mode="wait">
-                  {allBigTrades[tickerIndex] && (() => {
-                    const trade = allBigTrades[tickerIndex];
+                  {allBigTrades[0] && (() => {
+                    const trade = allBigTrades[0];
                     const isBuy = trade.side === 'BUY';
                     return (
                       <motion.div
