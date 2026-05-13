@@ -597,9 +597,9 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
     const ac = new AbortController();
     const fetchBigTrades = async () => {
       try {
-        // Fetch recent trades from Polymarket data API (largest first)
+        // Fetch recent trades from Polymarket — get 200 and pick the largest ones
         const res = await fetch(
-          'https://data-api.polymarket.com/trades?limit=50',
+          'https://data-api.polymarket.com/trades?limit=200',
           { signal: ac.signal }
         );
         if (!res.ok) return;
@@ -607,26 +607,33 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
         if (!Array.isArray(data)) return;
 
         const nowSec = Math.floor(Date.now() / 1000);
-        const mapped: BigTrade[] = data
-          .filter((t: any) => {
-            const size = parseFloat(t.size || '0');
-            const price = parseFloat(t.price || '0');
-            return (size * price) >= 10000;
-          })
-          .slice(0, 15)
-          .map((t: any, i: number) => {
-            const size = parseFloat(t.size || '0');
-            const price = parseFloat(t.price || '0');
-            const amount = size * price;
+        // Keep latest trades >= $100, already sorted newest first from API
+        const withValue = data.map((t: any) => {
+          const size = parseFloat(t.size || '0');
+          const price = parseFloat(t.price || '0');
+          return { t, value: size * price };
+        });
+
+        const mapped: BigTrade[] = withValue
+          .filter((x: any) => x.value >= 100)
+          .slice(0, 1)
+          .map((x: any, i: number) => {
+            const t = x.t;
+            const amount = x.value;
             const ts = t.timestamp ? Math.floor(new Date(t.timestamp).getTime() / 1000) : nowSec;
             const diff = Math.max(0, nowSec - ts);
+            const market = t.market_slug || t.market || t.title || '';
+            // Format market slug to readable name
+            const marketName = market
+              ? market.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+              : 'Polymarket Trade';
             return {
-              id: t.id || `trade-${i}`,
+              id: t.id || `trade-${i}-${Date.now()}`,
               side: (t.side || 'BUY').toUpperCase() as 'BUY' | 'SELL',
-              market: t.market || t.title || 'Unknown Market',
+              market: marketName,
               amount,
               amountFmt: formatUSD(amount),
-              addr: t.maker ? `${t.maker.slice(0, 6)}…${t.maker.slice(-4)}` : '—',
+              addr: (t.maker || t.taker) ? `${(t.maker || t.taker).slice(0, 6)}…${(t.maker || t.taker).slice(-4)}` : '—',
               ts,
               timeAgo: diff < 60 ? `${diff}s ago` : diff < 3600 ? `${Math.floor(diff / 60)}m ago` : `${Math.floor(diff / 3600)}h ago`,
             };
@@ -637,7 +644,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
       }
     };
     fetchBigTrades();
-    const interval = setInterval(fetchBigTrades, 30000); // Refresh every 30s
+    const interval = setInterval(fetchBigTrades, 20000); // Refresh every 20s
     return () => { ac.abort(); clearInterval(interval); };
   }, []);
 
@@ -964,23 +971,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                     <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
                   </div>
-                  <span className="text-xs font-semibold uppercase tracking-widest text-white/50">Live Whale Trades</span>
-                  <span className="text-[10px] text-white/25 ml-1">({allBigTrades.length})</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {allBigTrades.slice(0, 6).map((_, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setTickerIndex(i)}
-                      className={cn(
-                        "h-1.5 rounded-full transition-all duration-300",
-                        i === tickerIndex % allBigTrades.length
-                          ? "w-5 bg-blue-400"
-                          : "w-1.5 bg-white/15 hover:bg-white/30"
-                      )}
-                    />
-                  ))}
+                  <span className="text-xs font-semibold uppercase tracking-widest text-white/50">Live Trade</span>
                 </div>
               </div>
 
