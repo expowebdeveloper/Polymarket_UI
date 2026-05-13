@@ -12,6 +12,7 @@ import { getStreakBadge } from '../utils/streakUtils';
 import { getPolyratingBonus } from '../utils/scoring';
 import type { UserLeaderboardData } from '../types/api';
 import { MarketDistributionPanel } from '../components/MarketDistributionPanel';
+import { OddsProfileCard } from '../components/OddsProfileCard';
 import { SocialLinks } from '../components/SocialLinks';
 import html2canvas from 'html2canvas';
 import realizedPnlIcon from '../assets/realized_pnl.svg';
@@ -1344,64 +1345,65 @@ export function ProfileStat() {
                             )}
                         </div>
                         <div className="grid grid-cols-3 gap-4">
-                            {/* Average Win / Loss */}
+                            {/* 1. Avg Win / Loss = total PnL / total trades */}
                             <div className="rounded-xl border border-white/10 bg-black/20 p-4">
                                 <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">Avg Win / Loss</p>
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs text-slate-500">Avg Win</span>
-                                        <span className="text-sm font-semibold text-emerald-400">
-                                            {metrics.streaks.total_wins > 0
-                                                ? formatCurrency((metrics.total_gains || 0) / metrics.streaks.total_wins)
+                                        <span className="text-xs text-slate-500">Avg PnL / Trade</span>
+                                        <span className={`text-sm font-semibold ${metrics.total_pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                            {metrics.total_trades > 0
+                                                ? formatCurrency(metrics.total_pnl / metrics.total_trades)
                                                 : '—'}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs text-slate-500">Avg Loss</span>
-                                        <span className="text-sm font-semibold text-red-400">
-                                            {metrics.streaks.total_losses > 0
-                                                ? formatCurrency(Math.abs((metrics.total_losses as number) || 0) / metrics.streaks.total_losses)
-                                                : '—'}
+                                        <span className="text-xs text-slate-500">Total PnL</span>
+                                        <span className={`text-sm font-semibold ${metrics.total_pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                            {formatCurrency(metrics.total_pnl)}
                                         </span>
                                     </div>
                                     <div className="h-px bg-white/5 my-1" />
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs text-slate-500">Win/Loss Ratio</span>
-                                        <span className="text-sm font-semibold text-white">
-                                            {(() => {
-                                                const avgW = metrics.streaks.total_wins > 0 ? (metrics.total_gains || 0) / metrics.streaks.total_wins : 0;
-                                                const avgL = metrics.streaks.total_losses > 0 ? Math.abs((metrics.total_losses as number) || 0) / metrics.streaks.total_losses : 0;
-                                                return avgL > 0 ? (avgW / avgL).toFixed(2) + 'x' : '—';
-                                            })()}
-                                        </span>
+                                        <span className="text-xs text-slate-500">Total Trades</span>
+                                        <span className="text-sm font-semibold text-white">{metrics.total_trades}</span>
                                     </div>
                                 </div>
                             </div>
-                            {/* Max Drawdown */}
+                            {/* 2. Max Drawdown with % */}
                             <div className="rounded-xl border border-white/10 bg-black/20 p-4">
                                 <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">Max Drawdown</p>
                                 <p className="text-2xl font-bold text-red-400">
                                     {formatCurrency(metrics.risk_components?.max_drawdown_units || metrics.max_drawdown || 0)}
                                 </p>
-                                <p className="text-xs text-slate-500 mt-2">Largest peak-to-trough loss</p>
-                                {metrics.risk_components?.reference_scale && (
-                                    <p className="text-xs text-slate-600 mt-1">
-                                        {((metrics.risk_components.max_drawdown_units || 0) / metrics.risk_components.reference_scale).toFixed(1)}x typical trade
+                                {metrics.risk_components?.max_drawdown_pct != null && (
+                                    <p className="text-sm font-semibold text-red-400/70 mt-1">
+                                        -{metrics.risk_components.max_drawdown_pct.toFixed(1)}%
                                     </p>
                                 )}
+                                <p className="text-xs text-slate-500 mt-2">Largest peak-to-trough drop</p>
                             </div>
-                            {/* Worst Loss (2nd metric: single worst trade) */}
+                            {/* 3. 2nd Worst Max Drawdown */}
                             <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">Worst Single Loss</p>
-                                <p className="text-2xl font-bold text-red-400">
-                                    {formatCurrency(Math.abs(metrics.worst_loss || 0))}
-                                </p>
-                                <p className="text-xs text-slate-500 mt-2">Biggest losing trade</p>
-                                <div className="h-px bg-white/5 my-2" />
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs text-slate-500">Biggest Win</span>
-                                    <span className="text-sm font-semibold text-emerald-400">{formatCurrency(metrics.largest_win || 0)}</span>
-                                </div>
+                                <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">2nd Worst Drawdown</p>
+                                {metrics.risk_components?.second_max_drawdown_units != null ? (
+                                    <>
+                                        <p className="text-2xl font-bold text-orange-400">
+                                            {formatCurrency(metrics.risk_components.second_max_drawdown_units)}
+                                        </p>
+                                        {metrics.risk_components.second_max_drawdown_pct != null && (
+                                            <p className="text-sm font-semibold text-orange-400/70 mt-1">
+                                                -{metrics.risk_components.second_max_drawdown_pct.toFixed(1)}%
+                                            </p>
+                                        )}
+                                        <p className="text-xs text-slate-500 mt-2">Second largest drawdown event</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-2xl font-bold text-slate-500">—</p>
+                                        <p className="text-xs text-slate-500 mt-2">Only one drawdown event detected</p>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -2024,6 +2026,13 @@ export function ProfileStat() {
 
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Odds Profile Card */}
+            {!loading && activeWallet && metrics && (
+                <div className="px-8 pb-6">
+                    <OddsProfileCard walletAddress={activeWallet} />
                 </div>
             )}
         </div>

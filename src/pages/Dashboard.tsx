@@ -589,6 +589,95 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
   }, []);
 
   // Map WS activities to ActivityEntry (last 5, filter by size >= 100, only last 5 min)
+  // Big trades ticker: fetch recent large trades from Polymarket API directly
+  type BigTrade = { id: string; side: 'BUY' | 'SELL'; market: string; amount: number; amountFmt: string; addr: string; ts: number; timeAgo: string };
+  const [bigTrades, setBigTrades] = useState<BigTrade[]>([]);
+
+  useEffect(() => {
+    const ac = new AbortController();
+    const fetchBigTrades = async () => {
+      try {
+        // Fetch recent trades from Polymarket data API (largest first)
+        const res = await fetch(
+          'https://data-api.polymarket.com/trades?limit=50',
+          { signal: ac.signal }
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!Array.isArray(data)) return;
+
+        const nowSec = Math.floor(Date.now() / 1000);
+        const mapped: BigTrade[] = data
+          .filter((t: any) => {
+            const size = parseFloat(t.size || '0');
+            const price = parseFloat(t.price || '0');
+            return (size * price) >= 10000;
+          })
+          .slice(0, 15)
+          .map((t: any, i: number) => {
+            const size = parseFloat(t.size || '0');
+            const price = parseFloat(t.price || '0');
+            const amount = size * price;
+            const ts = t.timestamp ? Math.floor(new Date(t.timestamp).getTime() / 1000) : nowSec;
+            const diff = Math.max(0, nowSec - ts);
+            return {
+              id: t.id || `trade-${i}`,
+              side: (t.side || 'BUY').toUpperCase() as 'BUY' | 'SELL',
+              market: t.market || t.title || 'Unknown Market',
+              amount,
+              amountFmt: formatUSD(amount),
+              addr: t.maker ? `${t.maker.slice(0, 6)}…${t.maker.slice(-4)}` : '—',
+              ts,
+              timeAgo: diff < 60 ? `${diff}s ago` : diff < 3600 ? `${Math.floor(diff / 60)}m ago` : `${Math.floor(diff / 3600)}h ago`,
+            };
+          });
+        setBigTrades(mapped);
+      } catch (err) {
+        if ((err as Error)?.name !== 'AbortError') console.error('Big trades fetch error:', err);
+      }
+    };
+    fetchBigTrades();
+    const interval = setInterval(fetchBigTrades, 30000); // Refresh every 30s
+    return () => { ac.abort(); clearInterval(interval); };
+  }, []);
+
+  // Also merge WebSocket big trades if available
+  const allBigTrades = useMemo(() => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    const wsBig: BigTrade[] = wsActivities
+      .filter((a) => (a.amount_usd || 0) >= 10000)
+      .slice(0, 10)
+      .map((a) => {
+        const diff = Math.max(0, nowSec - (a.timestamp || nowSec));
+        return {
+          id: a.id,
+          side: a.side as 'BUY' | 'SELL',
+          market: a.market || 'Unknown Market',
+          amount: a.amount_usd || 0,
+          amountFmt: formatUSD(a.amount_usd || 0),
+          addr: a.user_address ? `${a.user_address.slice(0, 6)}…${a.user_address.slice(-4)}` : '—',
+          ts: a.timestamp,
+          timeAgo: diff < 60 ? `${diff}s ago` : diff < 3600 ? `${Math.floor(diff / 60)}m ago` : `${Math.floor(diff / 3600)}h ago`,
+        };
+      });
+    // Merge: WS trades first (newest), then REST trades, deduplicate by id
+    const seen = new Set<string>();
+    const merged: BigTrade[] = [];
+    for (const t of [...wsBig, ...bigTrades]) {
+      if (!seen.has(t.id)) { seen.add(t.id); merged.push(t); }
+    }
+    return merged.slice(0, 15);
+  }, [bigTrades, wsActivities]);
+
+  const [tickerIndex, setTickerIndex] = useState(0);
+  useEffect(() => {
+    if (allBigTrades.length <= 1) { setTickerIndex(0); return; }
+    const timer = setInterval(() => {
+      setTickerIndex(prev => (prev + 1) % allBigTrades.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [allBigTrades.length]);
+
   const activityEntries = useMemo<ActivityEntry[]>(() => {
     const nowSec = Math.floor(Date.now() / 1000);
     const freshLimit = nowSec - 300; // Only show trades from last 5 minutes
@@ -862,6 +951,94 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
         </motion.div>
 
         <RowDivider />
+
+        {/* Live Big Trades Ticker (>$10K) */}
+        {allBigTrades.length > 0 && (
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(800px_300px_at_30%_0%,rgba(16,185,129,0.06),transparent_60%)]" />
+            <div className="relative px-6 py-4">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="relative flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                  </div>
+                  <span className="text-xs font-semibold uppercase tracking-widest text-white/50">Live Whale Trades</span>
+                  <span className="text-[10px] text-white/25 ml-1">({allBigTrades.length})</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {allBigTrades.slice(0, 6).map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setTickerIndex(i)}
+                      className={cn(
+                        "h-1.5 rounded-full transition-all duration-300",
+                        i === tickerIndex % allBigTrades.length
+                          ? "w-5 bg-blue-400"
+                          : "w-1.5 bg-white/15 hover:bg-white/30"
+                      )}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Trade Card */}
+              <div className="h-14 relative overflow-hidden">
+                <AnimatePresence mode="wait">
+                  {allBigTrades[tickerIndex] && (() => {
+                    const trade = allBigTrades[tickerIndex];
+                    const isBuy = trade.side === 'BUY';
+                    return (
+                      <motion.div
+                        key={trade.id}
+                        initial={{ opacity: 0, x: 40 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -40 }}
+                        transition={{ duration: 0.3, ease: "easeOut" }}
+                        className={cn(
+                          "absolute inset-0 flex items-center gap-4 rounded-xl px-4 py-2.5 border",
+                          isBuy
+                            ? "bg-emerald-500/[0.06] border-emerald-500/15"
+                            : "bg-rose-500/[0.06] border-rose-500/15"
+                        )}
+                      >
+                        {/* Side badge */}
+                        <span className={cn(
+                          "shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wider",
+                          isBuy
+                            ? "bg-emerald-500/20 text-emerald-400"
+                            : "bg-rose-500/20 text-rose-400"
+                        )}>
+                          <Sparkles className="h-3.5 w-3.5" />
+                          {trade.side}
+                        </span>
+
+                        {/* Market name */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-white/90 truncate">{trade.market}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[11px] text-white/35 font-mono">{trade.addr}</span>
+                            <span className="text-[10px] text-white/20">{trade.timeAgo}</span>
+                          </div>
+                        </div>
+
+                        {/* Amount */}
+                        <span className={cn(
+                          "shrink-0 text-lg font-bold tabular-nums",
+                          isBuy ? "text-emerald-400" : "text-rose-400"
+                        )}>
+                          {trade.amountFmt}
+                        </span>
+                      </motion.div>
+                    );
+                  })()}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-5">
           <div className="space-y-5">
