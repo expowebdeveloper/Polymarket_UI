@@ -88,13 +88,79 @@ function TabButton({
   );
 }
 
-export function OddsProfileCard({ walletAddress, totalTrades }: { walletAddress: string; totalTrades?: number }) {
+export function OddsProfileCard({ walletAddress, totalTrades, closedPositions }: { walletAddress: string; totalTrades?: number; closedPositions?: any[] }) {
   const [data, setData] = useState<OddsProfileData | null>(null);
   const [loading, setLoading] = useState(false);
   const [leftMetric, setLeftMetric] = useState<LeftMetric>('percent_of_trades');
   const [rightMetric, setRightMetric] = useState<RightMetric>('avg_pnl_per_trade');
 
+  // Compute odds profile client-side if closed positions are passed, else fetch from API
   useEffect(() => {
+    if (closedPositions && closedPositions.length > 0) {
+      // Client-side calculation using same data as the profile page
+      const bucketDefs = [
+        { bucket: "0-10", label: "Contrarian", min: 0, max: 10 },
+        { bucket: "10-25", label: "10–25c", min: 10, max: 25 },
+        { bucket: "25-40", label: "25–40c", min: 25, max: 40 },
+        { bucket: "40-60", label: "Balanced", min: 40, max: 60 },
+        { bucket: "60-75", label: "60–75c", min: 60, max: 75 },
+        { bucket: "75-90", label: "75–90c", min: 75, max: 90 },
+        { bucket: "90-100", label: "Bond Trader", min: 90, max: 100 },
+      ];
+      const groups: Record<string, { trades: number; stake: number; pnl: number; wins: number }> = {};
+      bucketDefs.forEach(b => { groups[b.bucket] = { trades: 0, stake: 0, pnl: 0, wins: 0 }; });
+
+      let totalT = 0, totalS = 0, totalP = 0;
+
+      for (const pos of closedPositions) {
+        const price = parseFloat(pos.avgPrice || pos.avg_price || pos.price || '0');
+        if (!price || price <= 0) continue;
+        const odds = price > 1 ? price : price * 100;
+        if (odds < 0 || odds > 100) continue;
+
+        const bucketName = bucketDefs.find(b =>
+          b.max === 100 ? (odds >= b.min && odds <= b.max) : (odds >= b.min && odds < b.max)
+        )?.bucket;
+        if (!bucketName) continue;
+
+        const bought = parseFloat(pos.totalBought || pos.total_bought || pos.size || '0');
+        const stake = price <= 1 ? bought * price : bought;
+        const pnl = parseFloat(pos.realizedPnl || pos.realized_pnl || pos.pnl || '0');
+        if (!isFinite(stake) || !isFinite(pnl)) continue;
+
+        groups[bucketName].trades += 1;
+        groups[bucketName].stake += stake;
+        groups[bucketName].pnl += pnl;
+        if (pnl > 0) groups[bucketName].wins += 1;
+        totalT++; totalS += stake; totalP += pnl;
+      }
+
+      const safeDiv = (n: number, d: number) => d === 0 ? 0 : n / d;
+      const buckets = bucketDefs.map(b => {
+        const g = groups[b.bucket];
+        return {
+          bucket: b.bucket, label: b.label, min_odds: b.min, max_odds: b.max,
+          trade_count: g.trades, total_stake: g.stake, total_pnl: g.pnl,
+          percent_of_trades: safeDiv(g.trades, totalT),
+          percent_of_volume: safeDiv(g.stake, totalS),
+          avg_pnl_per_trade: safeDiv(g.pnl, g.trades),
+          hit_rate: safeDiv(g.wins, g.trades),
+          avg_size: safeDiv(g.stake, g.trades),
+          percent_of_total_pnl: totalP > 0 ? safeDiv(g.pnl, totalP) : null,
+        };
+      });
+
+      const tags: string[] = [];
+      const c = buckets.find(b => b.bucket === '0-10');
+      const bd = buckets.find(b => b.bucket === '90-100');
+      if (c && c.percent_of_trades >= 0.5) tags.push('contrarian');
+      if (bd && bd.percent_of_trades >= 0.5) tags.push('bond_trader');
+
+      setData({ buckets, tags, total_trades: totalT, total_positions: closedPositions.length, skipped_no_odds: closedPositions.length - totalT, total_stake: totalS, total_pnl: totalP });
+      setLoading(false);
+      return;
+    }
+
     if (!walletAddress) return;
     const ac = new AbortController();
     const doFetch = async () => {
@@ -116,7 +182,7 @@ export function OddsProfileCard({ walletAddress, totalTrades }: { walletAddress:
     };
     doFetch();
     return () => ac.abort();
-  }, [walletAddress]);
+  }, [walletAddress, closedPositions?.length]);
 
   // Left chart data (horizontal bars)
   const leftChartData = useMemo(() => {
@@ -161,7 +227,8 @@ export function OddsProfileCard({ walletAddress, totalTrades }: { walletAddress:
     );
   }
 
-  if (!data || data.total_trades === 0) return null;
+  if (!data) return null;
+  if (data.total_trades === 0 && !closedPositions?.length) return null;
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-6 backdrop-blur-2xl shadow-[0_16px_60px_-24px_rgba(0,0,0,0.9)]">
@@ -172,7 +239,10 @@ export function OddsProfileCard({ walletAddress, totalTrades }: { walletAddress:
         <div>
           <h3 className="text-sm font-semibold text-white">Odds Profile</h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Entry odds distribution across {(totalTrades || data.total_positions || data.total_trades).toLocaleString()} trades
+            Entry odds distribution across {data.total_trades.toLocaleString()} trades
+            {totalTrades && totalTrades > data.total_trades && (
+              <span className="text-white/20"> out of {totalTrades.toLocaleString()}</span>
+            )}
           </p>
         </div>
         <div className="flex gap-2">

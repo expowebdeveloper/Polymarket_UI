@@ -1885,7 +1885,7 @@ export function ProfileStat() {
                                                     .map((position, idx) => (
                                                         <tr key={idx} className="hover:bg-slate-800/30">
                                                             <td className="py-3 px-4 text-slate-300 text-sm whitespace-nowrap">
-                                                                {formatDate((position as any).timestamp || (position as any).created_at)}
+                                                                {formatDate((position as any).timestamp || (position as any).created_at || (position as any).closedTime || (position as any).endDate || (position as any).end_date)}
                                                             </td>
                                                             <td className="py-3 px-4 text-white font-medium max-w-xs truncate">
                                                                 {position.title || position.slug || 'Market'}
@@ -1996,7 +1996,7 @@ export function ProfileStat() {
             {/* Odds Profile Card */}
             {!loading && activeWallet && metrics && (
                 <div className="px-8 pb-6">
-                    <OddsProfileCard walletAddress={activeWallet} totalTrades={metrics.total_trades} />
+                    <OddsProfileCard walletAddress={activeWallet} totalTrades={metrics.total_trades} closedPositions={closedPositions} />
                 </div>
             )}
         </div>
