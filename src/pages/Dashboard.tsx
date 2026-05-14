@@ -595,7 +595,8 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
   const whaleTrades = useMemo<BigTrade[]>(() => {
     const nowSec = Math.floor(Date.now() / 1000);
     return wsActivities
-      .filter((a) => (a.amount_usd || 0) >= 10000)
+      .filter((a) => (a.amount_usd || 0) >= 100)
+      .sort((a, b) => (b.amount_usd || 0) - (a.amount_usd || 0))
       .slice(0, 20)
       .map((a) => {
         const diff = Math.max(0, nowSec - (a.timestamp || nowSec));
@@ -900,7 +901,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </div>
               <span className="text-xs font-semibold uppercase tracking-widest text-white/50">
-                Last $10K+ Trades of the Day
+                Latest Whale Trades
               </span>
             </div>
             {allBigTrades.length > 0 && (
@@ -910,7 +911,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
 
           {allBigTrades.length === 0 ? (
             <div className="px-5 py-4 text-center text-xs text-white/30">
-              Waiting for $10K+ trades via live feed...
+              Connecting to live feed...
             </div>
           ) : (
             <div className="relative overflow-hidden py-3">
