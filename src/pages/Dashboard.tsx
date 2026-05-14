@@ -908,6 +908,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
             )}
           </div>
 
+<<<<<<< HEAD
           {allBigTrades.length === 0 ? (
             <div className="px-5 py-4 text-center text-xs text-white/30">
               Waiting for $10K+ trades via live feed...
@@ -952,6 +953,59 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                     </a>
                   );
                 })}
+=======
+              {/* Trade Card */}
+              <div className="h-14 relative overflow-hidden">
+                <AnimatePresence mode="wait">
+                  {allBigTrades[0] && (() => {
+                    const trade = allBigTrades[0];
+                    const isBuy = trade.side === 'BUY';
+                    return (
+                      <motion.div
+                        key={trade.id}
+                        initial={{ opacity: 0, x: 40 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -40 }}
+                        transition={{ duration: 0.3, ease: "easeOut" }}
+                        className={cn(
+                          "absolute inset-0 flex items-center gap-4 rounded-xl px-4 py-2.5 border",
+                          isBuy
+                            ? "bg-emerald-500/[0.06] border-emerald-500/15"
+                            : "bg-rose-500/[0.06] border-rose-500/15"
+                        )}
+                      >
+                        {/* Side badge */}
+                        <span className={cn(
+                          "shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wider",
+                          isBuy
+                            ? "bg-emerald-500/20 text-emerald-400"
+                            : "bg-rose-500/20 text-rose-400"
+                        )}>
+                          <Sparkles className="h-3.5 w-3.5" />
+                          {trade.side}
+                        </span>
+
+                        {/* Market name */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-white/90 truncate">{trade.market}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[11px] text-white/35 font-mono">{trade.addr}</span>
+                            <span className="text-[10px] text-white/20">{trade.timeAgo}</span>
+                          </div>
+                        </div>
+
+                        {/* Amount */}
+                        <span className={cn(
+                          "shrink-0 text-lg font-bold tabular-nums",
+                          isBuy ? "text-emerald-400" : "text-rose-400"
+                        )}>
+                          {trade.amountFmt}
+                        </span>
+                      </motion.div>
+                    );
+                  })()}
+                </AnimatePresence>
+>>>>>>> f5cb768751f2165eb4c8436e466bd8f94c13ae36
               </div>
             </div>
           )}
