@@ -589,69 +589,33 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
   }, []);
 
   // Map WS activities to ActivityEntry (last 5, filter by size >= 100, only last 5 min)
-  // Live trade ticker — shows latest trade from WebSocket (prefer >= $10K) or REST fallback
-  type BigTrade = { id: string; side: 'BUY' | 'SELL'; market: string; amount: number; amountFmt: string; addr: string; ts: number; timeAgo: string };
-  const [restFallbackTrade, setRestFallbackTrade] = useState<BigTrade | null>(null);
+  // Live $10K+ whale trades — collect from WebSocket, show as scrolling marquee
+  type BigTrade = { id: string; side: 'BUY' | 'SELL'; market: string; amount: number; amountFmt: string; traderName: string; wallet: string; ts: number; timeAgo: string };
 
-  // REST fallback: fetch the single biggest recent trade on load + every 30s
-  useEffect(() => {
-    const ac = new AbortController();
-    const fetchLatest = async () => {
-      try {
-        const res = await fetch('https://data-api.polymarket.com/trades?limit=500', { signal: ac.signal });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!Array.isArray(data) || !data.length) return;
-        // Find the largest trade
-        let best: any = null; let bestVal = 0;
-        for (const t of data) {
-          const v = parseFloat(t.size || '0') * parseFloat(t.price || '0');
-          if (v > bestVal) { bestVal = v; best = t; }
-        }
-        if (!best || bestVal <= 0) return;
-        const nowSec = Math.floor(Date.now() / 1000);
-        const rawTs = best.timestamp || 0;
-        const ts = rawTs > 1e12 ? Math.floor(rawTs / 1000) : rawTs > 0 ? rawTs : nowSec;
-        const diff = Math.max(0, nowSec - ts);
-        const wallet = best.proxyWallet || best.maker || best.taker || '';
-        const traderName = best.name || best.pseudonym || (wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : '—');
-        setRestFallbackTrade({
-          id: best.transactionHash || best.id || `rest-${Date.now()}`,
-          side: (best.side || 'BUY').toUpperCase() as 'BUY' | 'SELL',
-          market: best.title || best.slug?.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) || 'Unknown Market',
-          amount: bestVal,
-          amountFmt: formatUSD(bestVal),
-          addr: traderName,
-          ts,
-          timeAgo: diff < 60 ? `${diff}s ago` : diff < 3600 ? `${Math.floor(diff / 60)}m ago` : `${Math.floor(diff / 3600)}h ago`,
-        });
-      } catch {}
-    };
-    fetchLatest();
-    const interval = setInterval(fetchLatest, 30000);
-    return () => { ac.abort(); clearInterval(interval); };
-  }, []);
-
-  // WebSocket whale trade (>= $10K)
-  const latestWhaleTrade = useMemo<BigTrade | null>(() => {
+  const whaleTrades = useMemo<BigTrade[]>(() => {
     const nowSec = Math.floor(Date.now() / 1000);
-    const whale = wsActivities.find((a) => (a.amount_usd || 0) >= 10000);
-    if (!whale) return null;
-    const diff = Math.max(0, nowSec - (whale.timestamp || nowSec));
-    return {
-      id: whale.id,
-      side: whale.side as 'BUY' | 'SELL',
-      market: whale.market || 'Unknown Market',
-      amount: whale.amount_usd || 0,
-      amountFmt: formatUSD(whale.amount_usd || 0),
-      addr: whale.user_address ? `${whale.user_address.slice(0, 6)}…${whale.user_address.slice(-4)}` : '—',
-      ts: whale.timestamp,
-      timeAgo: diff < 60 ? `${diff}s ago` : diff < 3600 ? `${Math.floor(diff / 60)}m ago` : `${Math.floor(diff / 3600)}h ago`,
-    };
+    return wsActivities
+      .filter((a) => (a.amount_usd || 0) >= 10000)
+      .slice(0, 20)
+      .map((a) => {
+        const diff = Math.max(0, nowSec - (a.timestamp || nowSec));
+        const wallet = a.user_address || '';
+        return {
+          id: a.id,
+          side: a.side as 'BUY' | 'SELL',
+          market: a.market || 'Unknown Market',
+          amount: a.amount_usd || 0,
+          amountFmt: formatUSD(a.amount_usd || 0),
+          traderName: wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : '—',
+          wallet,
+          ts: a.timestamp,
+          timeAgo: diff < 60 ? `${diff}s ago` : diff < 3600 ? `${Math.floor(diff / 60)}m ago` : `${Math.floor(diff / 3600)}h ago`,
+        };
+      });
   }, [wsActivities, tick]);
 
-  // Prefer WebSocket whale trade, fallback to REST biggest trade
-  const allBigTrades = latestWhaleTrade ? [latestWhaleTrade] : restFallbackTrade ? [restFallbackTrade] : [];
+  // For JSX compatibility
+  const allBigTrades = whaleTrades;
 
   const activityEntries = useMemo<ActivityEntry[]>(() => {
     const nowSec = Math.floor(Date.now() / 1000);
@@ -927,141 +891,135 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
 
         <RowDivider />
 
-        {/* Live Big Trades Ticker (>$10K) */}
-        {allBigTrades.length > 0 && (
-          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(800px_300px_at_30%_0%,rgba(16,185,129,0.06),transparent_60%)]" />
-            <div className="relative px-6 py-4">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="relative flex h-2.5 w-2.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                  </div>
-                  <span className="text-xs font-semibold uppercase tracking-widest text-white/50">Live Trade</span>
-                </div>
+        {/* Last $10K+ Trades — Marquee Scroll */}
+        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl">
+          <div className="px-5 py-3 flex items-center justify-between border-b border-white/5">
+            <div className="flex items-center gap-2.5">
+              <div className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </div>
+              <span className="text-xs font-semibold uppercase tracking-widest text-white/50">
+                Last $10K+ Trades of the Day
+              </span>
+            </div>
+            {allBigTrades.length > 0 && (
+              <span className="text-[10px] text-white/25">{allBigTrades.length} whale trade{allBigTrades.length !== 1 ? 's' : ''}</span>
+            )}
+          </div>
 
-              {/* Trade Card */}
-              <div className="h-14 relative overflow-hidden">
-                <AnimatePresence mode="wait">
-                  {allBigTrades[0] && (() => {
-                    const trade = allBigTrades[0];
-                    const isBuy = trade.side === 'BUY';
-                    return (
-                      <motion.div
-                        key={trade.id}
-                        initial={{ opacity: 0, x: 40 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -40 }}
-                        transition={{ duration: 0.3, ease: "easeOut" }}
-                        className={cn(
-                          "absolute inset-0 flex items-center gap-4 rounded-xl px-4 py-2.5 border",
-                          isBuy
-                            ? "bg-emerald-500/[0.06] border-emerald-500/15"
-                            : "bg-rose-500/[0.06] border-rose-500/15"
-                        )}
-                      >
-                        {/* Side badge */}
-                        <span className={cn(
-                          "shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wider",
-                          isBuy
-                            ? "bg-emerald-500/20 text-emerald-400"
-                            : "bg-rose-500/20 text-rose-400"
-                        )}>
-                          <Sparkles className="h-3.5 w-3.5" />
-                          {trade.side}
-                        </span>
-
-                        {/* Market name */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-white/90 truncate">{trade.market}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[11px] text-white/35 font-mono">{trade.addr}</span>
-                            <span className="text-[10px] text-white/20">{trade.timeAgo}</span>
-                          </div>
-                        </div>
-
-                        {/* Amount */}
-                        <span className={cn(
-                          "shrink-0 text-lg font-bold tabular-nums",
-                          isBuy ? "text-emerald-400" : "text-rose-400"
-                        )}>
-                          {trade.amountFmt}
-                        </span>
-                      </motion.div>
-                    );
-                  })()}
-                </AnimatePresence>
+          {allBigTrades.length === 0 ? (
+            <div className="px-5 py-4 text-center text-xs text-white/30">
+              Waiting for $10K+ trades via live feed...
+            </div>
+          ) : (
+            <div className="relative overflow-hidden py-3">
+              {/* Marquee: duplicate items for seamless loop */}
+              <div className="flex animate-[marquee_30s_linear_infinite] hover:[animation-play-state:paused] gap-6 px-5"
+                style={{ width: 'max-content' }}
+              >
+                {[...allBigTrades, ...allBigTrades].map((trade, idx) => {
+                  const isBuy = trade.side === 'BUY';
+                  return (
+                    <a
+                      key={`${trade.id}-${idx}`}
+                      href={`/profile-stat/${encodeURIComponent(trade.wallet)}`}
+                      className={cn(
+                        "shrink-0 flex items-center gap-3 rounded-xl px-4 py-2.5 border cursor-pointer transition-all hover:scale-[1.02]",
+                        isBuy
+                          ? "bg-emerald-500/[0.06] border-emerald-500/15 hover:bg-emerald-500/[0.1]"
+                          : "bg-rose-500/[0.06] border-rose-500/15 hover:bg-rose-500/[0.1]"
+                      )}
+                    >
+                      <span className={cn(
+                        "shrink-0 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider",
+                        isBuy ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
+                      )}>
+                        {trade.side}
+                      </span>
+                      <div className="min-w-0 max-w-[220px]">
+                        <p className="text-xs font-medium text-white/85 truncate">{trade.market}</p>
+                        <p className="text-[10px] text-white/35 mt-0.5">
+                          {trade.traderName} · {trade.timeAgo}
+                        </p>
+                      </div>
+                      <span className={cn(
+                        "shrink-0 text-sm font-bold tabular-nums",
+                        isBuy ? "text-emerald-400" : "text-rose-400"
+                      )}>
+                        {trade.amountFmt}
+                      </span>
+                    </a>
+                  );
+                })}
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         <div className="grid grid-cols-1 gap-5">
           <div className="space-y-5">
             {false && (
-            <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-2xl">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(700px_260px_at_12%_0%,rgba(56,189,248,0.16),transparent_60%)]" />
-              <div className="relative px-5 py-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.06]">
-                      <Activity className="h-5 w-5 text-white/80" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-blue-400">Live market activity</div>
-                      <div className="mt-1 flex items-center gap-2 text-xs text-white/45">
-                        {/* <span>
+              <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-2xl">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(700px_260px_at_12%_0%,rgba(56,189,248,0.16),transparent_60%)]" />
+                <div className="relative px-5 py-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.06]">
+                        <Activity className="h-5 w-5 text-white/80" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-blue-400">Live market activity</div>
+                        <div className="mt-1 flex items-center gap-2 text-xs text-white/45">
+                          {/* <span>
                           Real-time trades via WebSocket (Polymarket API) · new items fade older ones
                         </span> */}
-                        {/* {isConnected && (
+                          {/* {isConnected && (
                           <span className="text-[10px] text-emerald-300/80">live</span>
                         )} */}
+                        </div>
                       </div>
                     </div>
+                    <Pill className={cn(isConnected ? "border-emerald-500/25" : "border-cyan-500/25")}>
+                      <span
+                        className={cn("h-2 w-2 rounded-full", isConnected ? "bg-emerald-400" : "bg-cyan-400")}
+                      />
+                      <span className="text-white/75">{isConnected ? "Live" : "Reconnecting"}</span>
+                    </Pill>
                   </div>
-                  <Pill className={cn(isConnected ? "border-emerald-500/25" : "border-cyan-500/25")}>
-                    <span
-                      className={cn("h-2 w-2 rounded-full", isConnected ? "bg-emerald-400" : "bg-cyan-400")}
-                    />
-                    <span className="text-white/75">{isConnected ? "Live" : "Reconnecting"}</span>
-                  </Pill>
-                </div>
-                <div className="mt-5 h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                <div
-                  ref={listRef}
-                  className={cn(
-                    "mt-4 max-h-[420px] overflow-y-auto pr-2",
-                    "[scrollbar-width:thin]",
-                    "[mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_85%,rgba(0,0,0,0))]"
-                  )}
-                >
-                  <div className="grid grid-cols-1 gap-4">
-                    <AnimatePresence initial={false}>
-                      {activityEntries.length === 0 ? (
-                        <div className="py-8 text-center text-sm text-white/55">
-                          Waiting for trades ≥$100…
-                        </div>
-                      ) : (
-                        activityEntries.map((entry, idx) => (
-                          <motion.div
-                            key={entry.id}
-                            initial={{ opacity: 0, y: 16 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.22 }}
-                          >
-                            <FeedItem entry={entry} index={idx} />
-                          </motion.div>
-                        ))
-                      )}
-                    </AnimatePresence>
+                  <div className="mt-5 h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                  <div
+                    ref={listRef}
+                    className={cn(
+                      "mt-4 max-h-[420px] overflow-y-auto pr-2",
+                      "[scrollbar-width:thin]",
+                      "[mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_85%,rgba(0,0,0,0))]"
+                    )}
+                  >
+                    <div className="grid grid-cols-1 gap-4">
+                      <AnimatePresence initial={false}>
+                        {activityEntries.length === 0 ? (
+                          <div className="py-8 text-center text-sm text-white/55">
+                            Waiting for trades ≥$100…
+                          </div>
+                        ) : (
+                          activityEntries.map((entry, idx) => (
+                            <motion.div
+                              key={entry.id}
+                              initial={{ opacity: 0, y: 16 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -10 }}
+                              transition={{ duration: 0.22 }}
+                            >
+                              <FeedItem entry={entry} index={idx} />
+                            </motion.div>
+                          ))
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
             )}
 
             <GlassCard className="p-5">
@@ -1088,11 +1046,10 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                       key={tab.key}
                       type="button"
                       onClick={() => { setWinnersPeriod(tab.key); setWinnersPage(1); setWinnersSearch(''); }}
-                      className={`px-4 py-1.5 rounded-md text-xs font-medium transition ${
-                        winnersPeriod === tab.key
+                      className={`px-4 py-1.5 rounded-md text-xs font-medium transition ${winnersPeriod === tab.key
                           ? 'bg-white text-black'
                           : 'text-white/50 hover:text-white/80'
-                      }`}
+                        }`}
                     >
                       {tab.label}
                     </button>
@@ -1156,131 +1113,131 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                           </tr>
                         </thead>
                         <AnimatePresence mode="wait">
-                        <motion.tbody
-                          key={`${winnersPeriod}-${winnersPage}-${winnersSort.key}-${winnersSort.desc}`}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          {paginatedWinners.map((w, idx) => {
-                            const medal = getMedal(w.rank);
-                            const handleCopyWallet = (e: React.MouseEvent) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              navigator.clipboard.writeText(w.user);
-                              setCopiedWallet(w.user);
-                              setTimeout(() => setCopiedWallet(null), 2000);
-                            };
-                            return (
-                              <motion.tr
-                                key={w.user + w.rank}
-                                initial={{ opacity: 0, x: -12 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ duration: 0.25, delay: idx * 0.03 }}
-                                className="group border-b border-white/5 transition-colors last:border-0 hover:bg-white/[0.04]"
-                              >
-                                <td className="py-3 pl-5 pr-3">
-                                  <div className="flex items-center gap-3">
-                                    {medal ? (
-                                      <div
-                                        className={cn(
-                                          "grid h-9 w-9 shrink-0 place-items-center rounded-full border text-sm shadow-sm",
-                                          medal.className
-                                        )}
-                                      >
-                                        <span>{medal.emoji}</span>
-                                      </div>
-                                    ) : (
-                                      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-xs font-semibold text-white/70 tabular-nums">
-                                        {w.rank}
-                                      </div>
-                                    )}
-                                    <a
-                                      href={w.profileLink}
-                                      className="relative flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 pr-2 transition-colors hover:bg-white/[0.04]"
-                                    >
-                                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/5 ring-1 ring-white/5">
-                                        {w.profileImage ? (
-                                          <img
-                                            src={w.profileImage}
-                                            alt=""
-                                            className="h-full w-full object-cover"
-                                            onError={(e) => {
-                                              e.currentTarget.style.display = "none";
-                                              const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
-                                              if (fallback) fallback.style.display = "flex";
-                                            }}
-                                          />
-                                        ) : null}
+                          <motion.tbody
+                            key={`${winnersPeriod}-${winnersPage}-${winnersSort.key}-${winnersSort.desc}`}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            {paginatedWinners.map((w, idx) => {
+                              const medal = getMedal(w.rank);
+                              const handleCopyWallet = (e: React.MouseEvent) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(w.user);
+                                setCopiedWallet(w.user);
+                                setTimeout(() => setCopiedWallet(null), 2000);
+                              };
+                              return (
+                                <motion.tr
+                                  key={w.user + w.rank}
+                                  initial={{ opacity: 0, x: -12 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ duration: 0.25, delay: idx * 0.03 }}
+                                  className="group border-b border-white/5 transition-colors last:border-0 hover:bg-white/[0.04]"
+                                >
+                                  <td className="py-3 pl-5 pr-3">
+                                    <div className="flex items-center gap-3">
+                                      {medal ? (
                                         <div
-                                          className="h-full w-full place-items-center text-white/50"
-                                          style={{
-                                            display: w.profileImage ? "none" : "flex",
-                                          }}
-                                          aria-hidden
+                                          className={cn(
+                                            "grid h-9 w-9 shrink-0 place-items-center rounded-full border text-sm shadow-sm",
+                                            medal.className
+                                          )}
                                         >
-                                          <User className="h-5 w-5" />
+                                          <span>{medal.emoji}</span>
                                         </div>
-                                      </div>
-                                      <div className="min-w-0 flex-1">
-                                        <div className="truncate font-medium text-white/95">{w.handle}</div>
-                                        <div className="mt-0.5 flex items-center gap-1.5">
-                                          <span className="max-w-[140px] truncate font-mono text-xs text-white/40" title={w.user}>
-                                            {w.user.slice(0, 6)}…{w.user.slice(-4)}
-                                          </span>
-                                          <button
-                                            type="button"
-                                            onClick={handleCopyWallet}
-                                            className="shrink-0 rounded p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white/70"
-                                            title="Copy wallet address"
+                                      ) : (
+                                        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-xs font-semibold text-white/70 tabular-nums">
+                                          {w.rank}
+                                        </div>
+                                      )}
+                                      <a
+                                        href={w.profileLink}
+                                        className="relative flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 pr-2 transition-colors hover:bg-white/[0.04]"
+                                      >
+                                        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/5 ring-1 ring-white/5">
+                                          {w.profileImage ? (
+                                            <img
+                                              src={w.profileImage}
+                                              alt=""
+                                              className="h-full w-full object-cover"
+                                              onError={(e) => {
+                                                e.currentTarget.style.display = "none";
+                                                const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+                                                if (fallback) fallback.style.display = "flex";
+                                              }}
+                                            />
+                                          ) : null}
+                                          <div
+                                            className="h-full w-full place-items-center text-white/50"
+                                            style={{
+                                              display: w.profileImage ? "none" : "flex",
+                                            }}
+                                            aria-hidden
                                           >
-                                            {copiedWallet === w.user ? (
-                                              <span className="text-[10px] font-medium text-emerald-400">Copied!</span>
-                                            ) : (
-                                              <Copy className="h-3.5 w-3.5" />
-                                            )}
-                                          </button>
+                                            <User className="h-5 w-5" />
+                                          </div>
                                         </div>
-                                      </div>
-                                    </a>
-                                  </div>
-                                </td>
-                                <td className="py-3 px-3 text-right font-semibold tabular-nums text-emerald-400">
-                                  {w.pnlFormatted}
-                                </td>
-                                <td className="py-3 px-3 text-right font-medium tabular-nums text-white/90">
-                                  {w.allTimePnl != null
-                                    ? (w.allTimePnl >= 0 ? "+" : "") + formatUSD(w.allTimePnl)
-                                    : "—"}
-                                </td>
-                                <td className="py-3 px-3 text-right tabular-nums text-white/80">
-                                  {w.winRate != null ? `${w.winRate.toFixed(1)}%` : (
-                                    winnersPeriod !== 'month' ? <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400/60 animate-pulse" title="Loading..." /> : <span className="text-white/30">—</span>
-                                  )}
-                                </td>
-                                <td className="py-3 px-3 text-right tabular-nums">
-                                  {w.stakeYield != null ? (
-                                    <span className={cn("font-medium", w.stakeYield >= 0 ? "text-emerald-400" : "text-red-400")}>
-                                      {w.stakeYield >= 0 ? "+" : ""}{w.stakeYield.toFixed(1)}%
-                                    </span>
-                                  ) : (
-                                    <span className="text-white/50">—</span>
-                                  )}
-                                </td>
-                                <td className="py-3 pl-3 pr-5 text-right">
-                                  {w.finalScore != null ? (
-                                    <span className="inline-flex h-7 min-w-[2rem] items-center justify-center rounded-lg bg-amber-500/15 px-2 font-semibold tabular-nums text-amber-200">
-                                      {Math.round(w.finalScore)}
-                                    </span>
-                                  ) : (
-                                    winnersPeriod !== 'month' ? <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400/60 animate-pulse" title="Loading..." /> : <span className="text-white/30">—</span>
-                                  )}
-                                </td>
-                              </motion.tr>
-                            );
-                          })}
-                        </motion.tbody>
+                                        <div className="min-w-0 flex-1">
+                                          <div className="truncate font-medium text-white/95">{w.handle}</div>
+                                          <div className="mt-0.5 flex items-center gap-1.5">
+                                            <span className="max-w-[140px] truncate font-mono text-xs text-white/40" title={w.user}>
+                                              {w.user.slice(0, 6)}…{w.user.slice(-4)}
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={handleCopyWallet}
+                                              className="shrink-0 rounded p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white/70"
+                                              title="Copy wallet address"
+                                            >
+                                              {copiedWallet === w.user ? (
+                                                <span className="text-[10px] font-medium text-emerald-400">Copied!</span>
+                                              ) : (
+                                                <Copy className="h-3.5 w-3.5" />
+                                              )}
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </a>
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-3 text-right font-semibold tabular-nums text-emerald-400">
+                                    {w.pnlFormatted}
+                                  </td>
+                                  <td className="py-3 px-3 text-right font-medium tabular-nums text-white/90">
+                                    {w.allTimePnl != null
+                                      ? (w.allTimePnl >= 0 ? "+" : "") + formatUSD(w.allTimePnl)
+                                      : "—"}
+                                  </td>
+                                  <td className="py-3 px-3 text-right tabular-nums text-white/80">
+                                    {w.winRate != null ? `${w.winRate.toFixed(1)}%` : (
+                                      winnersPeriod !== 'month' ? <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400/60 animate-pulse" title="Loading..." /> : <span className="text-white/30">—</span>
+                                    )}
+                                  </td>
+                                  <td className="py-3 px-3 text-right tabular-nums">
+                                    {w.stakeYield != null ? (
+                                      <span className={cn("font-medium", w.stakeYield >= 0 ? "text-emerald-400" : "text-red-400")}>
+                                        {w.stakeYield >= 0 ? "+" : ""}{w.stakeYield.toFixed(1)}%
+                                      </span>
+                                    ) : (
+                                      <span className="text-white/50">—</span>
+                                    )}
+                                  </td>
+                                  <td className="py-3 pl-3 pr-5 text-right">
+                                    {w.finalScore != null ? (
+                                      <span className="inline-flex h-7 min-w-[2rem] items-center justify-center rounded-lg bg-amber-500/15 px-2 font-semibold tabular-nums text-amber-200">
+                                        {Math.round(w.finalScore)}
+                                      </span>
+                                    ) : (
+                                      winnersPeriod !== 'month' ? <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400/60 animate-pulse" title="Loading..." /> : <span className="text-white/30">—</span>
+                                    )}
+                                  </td>
+                                </motion.tr>
+                              );
+                            })}
+                          </motion.tbody>
                         </AnimatePresence>
                       </table>
                     </div>

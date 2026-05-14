@@ -1176,27 +1176,6 @@ export function ProfileStat() {
                                     <p className="text-xs text-slate-300 mb-0.5">Worst Loss</p>
                                     <p className="text-base font-bold text-red-400">{formatCurrency(metrics.worst_loss || 0)}</p>
                                 </div>
-                                <div className="relative overflow-hidden bg-gradient-to-b from-white/[0.07] to-white/[0.03] border border-white/10 backdrop-blur-xl rounded-2xl px-2 py-3 min-h-[72px] flex flex-col justify-center items-center text-center hover:border-white/15 transition-all">
-                                    <p className="text-xs text-slate-300 mb-0.5">Risk Profile</p>
-                                    {metrics.risk_components?.label ? (
-                                        <>
-                                            <p className={`text-sm font-bold ${metrics.risk_components.label === 'Very Stable' ? 'text-emerald-400' :
-                                                metrics.risk_components.label === 'Controlled' ? 'text-green-400' :
-                                                    metrics.risk_components.label === 'Moderate Risk' ? 'text-yellow-400' :
-                                                        metrics.risk_components.label === 'Aggressive' ? 'text-orange-400' :
-                                                            metrics.risk_components.label === 'Highly Volatile' ? 'text-red-400' :
-                                                                'text-slate-400'
-                                                }`}>{metrics.risk_components.label}</p>
-                                            <p className="text-[10px] text-slate-400 mt-0.5">
-                                                {metrics.risk_components.risk_score !== null && metrics.risk_components.risk_score !== undefined
-                                                    ? `${metrics.risk_components.risk_score.toFixed(1)} / 100`
-                                                    : '—'}
-                                            </p>
-                                        </>
-                                    ) : (
-                                        <p className="text-base font-bold text-slate-400">—</p>
-                                    )}
-                                </div>
                             </div>
 
                             <div className="relative mt-6 rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-6 shadow-[0_16px_60px_-24px_rgba(0,0,0,0.9)] backdrop-blur-2xl">
@@ -1328,21 +1307,6 @@ export function ProfileStat() {
                                 <h3 className="text-sm font-semibold text-white">Risk Profile</h3>
                                 <p className="text-xs text-slate-500">Key risk metrics from trade history</p>
                             </div>
-                            {metrics.risk_components?.label && (
-                                <span className={`ml-auto px-3 py-1 rounded-full text-xs font-semibold border ${
-                                    metrics.risk_components.label === 'Very Stable' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' :
-                                    metrics.risk_components.label === 'Controlled' ? 'border-green-500/30 bg-green-500/10 text-green-400' :
-                                    metrics.risk_components.label === 'Moderate Risk' ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400' :
-                                    metrics.risk_components.label === 'Aggressive' ? 'border-orange-500/30 bg-orange-500/10 text-orange-400' :
-                                    metrics.risk_components.label === 'Highly Volatile' ? 'border-red-500/30 bg-red-500/10 text-red-400' :
-                                    'border-slate-500/30 bg-slate-500/10 text-slate-400'
-                                }`}>
-                                    {metrics.risk_components.label}
-                                    {metrics.risk_components.risk_score !== null && metrics.risk_components.risk_score !== undefined
-                                        ? ` (${metrics.risk_components.risk_score.toFixed(0)}/100)`
-                                        : ''}
-                                </span>
-                            )}
                         </div>
                         <div className="grid grid-cols-3 gap-4">
                             {/* 1. Avg Win / Loss = total PnL / total trades */}
@@ -2032,7 +1996,7 @@ export function ProfileStat() {
             {/* Odds Profile Card */}
             {!loading && activeWallet && metrics && (
                 <div className="px-8 pb-6">
-                    <OddsProfileCard walletAddress={activeWallet} />
+                    <OddsProfileCard walletAddress={activeWallet} totalTrades={metrics.total_trades} />
                 </div>
             )}
         </div>

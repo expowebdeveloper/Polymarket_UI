@@ -26,6 +26,8 @@ interface OddsProfileData {
   buckets: OddsBucket[];
   tags: string[];
   total_trades: number;
+  total_positions: number;
+  skipped_no_odds: number;
   total_stake: number;
   total_pnl: number;
 }
@@ -86,7 +88,7 @@ function TabButton({
   );
 }
 
-export function OddsProfileCard({ walletAddress }: { walletAddress: string }) {
+export function OddsProfileCard({ walletAddress, totalTrades }: { walletAddress: string; totalTrades?: number }) {
   const [data, setData] = useState<OddsProfileData | null>(null);
   const [loading, setLoading] = useState(false);
   const [leftMetric, setLeftMetric] = useState<LeftMetric>('percent_of_trades');
@@ -170,7 +172,7 @@ export function OddsProfileCard({ walletAddress }: { walletAddress: string }) {
         <div>
           <h3 className="text-sm font-semibold text-white">Odds Profile</h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Entry odds distribution across {data.total_trades.toLocaleString()} trades
+            Entry odds distribution across {(totalTrades || data.total_positions || data.total_trades).toLocaleString()} trades
           </p>
         </div>
         <div className="flex gap-2">
