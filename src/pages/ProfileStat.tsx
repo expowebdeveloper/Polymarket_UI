@@ -1374,6 +1374,13 @@ export function ProfileStat() {
                 </div>
             )}
 
+            {/* Odds Profile Card - directly below Risk Profile */}
+            {!loading && activeWallet && metrics && (
+                <div className="px-8 pt-6">
+                    <OddsProfileCard walletAddress={activeWallet} totalTrades={metrics.total_trades} closedPositions={closedPositions} />
+                </div>
+            )}
+
             {!loading && activeWallet && metrics && (
                 <div className="px-8 py-6 space-y-6">
                     {/* ADVANCED METRICS TOGGLE */}
@@ -1993,12 +2000,6 @@ export function ProfileStat() {
                 </div>
             )}
 
-            {/* Odds Profile Card */}
-            {!loading && activeWallet && metrics && (
-                <div className="px-8 pb-6">
-                    <OddsProfileCard walletAddress={activeWallet} totalTrades={metrics.total_trades} closedPositions={closedPositions} />
-                </div>
-            )}
         </div>
     );
 }
