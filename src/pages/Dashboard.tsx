@@ -270,7 +270,7 @@ function MetricCard({
           <div className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.06]">
             <Icon className="h-5 w-5 text-white/80" />
           </div>
-          <div className="text-sm font-semibold text-blue-400">{title}</div>
+          <div className="text-sm font-semibold text-emerald-400">{title}</div>
         </div>
       </div>
       <div className="mt-4 text-2xl font-semibold tracking-tight text-white">{value}</div>
@@ -589,13 +589,56 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
   }, []);
 
   // Map WS activities to ActivityEntry (last 5, filter by size >= 100, only last 5 min)
-  // Live $10K+ whale trades — collect from WebSocket, show as scrolling marquee
+  // Live whale trades — collect from WebSocket + REST fallback
   type BigTrade = { id: string; side: 'BUY' | 'SELL'; market: string; amount: number; amountFmt: string; traderName: string; wallet: string; ts: number; timeAgo: string };
+  const [restTrades, setRestTrades] = useState<BigTrade[]>([]);
 
-  const whaleTrades = useMemo<BigTrade[]>(() => {
+  // REST fallback: poll broadcaster cache every 10s
+  useEffect(() => {
+    const ac = new AbortController();
+    const fetchTrades = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/activity/global`, {
+          signal: ac.signal,
+          headers: headersWithNgrokSkip(`${API_BASE_URL}/activity/global`, { accept: 'application/json' }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!Array.isArray(data)) return;
+        const nowSec = Math.floor(Date.now() / 1000);
+        const mapped: BigTrade[] = data
+          .filter((a: any) => (a.amount_usd || 0) >= 100)
+          .sort((a: any, b: any) => (b.amount_usd || 0) - (a.amount_usd || 0))
+          .slice(0, 20)
+          .map((a: any) => {
+            const diff = Math.max(0, nowSec - (a.timestamp || nowSec));
+            const wallet = a.user_address || '';
+            return {
+              id: a.id,
+              side: (a.side || 'BUY') as 'BUY' | 'SELL',
+              market: a.market || 'Unknown Market',
+              amount: a.amount_usd || 0,
+              amountFmt: formatUSD(a.amount_usd || 0),
+              traderName: wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : '—',
+              wallet,
+              ts: a.timestamp || nowSec,
+              timeAgo: diff < 60 ? `${diff}s ago` : diff < 3600 ? `${Math.floor(diff / 60)}m ago` : `${Math.floor(diff / 3600)}h ago`,
+            };
+          });
+        setRestTrades(mapped);
+      } catch { }
+    };
+    fetchTrades();
+    const interval = setInterval(fetchTrades, 10000);
+    return () => { ac.abort(); clearInterval(interval); };
+  }, []);
+
+  // WebSocket trades
+  const wsTrades = useMemo<BigTrade[]>(() => {
     const nowSec = Math.floor(Date.now() / 1000);
     return wsActivities
-      .filter((a) => (a.amount_usd || 0) >= 10000)
+      .filter((a) => (a.amount_usd || 0) >= 100)
+      .sort((a, b) => (b.amount_usd || 0) - (a.amount_usd || 0))
       .slice(0, 20)
       .map((a) => {
         const diff = Math.max(0, nowSec - (a.timestamp || nowSec));
@@ -614,8 +657,15 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
       });
   }, [wsActivities, tick]);
 
-  // For JSX compatibility
-  const allBigTrades = whaleTrades;
+  // Merge: prefer WS data, fallback to REST
+  const allBigTrades = useMemo(() => {
+    const seen = new Set<string>();
+    const merged: BigTrade[] = [];
+    for (const t of [...wsTrades, ...restTrades]) {
+      if (!seen.has(t.id)) { seen.add(t.id); merged.push(t); }
+    }
+    return merged.sort((a, b) => b.amount - a.amount).slice(0, 20);
+  }, [wsTrades, restTrades]);
 
   const activityEntries = useMemo<ActivityEntry[]>(() => {
     const nowSec = Math.floor(Date.now() / 1000);
@@ -891,7 +941,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
 
         <RowDivider />
 
-        {/* Last $10K+ Trades — Marquee Scroll */}
+        {/* Last $2.5K+ Trades — Marquee Scroll */}
         <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl">
           <div className="px-5 py-3 flex items-center justify-between border-b border-white/5">
             <div className="flex items-center gap-2.5">
@@ -900,7 +950,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </div>
               <span className="text-xs font-semibold uppercase tracking-widest text-white/50">
-                Last $10K+ Trades of the Day
+                Largest Trades Today
               </span>
             </div>
             {allBigTrades.length > 0 && (
@@ -910,49 +960,53 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
 
           {allBigTrades.length === 0 ? (
             <div className="px-5 py-4 text-center text-xs text-white/30">
-              Waiting for $10K+ trades via live feed...
+              Connecting to live trade feed...
             </div>
           ) : (
             <div className="relative overflow-hidden py-3">
               {/* Marquee: duplicate items for seamless loop */}
-              <div className="flex animate-[marquee_30s_linear_infinite] hover:[animation-play-state:paused] gap-6 px-5"
-                style={{ width: 'max-content' }}
+              <marquee className=" gap-6 px-5"
+                scrollamount="3"
+                onMouseOver={(e: any) => e.currentTarget.stop()}
+                onMouseOut={(e: any) => e.currentTarget.start()}
               >
-                {[...allBigTrades, ...allBigTrades].map((trade, idx) => {
-                  const isBuy = trade.side === 'BUY';
-                  return (
-                    <a
-                      key={`${trade.id}-${idx}`}
-                      href={`/profile-stat/${encodeURIComponent(trade.wallet)}`}
-                      className={cn(
-                        "shrink-0 flex items-center gap-3 rounded-xl px-4 py-2.5 border cursor-pointer transition-all hover:scale-[1.02]",
-                        isBuy
-                          ? "bg-emerald-500/[0.06] border-emerald-500/15 hover:bg-emerald-500/[0.1]"
-                          : "bg-rose-500/[0.06] border-rose-500/15 hover:bg-rose-500/[0.1]"
-                      )}
-                    >
-                      <span className={cn(
-                        "shrink-0 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider",
-                        isBuy ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
-                      )}>
-                        {trade.side}
-                      </span>
-                      <div className="min-w-0 max-w-[220px]">
-                        <p className="text-xs font-medium text-white/85 truncate">{trade.market}</p>
-                        <p className="text-[10px] text-white/35 mt-0.5">
-                          {trade.traderName} · {trade.timeAgo}
-                        </p>
-                      </div>
-                      <span className={cn(
-                        "shrink-0 text-sm font-bold tabular-nums",
-                        isBuy ? "text-emerald-400" : "text-rose-400"
-                      )}>
-                        {trade.amountFmt}
-                      </span>
-                    </a>
-                  );
-                })}
-              </div>
+                <div className="flex items-center gap-6">
+                  {[...allBigTrades, ...allBigTrades].map((trade, idx) => {
+                    const isBuy = trade.side === 'BUY';
+                    return (
+                      <a
+                        key={`${trade.id}-${idx}`}
+                        href={`/profile-stat/${encodeURIComponent(trade.wallet)}`}
+                        className={cn(
+                          "shrink-0 flex items-center gap-3 rounded-xl px-4 py-2.5 border cursor-pointer transition-all hover:scale-[1.02]",
+                          isBuy
+                            ? "bg-emerald-500/[0.06] border-emerald-500/15 hover:bg-emerald-500/[0.1]"
+                            : "bg-rose-500/[0.06] border-rose-500/15 hover:bg-rose-500/[0.1]"
+                        )}
+                      >
+                        <span className={cn(
+                          "shrink-0 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider",
+                          isBuy ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
+                        )}>
+                          {trade.side}
+                        </span>
+                        <div className="min-w-0 max-w-[220px]">
+                          <p className="text-xs font-medium text-white/85 truncate">{trade.market}</p>
+                          <p className="text-[10px] text-white/35 mt-0.5">
+                            {trade.traderName} · {trade.timeAgo}
+                          </p>
+                        </div>
+                        <span className={cn(
+                          "shrink-0 text-sm font-bold tabular-nums",
+                          isBuy ? "text-emerald-400" : "text-rose-400"
+                        )}>
+                          {trade.amountFmt}
+                        </span>
+                      </a>
+                    );
+                  })}
+                </div>
+              </marquee>
             </div>
           )}
         </div>
@@ -1029,44 +1083,46 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                     <Trophy className="h-5 w-5 text-amber-200" />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-blue-500">
+                    <div className="text-sm font-semibold text-emerald-400">
                       Biggest winners
                       {winnersLoading && <span className="ml-2 text-xs text-white/40 font-normal">Loading...</span>}
                     </div>
                   </div>
                 </div>
-                <div className="mt-3 inline-flex rounded-lg bg-white/[0.04] border border-white/10 p-1">
-                  {([
-                    { key: 'day', label: 'Today' },
-                    { key: 'week', label: 'Weekly' },
-                    { key: 'month', label: 'Monthly' },
-                    { key: 'all', label: 'All' },
-                  ] as const).map(tab => (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      onClick={() => { setWinnersPeriod(tab.key); setWinnersPage(1); setWinnersSearch(''); }}
-                      className={`px-4 py-1.5 rounded-md text-xs font-medium transition ${winnersPeriod === tab.key
+                <div class="flex justify-between items-center flex-wrap gap-3 mt-4">
+                  <div className="mt-3 inline-flex rounded-lg bg-white/[0.04] border border-white/10 p-1">
+                    {([
+                      { key: 'day', label: 'Today' },
+                      { key: 'week', label: 'Weekly' },
+                      { key: 'month', label: 'Monthly' },
+                      { key: 'all', label: 'All' },
+                    ] as const).map(tab => (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => { setWinnersPeriod(tab.key); setWinnersPage(1); setWinnersSearch(''); }}
+                        className={`px-4 py-1.5 rounded-md text-xs font-medium transition ${winnersPeriod === tab.key
                           ? 'bg-white text-black'
                           : 'text-white/50 hover:text-white/80'
-                        }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-3 flex items-center gap-3">
-                  <div className="relative flex-1 max-w-xs">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-                    <input
-                      type="text"
-                      placeholder="Search by name or wallet..."
-                      value={winnersSearch}
-                      onChange={(e) => { setWinnersSearch(e.target.value); setWinnersPage(1); }}
-                      className="w-full rounded-lg border border-white/10 bg-white/[0.04] py-2 pl-9 pr-3 text-sm text-white placeholder-white/30 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30"
-                    />
+                          }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
                   </div>
-                  <span className="text-xs text-white/40">{filteredWinners.length} trader{filteredWinners.length !== 1 ? 's' : ''}</span>
+                  <div className="mt-3 flex items-center gap-3">
+                    <div className="relative flex-1 max-w-xs">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+                      <input
+                        type="text"
+                        placeholder="Search by name or wallet..."
+                        value={winnersSearch}
+                        onChange={(e) => { setWinnersSearch(e.target.value); setWinnersPage(1); }}
+                        className="w-full rounded-lg border border-white/10 bg-white/[0.04] py-2 pl-9 pr-3 text-sm text-white placeholder-white/30 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30"
+                      />
+                    </div>
+                    <span className="text-xs text-white/40">{filteredWinners.length} trader{filteredWinners.length !== 1 ? 's' : ''}</span>
+                  </div>
                 </div>
                 <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
                   {winnersLoading && !(winnersPeriod === 'month' && (stats?.biggest_winners_month?.length ?? 0) > 0) ? (
@@ -1093,14 +1149,14 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                             ] as const).map(col => (
                               <th
                                 key={col.key}
-                                className={`py-3.5 ${col.cls} ${col.align === 'right' ? 'text-right' : ''} tabular-nums cursor-pointer select-none hover:text-white/70 transition-colors`}
+                                className={`py-3.5 ${col.cls} ${col.align === 'right' ? 'text-right' : ''} tabular-nums cursor-pointer select-none hover:text-white/70 transition-colors `}
                                 onClick={() => setWinnersSort(prev =>
                                   prev.key === col.key
                                     ? { key: col.key, desc: !prev.desc }
                                     : { key: col.key, desc: true }
                                 )}
                               >
-                                <span className="inline-flex items-center gap-1">
+                                <span className="inline-flex items-center gap-1 whitespace-nowrap">
                                   {col.label}
                                   {winnersSort.key === col.key && (
                                     winnersSort.desc
@@ -1171,7 +1227,7 @@ export function Dashboard(_props?: { onSelectSymbol?: (symbol: string) => void }
                                             />
                                           ) : null}
                                           <div
-                                            className="h-full w-full place-items-center text-white/50"
+                                            className="h-full w-full place-items-center text-white/50 justify-center bg-white/5"
                                             style={{
                                               display: w.profileImage ? "none" : "flex",
                                             }}
