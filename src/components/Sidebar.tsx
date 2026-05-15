@@ -16,9 +16,9 @@ import logo from "../assets/logo.png";
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: BarChart3 },
   { name: "Predictor Rating/Stats", href: "/profile-stat", icon: Star },
-  { name: "Market", href: "/markets", icon: CandlestickChart, badge: "Coming Soon", disabled: true },
-  { name: "Leaderboard", href: "/leaderboard", icon: Trophy },
-  { name: "Whales/insiders", href: "/Whales/insiders", icon: LineChart, badge: "Coming Soon", disabled: true },
+  // { name: "Market", href: "/markets", icon: CandlestickChart, badge: "Coming Soon", disabled: true },
+  { name: "Leaderboard", href: "/leaderboard", icon: Trophy, badge: "Coming Soon", disabled: true },
+  // { name: "Whales/insiders", href: "/Whales/insiders", icon: LineChart, badge: "Coming Soon", disabled: true },
   { name: "Powly AI", href: "/reports", icon: LineChart, badge: "Coming Soon", disabled: true, useLogo: true },
 ];
 
@@ -48,7 +48,7 @@ export function Sidebar({ collapsed, onSetCollapsed }: SidebarProps) {
         />
       </button>
 
-      <div className="relative flex flex-col h-full p-4">
+      <div className="relative flex flex-col h-full p-3">
         {/* LOGO */}
         <div className="flex flex-col items-center mb-8">
           <img
@@ -74,7 +74,7 @@ export function Sidebar({ collapsed, onSetCollapsed }: SidebarProps) {
             const inner = (
               <>
                 {item.useLogo ? (
-                  <img src={logo} className="w-6 h-6 object-contain" />
+                  <img src={logo} className="w-6 h-6 object-contain flex-1 w-[max-content]" />
                 ) : (
                   <item.icon className="w-5 h-5" />
                 )}
@@ -84,7 +84,7 @@ export function Sidebar({ collapsed, onSetCollapsed }: SidebarProps) {
                     <span className="text-sm font-medium">{item.name}</span>
                     {item.badge && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full
-                        bg-cyan-400/10 text-cyan-300 border border-cyan-400/20">
+                        bg-cyan-400/10 text-cyan-300 border border-cyan-400/20  whitespace-nowrap">
                         {item.badge}
                       </span>
                     )}
@@ -97,7 +97,7 @@ export function Sidebar({ collapsed, onSetCollapsed }: SidebarProps) {
               return (
                 <div
                   key={item.name}
-                  className="flex items-center gap-3 p-3 rounded-2xl
+                  className="flex items-center gap-2 p-2 rounded-xl
                   text-slate-400 opacity-60 cursor-not-allowed"
                 >
                   {inner}
@@ -110,7 +110,7 @@ export function Sidebar({ collapsed, onSetCollapsed }: SidebarProps) {
                 key={item.name}
                 to={item.href}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 p-3 rounded-2xl transition-all
+                  `flex items-center gap-2 p-2 rounded-xl transition-all
                   backdrop-blur-md border border-transparent
                   ${isActive
                     ? "bg-white/15 border-white/20 shadow-inner text-white"
